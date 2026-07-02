@@ -7,11 +7,12 @@ interface Props {
   isPlaying: boolean
   isPlayed: boolean
   playStartWallTime: number | null
+  isReordering: boolean
   onClick: () => void
   onEdit: () => void
 }
 
-export function TrackCell({ track, isPlaying, isPlayed, playStartWallTime, onClick, onEdit }: Props) {
+export function TrackCell({ track, isPlaying, isPlayed, playStartWallTime, isReordering, onClick, onEdit }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
@@ -83,27 +84,42 @@ export function TrackCell({ track, isPlaying, isPlayed, playStartWallTime, onCli
         }}
       />
 
-      <button
-        className="edit-btn"
-        onClick={(e) => { e.stopPropagation(); onEdit() }}
-        style={{
+      {isReordering ? (
+        <div style={{
           position: 'absolute',
           top: 4,
           right: 4,
-          background: 'rgba(15,23,42,0.8)',
-          border: '1px solid #334155',
-          borderRadius: 3,
-          color: '#94a3b8',
-          fontSize: 11,
-          padding: '2px 5px',
-          opacity: 0,
-          transition: 'opacity 0.15s',
-          lineHeight: 1.2,
+          color: '#475569',
+          fontSize: 13,
+          lineHeight: 1,
+          userSelect: 'none',
           zIndex: 1
-        }}
-      >
-        ✎
-      </button>
+        }}>
+          ⠿
+        </div>
+      ) : (
+        <button
+          className="edit-btn"
+          onClick={(e) => { e.stopPropagation(); onEdit() }}
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            background: 'rgba(15,23,42,0.8)',
+            border: '1px solid #334155',
+            borderRadius: 3,
+            color: '#94a3b8',
+            fontSize: 11,
+            padding: '2px 5px',
+            opacity: 0,
+            transition: 'opacity 0.15s',
+            lineHeight: 1.2,
+            zIndex: 1
+          }}
+        >
+          ✎
+        </button>
+      )}
 
       {hasPlayer ? (
         <>

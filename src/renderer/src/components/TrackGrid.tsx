@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useRef } from 'react'
 import type { Track } from '../types'
 import { TrackCell } from './TrackCell'
 
@@ -8,12 +8,51 @@ interface Props {
   playStartWallTime: number | null
   playedIds: Set<string>
   isMonitorMode: boolean
+  isReordering: boolean
   onPlayTrack: (track: Track) => void
   onEditTrack: (track: Track) => void
   onAddTracks: () => void
+  onReorder: (newTracks: Track[]) => void
 }
 
-export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds, isMonitorMode, onPlayTrack, onEditTrack, onAddTracks }: Props) {
+export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds, isMonitorMode, isReordering, onPlayTrack, onEditTrack, onAddTracks, onReorder }: Props) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const dragCounter = useRef(0)
+
+  function handleDragStart(i: number) {
+    setDragIndex(i)
+    dragCounter.current = 0
+  }
+
+  function handleDragEnter(i: number) {
+    dragCounter.current++
+    setDropIndex(i)
+  }
+
+  function handleDragLeave() {
+    dragCounter.current--
+    if (dragCounter.current === 0) setDropIndex(null)
+  }
+
+  function handleDrop(i: number) {
+    if (dragIndex !== null && dragIndex !== i) {
+      const next = [...tracks]
+      const [moved] = next.splice(dragIndex, 1)
+      next.splice(i, 0, moved)
+      onReorder(next)
+    }
+    setDragIndex(null)
+    setDropIndex(null)
+    dragCounter.current = 0
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null)
+    setDropIndex(null)
+    dragCounter.current = 0
+  }
+
   if (tracks.length === 0) {
     return (
       <div style={{
@@ -50,16 +89,35 @@ export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds
         gridTemplateColumns: 'repeat(6, 1fr)',
         gap: 6
       }}>
-        {tracks.map((track) => (
-          <TrackCell
+        {tracks.map((track, i) => (
+          <div
             key={track.id}
-            track={track}
-            isPlaying={playingTrackId === track.id}
-            isPlayed={playedIds.has(track.id)}
-            playStartWallTime={playingTrackId === track.id ? playStartWallTime : null}
-            onClick={() => onPlayTrack(track)}
-            onEdit={() => onEditTrack(track)}
-          />
+            draggable={isReordering}
+            onDragStart={() => handleDragStart(i)}
+            onDragEnter={() => handleDragEnter(i)}
+            onDragLeave={handleDragLeave}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => handleDrop(i)}
+            onDragEnd={handleDragEnd}
+            style={{
+              opacity: dragIndex === i ? 0.35 : 1,
+              outline: dropIndex === i && dragIndex !== i ? '2px solid #3b82f6' : 'none',
+              outlineOffset: 2,
+              borderRadius: 4,
+              cursor: isReordering ? 'grab' : undefined,
+              transition: 'opacity 0.1s'
+            }}
+          >
+            <TrackCell
+              track={track}
+              isPlaying={playingTrackId === track.id}
+              isPlayed={playedIds.has(track.id)}
+              playStartWallTime={playingTrackId === track.id ? playStartWallTime : null}
+              isReordering={isReordering}
+              onClick={isReordering ? () => {} : () => onPlayTrack(track)}
+              onEdit={isReordering ? () => {} : () => onEditTrack(track)}
+            />
+          </div>
         ))}
       </div>
     </div>

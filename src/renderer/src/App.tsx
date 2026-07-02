@@ -20,6 +20,7 @@ export default function App() {
   const [nowPlayingTrack, setNowPlayingTrack] = useState<Track | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [playedIds, setPlayedIds] = useState<Set<string>>(new Set())
+  const [isReordering, setIsReordering] = useState(false)
 
   // Keep audio engine in sync with persisted fade settings
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function App() {
   const selectedBank = config.banks.find((b) => b.id === config.selectedBankId) ?? null
 
   function selectBank(id: string) {
+    setIsReordering(false)
     updateConfig((c) => ({ ...c, selectedBankId: id }))
   }
 
@@ -145,6 +147,15 @@ export default function App() {
     if (nowPlayingTrack?.id === updated.id) setNowPlayingTrack(updated)
   }
 
+  function reorderTracks(newTracks: Track[]) {
+    if (!selectedBank) return
+    const bankId = selectedBank.id
+    updateConfig((c) => ({
+      ...c,
+      banks: c.banks.map((b) => b.id === bankId ? { ...b, tracks: newTracks } : b)
+    }))
+  }
+
   function removeTrack(id: string) {
     if (nowPlayingTrack?.id === id) {
       audio.stopImmediate()
@@ -220,6 +231,20 @@ export default function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12, color: '#64748b' }}>{selectedBank.tracks.length} tracks</span>
                 <button
+                  onClick={() => setIsReordering((v) => !v)}
+                  style={{
+                    padding: '5px 12px',
+                    background: isReordering ? '#1e3a5f' : '#1e293b',
+                    border: `1px solid ${isReordering ? '#3b82f6' : '#334155'}`,
+                    borderRadius: 4,
+                    color: isReordering ? '#93c5fd' : '#94a3b8',
+                    fontSize: 12,
+                    fontWeight: isReordering ? 600 : 400
+                  }}
+                >
+                  {isReordering ? '✓ Done Reordering' : '⇅ Reorder'}
+                </button>
+                <button
                   onClick={addTracks}
                   style={{
                     padding: '5px 12px',
@@ -243,9 +268,11 @@ export default function App() {
               playStartWallTime={audio.playStartWallTime}
               playedIds={playedIds}
               isMonitorMode={audio.isMonitorMode}
+              isReordering={isReordering}
               onPlayTrack={playTrack}
               onEditTrack={setEditingTrack}
               onAddTracks={addTracks}
+              onReorder={reorderTracks}
             />
           ) : (
             <div style={{
