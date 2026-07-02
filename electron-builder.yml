@@ -5,6 +5,7 @@ publish:
   owner: chrissabato
   repo: stadium-sound
   private: false
+  releaseType: release
 directories:
   buildResources: resources
   output: dist
