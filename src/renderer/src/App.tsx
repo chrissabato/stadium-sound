@@ -142,8 +142,21 @@ export default function App() {
         tracks: b.tracks.map((t) => t.id === updated.id ? updated : t)
       }))
     }))
-    // Update nowPlayingTrack reference if it was being edited
     if (nowPlayingTrack?.id === updated.id) setNowPlayingTrack(updated)
+  }
+
+  function removeTrack(id: string) {
+    if (nowPlayingTrack?.id === id) {
+      audio.stopImmediate()
+      setNowPlayingTrack(null)
+    }
+    updateConfig((c) => ({
+      ...c,
+      banks: c.banks.map((b) => ({
+        ...b,
+        tracks: b.tracks.filter((t) => t.id !== id)
+      }))
+    }))
   }
 
   const handleVolumeChange = useCallback((v: number) => {
@@ -264,6 +277,7 @@ export default function App() {
       <TrackEditor
         track={editingTrack}
         onSave={saveEditedTrack}
+        onRemove={removeTrack}
         onClose={() => setEditingTrack(null)}
         loadBuffer={audio.loadBuffer}
         getBuffer={audio.getBuffer}

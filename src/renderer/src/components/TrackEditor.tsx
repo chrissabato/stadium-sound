@@ -6,12 +6,13 @@ import { WaveformCanvas } from './WaveformCanvas'
 interface Props {
   track: Track | null
   onSave: (updated: Track) => void
+  onRemove: (id: string) => void
   onClose: () => void
   loadBuffer: (id: string, filePath: string) => Promise<AudioBuffer>
   getBuffer: (id: string) => AudioBuffer | undefined
 }
 
-export function TrackEditor({ track, onSave, onClose, loadBuffer, getBuffer }: Props) {
+export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getBuffer }: Props) {
   const [filePath, setFilePath] = useState('')
   const [artist, setArtist] = useState('')
   const [title, setTitle] = useState('')
@@ -356,20 +357,28 @@ export function TrackEditor({ track, onSave, onClose, loadBuffer, getBuffer }: P
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
           <button
-            onClick={() => { stopPreview(); onClose() }}
-            style={{ padding: '7px 18px', background: '#334155', border: 'none', borderRadius: 4, color: '#f1f5f9', fontSize: 13 }}
+            onClick={() => { stopPreview(); onRemove(track.id); onClose() }}
+            style={{ padding: '7px 18px', background: '#7f1d1d', border: '1px solid #991b1b', borderRadius: 4, color: '#fca5a5', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
-            Cancel
+            Remove Button
           </button>
-          <button
-            onClick={handleSave}
-            disabled={!filePath}
-            style={{ padding: '7px 18px', background: '#3b82f6', border: 'none', borderRadius: 4, color: '#fff', fontWeight: 600, fontSize: 13 }}
-          >
-            Save
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => { stopPreview(); onClose() }}
+              style={{ padding: '7px 18px', background: '#334155', border: 'none', borderRadius: 4, color: '#f1f5f9', fontSize: 13 }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!filePath}
+              style={{ padding: '7px 18px', background: '#3b82f6', border: 'none', borderRadius: 4, color: '#fff', fontWeight: 600, fontSize: 13 }}
+            >
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>
