@@ -33,6 +33,11 @@ export interface ElectronAPI {
   ssp: {
     import: () => Promise<Array<{ name: string; tracks: Array<{ label: string; filePath: string; duration: string; name: string }> }> | null>
   }
+  app: {
+    getVersion: () => Promise<string>
+    checkForUpdate: () => Promise<void>
+    onUpdateStatus: (callback: (status: 'checking' | 'available' | 'not-available' | 'error') => void) => () => void
+  }
   onMenuAction: (callback: (action: string, data?: string) => void) => () => void
 }
 

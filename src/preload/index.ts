@@ -19,6 +19,15 @@ const api: ElectronAPI = {
   ssp: {
     import: () => ipcRenderer.invoke('ssp:import')
   },
+  app: {
+    getVersion: () => ipcRenderer.invoke('app:getVersion'),
+    checkForUpdate: () => ipcRenderer.invoke('app:checkForUpdate'),
+    onUpdateStatus: (callback) => {
+      const handler = (_: Electron.IpcRendererEvent, status: string) => callback(status as never)
+      ipcRenderer.on('app:updateStatus', handler)
+      return () => ipcRenderer.removeListener('app:updateStatus', handler)
+    }
+  },
   onMenuAction: (callback: (action: string, data?: string) => void) => {
     const handler = (_: Electron.IpcRendererEvent, action: string, data?: string) =>
       callback(action, data)

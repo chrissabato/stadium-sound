@@ -75,12 +75,17 @@ function FadeRow({
 
 export function Settings({ open, config, onChange, onClose, onResetPlayed }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
+  const [version, setVersion] = useState('')
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'not-available' | 'error'>('idle')
 
   useEffect(() => {
     if (!open) return
     navigator.mediaDevices.enumerateDevices()
       .then((devices) => setAudioDevices(devices.filter((d) => d.kind === 'audiooutput')))
       .catch(() => {})
+    window.electronAPI.app.getVersion().then(setVersion).catch(() => {})
+    const unsub = window.electronAPI.app.onUpdateStatus((status) => setUpdateStatus(status))
+    return unsub
   }, [open])
 
   if (!open) return null
@@ -238,6 +243,53 @@ export function Settings({ open, config, onChange, onClose, onResetPlayed }: Pro
           >
             Reset
           </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            About
+          </span>
+          <div style={{ height: 1, background: '#334155' }} />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Stadium Sound</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+              {version ? `Version ${version}` : '—'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            <button
+              onClick={() => {
+                setUpdateStatus('checking')
+                window.electronAPI.app.checkForUpdate()
+              }}
+              disabled={updateStatus === 'checking'}
+              style={{
+                padding: '6px 16px',
+                background: '#1e3a5f',
+                border: '1px solid #334155',
+                borderRadius: 4,
+                color: updateStatus === 'checking' ? '#64748b' : '#93c5fd',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: updateStatus === 'checking' ? 'default' : 'pointer',
+                flexShrink: 0
+              }}
+            >
+              {updateStatus === 'checking' ? 'Checking…' : 'Check for Updates'}
+            </button>
+            {updateStatus === 'not-available' && (
+              <span style={{ fontSize: 11, color: '#4ade80' }}>You're up to date</span>
+            )}
+            {updateStatus === 'available' && (
+              <span style={{ fontSize: 11, color: '#fbbf24' }}>Update available — restart to install</span>
+            )}
+            {updateStatus === 'error' && (
+              <span style={{ fontSize: 11, color: '#f87171' }}>Couldn't check for updates</span>
+            )}
+          </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

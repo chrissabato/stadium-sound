@@ -1,4 +1,5 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, BrowserWindow, app } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { readFile } from 'fs/promises'
 import { readFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
@@ -124,6 +125,30 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('eventSet:setTitle', (_event, title: string) => {
     const win = getWin()
     if (win) win.setTitle(title)
+  })
+
+  ipcMain.handle('app:getVersion', () => app.getVersion())
+
+  ipcMain.handle('app:checkForUpdate', () => {
+    const win = getWin()
+    if (!app.isPackaged) {
+      win?.webContents.send('app:updateStatus', 'not-available')
+      return
+    }
+    win?.webContents.send('app:updateStatus', 'checking')
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {
+      win?.webContents.send('app:updateStatus', 'error')
+    })
+  })
+
+  autoUpdater.on('update-available', () => {
+    getWin()?.webContents.send('app:updateStatus', 'available')
+  })
+  autoUpdater.on('update-not-available', () => {
+    getWin()?.webContents.send('app:updateStatus', 'not-available')
+  })
+  autoUpdater.on('error', () => {
+    getWin()?.webContents.send('app:updateStatus', 'error')
   })
 
   ipcMain.handle('ssp:import', async () => {
