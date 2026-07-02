@@ -12,11 +12,13 @@ files:
   - out/**/*
 win:
   icon: resources/icon.ico
+  artifactName: Stadium-Sound-Setup.exe
   target:
     - target: nsis
       arch: [x64]
 mac:
   icon: resources/icon.png
+  artifactName: Stadium-Sound-${arch}.dmg
   target:
     - target: dmg
       arch: [x64, arm64]

@@ -5,11 +5,11 @@ A soundboard app for sporting events. Manage named banks of audio tracks and pla
 ## Download
 
 ### Windows
-[Stadium-Sound-Setup-0.1.0.exe](https://github.com/chrissabato/stadium-sound/releases/download/v0.1.0/Stadium-Sound-Setup-0.1.0.exe)
+[Download for Windows](https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup.exe)
 
 ### macOS
-[Stadium-Sound-0.1.0.dmg](https://github.com/chrissabato/stadium-sound/releases/download/v0.1.0/Stadium-Sound-0.1.0.dmg) — Intel  
-[Stadium-Sound-0.1.0-arm64.dmg](https://github.com/chrissabato/stadium-sound/releases/download/v0.1.0/Stadium-Sound-0.1.0-arm64.dmg) — Apple Silicon
+[Download for macOS (Intel)](https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-x64.dmg)  
+[Download for macOS (Apple Silicon)](https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-arm64.dmg)
 
 > **macOS note:** The app is not yet code-signed. To open it, right-click the app and choose **Open**, then click Open in the dialog.
 
