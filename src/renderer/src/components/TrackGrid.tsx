@@ -101,8 +101,7 @@ export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds
             onDragEnd={handleDragEnd}
             style={{
               opacity: dragIndex === i ? 0.35 : 1,
-              outline: dropIndex === i && dragIndex !== i ? '2px solid #3b82f6' : 'none',
-              outlineOffset: 2,
+              boxShadow: dropIndex === i && dragIndex !== i ? '0 0 0 2px #3b82f6' : 'none',
               borderRadius: 4,
               cursor: isReordering ? 'grab' : undefined,
               transition: 'opacity 0.1s'
