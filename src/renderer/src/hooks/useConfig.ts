@@ -1,0 +1,147 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import type { AppConfig, Bank, Track } from '../types'
+import { DEFAULT_CONFIG } from '../types'
+
+function makeId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+function parseSspDuration(t: string): number {
+  const [min, sec] = t.split(':').map(Number)
+  return (min || 0) * 60 + (sec || 0)
+}
+
+export interface ConfigState {
+  config: AppConfig
+  currentFilePath: string | null
+  loaded: boolean
+  updateConfig: (next: AppConfig | ((prev: AppConfig) => AppConfig)) => void
+}
+
+function fileLabel(filePath: string | null): string {
+  if (!filePath) return 'Untitled Event Set'
+  return filePath.split(/[\\/]/).pop() ?? 'Event Set'
+}
+
+function updateWindowTitle(filePath: string | null): void {
+  const label = fileLabel(filePath)
+  window.electronAPI.eventSet.setTitle(`${label} — Stadium Sound`)
+}
+
+export function useConfig(): ConfigState {
+  const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG)
+  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
+
+  const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
+  const filePathRef = useRef<string | null>(null)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => { configRef.current = config }, [config])
+  useEffect(() => { filePathRef.current = currentFilePath }, [currentFilePath])
+
+  function applyState(cfg: AppConfig, fp: string | null): void {
+    setConfig(cfg)
+    setCurrentFilePath(fp)
+    updateWindowTitle(fp)
+  }
+
+  // Load on mount
+  useEffect(() => {
+    window.electronAPI.eventSet.getInitialState().then((state) => {
+      if (state.config) {
+        applyState(state.config as AppConfig, state.filePath)
+      } else {
+        updateWindowTitle(null)
+      }
+      setLoaded(true)
+    })
+  }, [])
+
+  const scheduleAutoSave = useCallback((updated: AppConfig) => {
+    const fp = filePathRef.current
+    if (!fp) return
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      if (filePathRef.current) {
+        window.electronAPI.eventSet.save(updated, filePathRef.current)
+      }
+    }, 400)
+  }, [])
+
+  const updateConfig = useCallback(
+    (next: AppConfig | ((prev: AppConfig) => AppConfig)) => {
+      setConfig((prev) => {
+        const updated = typeof next === 'function' ? next(prev) : next
+        scheduleAutoSave(updated)
+        return updated
+      })
+    },
+    [scheduleAutoSave]
+  )
+
+  // Native menu actions from main process
+  useEffect(() => {
+    const remove = window.electronAPI.onMenuAction(async (action, data) => {
+      if (action === 'new') {
+        applyState(DEFAULT_CONFIG, null)
+      } else if (action === 'open') {
+        const result = await window.electronAPI.eventSet.open()
+        if (result) applyState(result.config, result.filePath)
+      } else if (action === 'save') {
+        const fp = filePathRef.current
+        if (fp) {
+          window.electronAPI.eventSet.save(configRef.current, fp)
+        } else {
+          const result = await window.electronAPI.eventSet.saveAs(configRef.current)
+          if (result) {
+            setCurrentFilePath(result.filePath)
+            updateWindowTitle(result.filePath)
+          }
+        }
+      } else if (action === 'saveAs') {
+        const result = await window.electronAPI.eventSet.saveAs(configRef.current)
+        if (result) {
+          setCurrentFilePath(result.filePath)
+          updateWindowTitle(result.filePath)
+        }
+      } else if (action === 'openRecent' && data) {
+        const result = await window.electronAPI.eventSet.openFile(data)
+        if (result) applyState(result.config, result.filePath)
+      } else if (action === 'clearRecent') {
+        await window.electronAPI.eventSet.clearRecent()
+      } else if (action === 'importSsp') {
+        const pages = await window.electronAPI.ssp.import()
+        if (!pages || pages.length === 0) return
+        const newBanks: Bank[] = pages.map((page) => ({
+          id: makeId(),
+          name: page.name,
+          tracks: page.tracks.map((t): Track => {
+            const duration = parseSspDuration(t.duration)
+            const title = t.label || t.name
+            const artist = t.name && t.name !== t.label ? t.name : ''
+            return {
+              id: makeId(),
+              filePath: t.filePath,
+              title,
+              artist,
+              duration,
+              inPoint: 0,
+              outPoint: duration
+            }
+          })
+        }))
+        const updated: AppConfig = {
+          ...DEFAULT_CONFIG,
+          banks: newBanks,
+          selectedBankId: newBanks[0]?.id ?? ''
+        }
+        applyState(updated, null)
+        scheduleAutoSave(updated)
+      }
+    })
+    return remove
+  }, [])
+
+  return { config, currentFilePath, loaded, updateConfig }
+}

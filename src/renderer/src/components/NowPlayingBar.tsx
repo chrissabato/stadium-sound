@@ -1,0 +1,113 @@
+import React, { useEffect, useRef, useState } from 'react'
+import type { Track } from '../types'
+import { formatTime } from '../types'
+
+interface Props {
+  track: Track | null
+  isPlaying: boolean
+  audioCtx: AudioContext | null
+  startTime: number | null
+  inPoint: number
+  outPoint: number
+  onStop: () => void
+}
+
+export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, outPoint, onStop }: Props) {
+  const [elapsed, setElapsed] = useState(0)
+  const rafRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!isPlaying || !audioCtx || startTime === null) {
+      setElapsed(0)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      return
+    }
+
+    function tick() {
+      if (!audioCtx || startTime === null) return
+      const e = audioCtx.currentTime - startTime
+      setElapsed(Math.min(e, outPoint - inPoint))
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [isPlaying, audioCtx, startTime, inPoint, outPoint])
+
+  const duration = outPoint - inPoint
+  const progress = duration > 0 ? Math.min(elapsed / duration, 1) : 0
+
+  return (
+    <div style={{
+      background: '#1e293b',
+      borderTop: '1px solid #334155',
+      padding: '8px 16px',
+      flexShrink: 0,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
+      minHeight: 52
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {track ? (
+          <>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Now Playing</div>
+            <div style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#f1f5f9',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {track.artist ? `${track.artist} — ${track.title}` : track.title}
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 13, color: '#475569' }}>No track playing</div>
+        )}
+      </div>
+
+      {track && (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 240 }}>
+            <div style={{
+              height: 4,
+              background: '#334155',
+              borderRadius: 2,
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${progress * 100}%`,
+                background: '#22c55e',
+                transition: 'width 0.1s linear'
+              }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>
+              <span>{formatTime(elapsed)}</span>
+              <span>-{formatTime(Math.max(0, duration - elapsed))}</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      <button
+        onClick={onStop}
+        disabled={!isPlaying}
+        style={{
+          padding: '6px 16px',
+          background: isPlaying ? '#dc2626' : '#1e293b',
+          color: isPlaying ? '#fff' : '#475569',
+          border: `1px solid ${isPlaying ? '#dc2626' : '#334155'}`,
+          borderRadius: 4,
+          fontWeight: 600,
+          fontSize: 13,
+          flexShrink: 0
+        }}
+      >
+        ■ Stop
+      </button>
+    </div>
+  )
+}

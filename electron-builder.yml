@@ -1,0 +1,15 @@
+appId: com.venue.audioplayer
+productName: Stadium Sound
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - out/**/*
+win:
+  icon: resources/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
