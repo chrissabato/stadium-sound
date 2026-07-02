@@ -83,7 +83,7 @@ export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: isMonitorMode ? '#431407' : undefined, transition: 'background 0.2s' }}>
+    <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 12, background: isMonitorMode ? '#431407' : undefined, transition: 'background 0.2s' }}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(6, 1fr)',
