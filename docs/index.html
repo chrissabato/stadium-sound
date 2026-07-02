@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stadium Sound — Live Event Audio Playback</title>
+  <meta name="description" content="Professional audio playback for venue operators. Manage banks of tracks and trigger them instantly, one click, zero latency.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #07101f;
+      --panel:    #0f1d30;
+      --card:     #162035;
+      --border:   #1f3048;
+      --border2:  #2a3f5a;
+      --orange:   #e85a24;
+      --orange-d: #c44d1d;
+      --text:     #dde6f0;
+      --sub:      #7a94ad;
+      --faint:    #2e4460;
+      --green-bg: #0d3320;
+      --green-bd: #1a6b3a;
+      --green-bar:#2d9e57;
+      --red-bg:   #3b1010;
+      --red-bd:   #7f2020;
+      --red-bar:  #a84040;
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 56px;
+      background: rgba(7,16,31,0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .nav-brand svg { width: 28px; height: 28px; flex-shrink: 0; }
+    .nav-brand-name {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .nav-right { display: flex; align-items: center; gap: 24px; }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--sub);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .nav-link:hover { color: var(--text); }
+
+    .nav-cta {
+      padding: 7px 18px;
+      background: var(--orange);
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 3px;
+      letter-spacing: 0.02em;
+      transition: background 0.15s;
+    }
+    .nav-cta:hover { background: var(--orange-d); }
+
+    /* ── HERO ── */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 96px 48px 80px;
+    }
+
+    .hero-eyebrow {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: clamp(56px, 7.5vw, 96px);
+      font-weight: 900;
+      line-height: 0.88;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 28px;
+      text-wrap: balance;
+    }
+
+    .hero-sub {
+      font-size: 17px;
+      line-height: 1.65;
+      color: var(--sub);
+      max-width: 400px;
+      margin-bottom: 44px;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 22px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 3px;
+      text-decoration: none;
+      letter-spacing: 0.01em;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn-win {
+      background: var(--orange);
+      color: #fff;
+    }
+    .btn-win:hover { background: var(--orange-d); }
+
+    .btn-mac {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn-mac:hover { border-color: var(--sub); }
+
+    .cta-note {
+      width: 100%;
+      font-size: 12px;
+      color: var(--faint);
+      margin-top: 4px;
+    }
+
+    /* ── APP MOCKUP ── */
+    .mockup {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    .mockup-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+    }
+
+    .mockup-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--border2);
+    }
+
+    .mockup-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--sub);
+      letter-spacing: 0.04em;
+      margin-left: 4px;
+    }
+
+    .mockup-body {
+      display: flex;
+    }
+
+    .mockup-sidebar {
+      width: 110px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      padding: 8px 0;
+    }
+
+    .m-bank {
+      padding: 7px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--sub);
+      border-left: 2px solid transparent;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .m-bank.active {
+      color: var(--text);
+      border-left-color: var(--orange);
+      background: rgba(232,90,36,0.07);
+    }
+
+    .mockup-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      padding: 10px;
+    }
+
+    .m-cell {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 8px 7px;
+      min-height: 58px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+    .m-cell.playing {
+      background: var(--green-bg);
+      border-color: var(--green-bd);
+    }
+    .m-cell.played {
+      background: var(--red-bg);
+      border-color: var(--red-bd);
+    }
+
+    .m-bar {
+      height: 3px;
+      border-radius: 1px;
+      background: var(--faint);
+    }
+    .m-cell.playing .m-bar { background: var(--green-bar); }
+    .m-cell.played  .m-bar { background: var(--red-bar); }
+    .m-bar.s { width: 55%; }
+    .m-bar.m { width: 75%; }
+
+    .mockup-now {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+      background: var(--card);
+    }
+
+    .now-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green-bar);
+      box-shadow: 0 0 6px var(--green-bar);
+      flex-shrink: 0;
+    }
+
+    .now-track {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .now-name {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .now-bar-wrap {
+      flex: 1;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-left: 8px;
+    }
+
+    .now-bar-fill {
+      width: 38%;
+      height: 100%;
+      background: var(--green-bar);
+      border-radius: 2px;
+    }
+
+    .now-time {
+      font-size: 10px;
+      color: var(--sub);
+      margin-left: 8px;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+
+    /* ── DIVIDER ── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── FEATURES ── */
+    .features {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 80px 48px;
+    }
+
+    .section-eye {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 14px;
+    }
+
+    .section-h {
+      font-size: clamp(28px, 3.5vw, 40px);
+      font-weight: 900;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      color: #fff;
+      margin-bottom: 48px;
+      text-wrap: balance;
+      max-width: 540px;
+    }
+
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--border);
+      border-left: 1px solid var(--border);
+    }
+
+    .feat {
+      padding: 32px 28px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .feat-glyph {
+      font-size: 18px;
+      margin-bottom: 14px;
+      line-height: 1;
+    }
+
+    .feat-name {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .feat-desc {
+      font-size: 13px;
+      color: var(--sub);
+      line-height: 1.6;
+    }
+
+    /* ── DOWNLOAD ── */
+    .download {
+      border-top: 1px solid var(--border);
+      padding: 80px 48px;
+    }
+
+    .download-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .dl-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-top: 48px;
+    }
+
+    .dl-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 32px;
+    }
+
+    .dl-platform {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--sub);
+      margin-bottom: 6px;
+    }
+
+    .dl-name {
+      font-size: 22px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .dl-req {
+      font-size: 12px;
+      color: var(--faint);
+      margin-bottom: 24px;
+    }
+
+    .dl-links { display: flex; flex-direction: column; gap: 8px; }
+
+    .dl-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dl-link:hover {
+      border-color: var(--orange);
+      background: rgba(232,90,36,0.06);
+    }
+
+    .dl-link-left { display: flex; align-items: center; gap: 10px; }
+    .dl-link-arrow { color: var(--sub); font-size: 14px; }
+
+    .dl-note {
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--faint);
+      line-height: 1.55;
+    }
+
+    .dl-note a { color: var(--sub); }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .footer-brand svg { width: 20px; height: 20px; }
+    .footer-brand-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--sub);
+    }
+    .footer-version {
+      font-size: 12px;
+      color: var(--faint);
+      margin-left: 4px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--faint);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--sub); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 860px) {
+      nav { padding: 0 20px; }
+      .nav-cta { display: none; }
+
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 56px 24px 48px;
+        gap: 40px;
+      }
+
+      .features { padding: 56px 24px; }
+      .feat-grid { grid-template-columns: 1fr 1fr; }
+
+      .download { padding: 56px 24px; }
+      .dl-grid { grid-template-columns: 1fr; }
+
+      footer { padding: 24px; flex-direction: column; gap: 16px; }
+    }
+
+    @media (max-width: 540px) {
+      .feat-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-brand">
+    <svg viewBox="0 0 960 960" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#e85a24" d="M929.85,538.48c-1.71-13.13-4.92-24.81-9.22-37.92,5.85-23.76,5.43-47.63-1.25-71.04,9.94-40.37,4.35-81.16-16.64-121.27l-.06-.11c-48.97-90.84-156.05-135.97-215.52-154.79-65.76-20.8-135.26-31.35-206.57-31.35-1.41,0-2.82,0-4.24.01-82.04.48-162.76,14.95-233.44,41.84-62.5,23.78-114.84,57.17-151.43,96.64-47.24,51.86-64.74,110.2-50.71,168.9-6.74,23.53-7.16,47.47-1.23,71.23-.02.07-.05.14-.07.2-.18.54-.36,1.08-.52,1.64-22.83,63.85-8.77,132.49,38.6,188.37,29.73,35.07,69.65,64.8,118.65,88.35,41.6,20,88.92,35.25,140.64,45.33,39.24,7.65,80.58,12.05,126.38,13.46h.2s46.75-.44,46.75-.44h.28c104.13-3.88,202.58-28.99,277.24-70.73,25.36-14.18,46.65-29.05,65.11-45.46l.22-.19,25.45-25.45.18-.2c12.88-14.32,23.4-29.59,32.12-46.6,18.06-34.41,24.66-72.59,19.09-110.44Z"/>
+      <path fill="#e85a24" d="M567.3,236.21c-2.51-1.46-5.19-2.21-7.96-2.21-3.06,0-5.5.88-7.46,1.59l-.75.27-106.29,37.29c-13.94,4.89-15.45,15.26-15.46,19.49l-.14,103.96c-.5-.01-.99-.02-1.49-.02-16.2,0-31.1,7.19-40.88,19.72-8.79,11.26-10.82,25.75-5.3,37.84,4.84,10.59,14.41,18.07,26.94,21.07,3.8.91,7.73,1.37,11.67,1.37,12.47,0,25.11-4.68,34.65-12.85,10.09-8.63,15.89-20.45,15.92-32.42l.23-98.39,64.11-22.3v45.55c-.5-.01-1.02-.02-1.53-.02-17.69,0-33.86,8.75-43.25,23.41l-.18.29-.17.3c-6.27,11.46-6.97,22.83-2.06,33.82,4.17,9.33,12.99,16.8,23.59,19.98,4.71,1.41,9.63,2.12,14.62,2.12,14.17,0,27.92-5.75,37.72-15.77,8.43-8.62,12.7-19.22,12.7-31.51l-.05-137.08c0-6.34-3.44-12.12-9.2-15.48Z"/>
+      <path fill="#10182a" d="M919.94,539.85c-1.77-13.69-5.38-25.93-9.73-38.94,6.37-23.75,5.97-47.81-1.2-71.2,10.75-40.74,4.29-79.72-15.13-116.83-41.1-76.25-129.16-124.51-209.74-150-67.17-21.25-137.19-31.29-207.74-30.88-77.8.46-157.32,13.56-229.95,41.18-54.23,20.63-108.05,51.37-147.59,94.03-41.54,45.6-63.42,101.05-47.74,162.41-7.05,22.91-7.58,46.59-1.6,69.69.58,2.23-.48,4.09-1.05,6.2-22.81,63.42-6.23,128.22,36.7,178.85,61.92,73.05,161.17,112.33,253.57,130.34,41.41,8.07,82.75,11.99,124.77,13.28l46.55-.45c92.5-3.44,192.09-24.37,272.73-69.46,22.82-12.76,43.88-26.9,63.34-44.21l25.06-25.05c12.26-13.64,22.33-28.23,30.7-44.56,16.94-32.27,23.37-68.31,18.04-104.42Z"/>
+    </svg>
+    <span class="nav-brand-name">Stadium Sound</span>
+  </a>
+  <div class="nav-right">
+    <a href="https://github.com/chrissabato/stadium-sound" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+    <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup.exe" class="nav-cta">Download</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section style="border-bottom: 1px solid var(--border);">
+  <div class="hero">
+    <div>
+      <span class="hero-eyebrow">Live Event Audio</span>
+      <h1>Stadium<br>Sound</h1>
+      <p class="hero-sub">Professional audio playback for venue operators. Organize tracks into banks, trigger them instantly, and control the room.</p>
+      <div class="cta-row">
+        <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup.exe" class="btn btn-win">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          Download for Windows
+        </a>
+        <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-x64.dmg" class="btn btn-mac">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+          Download for macOS
+        </a>
+        <span class="cta-note">v0.1.0 · Free &amp; open source</span>
+      </div>
+    </div>
+
+    <!-- APP MOCKUP -->
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dot"></div>
+        <div class="mockup-dot"></div>
+        <div class="mockup-dot"></div>
+        <span class="mockup-title">Highlights — Stadium Sound</span>
+      </div>
+      <div class="mockup-body">
+        <div class="mockup-sidebar">
+          <div class="m-bank">Walk-ons</div>
+          <div class="m-bank active">Highlights</div>
+          <div class="m-bank">Intros</div>
+          <div class="m-bank">Timeouts</div>
+          <div class="m-bank">Post-game</div>
+          <div class="m-bank">Promos</div>
+        </div>
+        <div class="mockup-grid">
+          <div class="m-cell playing"><div class="m-bar m"></div><div class="m-bar s"></div></div>
+          <div class="m-cell played"><div class="m-bar"></div><div class="m-bar s"></div></div>
+          <div class="m-cell played"><div class="m-bar m"></div><div class="m-bar s"></div></div>
+          <div class="m-cell"><div class="m-bar m"></div><div class="m-bar s"></div></div>
+
+          <div class="m-cell played"><div class="m-bar m"></div><div class="m-bar s"></div></div>
+          <div class="m-cell"><div class="m-bar"></div><div class="m-bar s"></div></div>
+          <div class="m-cell"><div class="m-bar m"></div><div class="m-bar s"></div></div>
+          <div class="m-cell played"><div class="m-bar m"></div><div class="m-bar s"></div></div>
+
+          <div class="m-cell"><div class="m-bar"></div><div class="m-bar s"></div></div>
+          <div class="m-cell"><div class="m-bar m"></div><div class="m-bar s"></div></div>
+          <div class="m-cell played"><div class="m-bar"></div><div class="m-bar s"></div></div>
+          <div class="m-cell"><div class="m-bar m"></div><div class="m-bar s"></div></div>
+        </div>
+      </div>
+      <div class="mockup-now">
+        <div class="now-track">
+          <div class="now-dot"></div>
+          <span class="now-name">Walk-up — Jordan, Michael</span>
+          <div class="now-bar-wrap"><div class="now-bar-fill"></div></div>
+        </div>
+        <span class="now-time">0:12</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+  <div class="section-eye">Features</div>
+  <h2 class="section-h">Built for the booth,<br>not the bedroom.</h2>
+  <div class="feat-grid">
+    <div class="feat">
+      <div class="feat-glyph">⚡</div>
+      <div class="feat-name">Instant Playback</div>
+      <p class="feat-desc">Files are pre-decoded at load time. Click a track and it plays — no buffer spin-up, no wait.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-glyph">☰</div>
+      <div class="feat-name">Named Banks</div>
+      <p class="feat-desc">Organize tracks into banks by category — walk-ons, intros, timeouts, highlights. Switch banks mid-event without losing your place.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-glyph">◑</div>
+      <div class="feat-name">Fade Controls</div>
+      <p class="feat-desc">Per-event fade in, fade out, and crossfade settings. Transitions that sound like a broadcast, not a laptop.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-glyph">◎</div>
+      <div class="feat-name">Monitor Mode</div>
+      <p class="feat-desc">Route audio to a private headphone output to preview a track before playing it to the venue.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-glyph">⊞</div>
+      <div class="feat-name">Track Editor</div>
+      <p class="feat-desc">Waveform view with draggable in/out points. Trim intros, cut silence, set player name fields for walk-on cues.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-glyph">↺</div>
+      <div class="feat-name">Auto-Update</div>
+      <p class="feat-desc">New versions download in the background and install on next restart. Always current, zero effort.</p>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<div class="download">
+  <div class="download-inner">
+    <div class="section-eye">Download</div>
+    <h2 class="section-h">Free for Windows<br>and macOS.</h2>
+    <div class="dl-grid">
+      <div class="dl-card">
+        <div class="dl-platform">Windows</div>
+        <div class="dl-name">Windows Installer</div>
+        <div class="dl-req">Windows 10 or later · x64</div>
+        <div class="dl-links">
+          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup.exe" class="dl-link">
+            <span class="dl-link-left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+              Stadium-Sound-Setup.exe
+            </span>
+            <span class="dl-link-arrow">↓</span>
+          </a>
+        </div>
+      </div>
+      <div class="dl-card">
+        <div class="dl-platform">macOS</div>
+        <div class="dl-name">Mac Disk Image</div>
+        <div class="dl-req">macOS 10.15 or later</div>
+        <div class="dl-links">
+          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-x64.dmg" class="dl-link">
+            <span class="dl-link-left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+              Stadium-Sound-x64.dmg — Intel
+            </span>
+            <span class="dl-link-arrow">↓</span>
+          </a>
+          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-arm64.dmg" class="dl-link">
+            <span class="dl-link-left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+              Stadium-Sound-arm64.dmg — Apple Silicon
+            </span>
+            <span class="dl-link-arrow">↓</span>
+          </a>
+        </div>
+        <p class="dl-note">
+          App is not yet code-signed. To open: right-click the app → <strong>Open</strong> → click Open in the dialog.
+          <a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac"> Learn more ↗</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">
+    <svg viewBox="0 0 960 960" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#e85a24" d="M929.85,538.48c-1.71-13.13-4.92-24.81-9.22-37.92,5.85-23.76,5.43-47.63-1.25-71.04,9.94-40.37,4.35-81.16-16.64-121.27l-.06-.11c-48.97-90.84-156.05-135.97-215.52-154.79-65.76-20.8-135.26-31.35-206.57-31.35-1.41,0-2.82,0-4.24.01-82.04.48-162.76,14.95-233.44,41.84-62.5,23.78-114.84,57.17-151.43,96.64-47.24,51.86-64.74,110.2-50.71,168.9-6.74,23.53-7.16,47.47-1.23,71.23-.02.07-.05.14-.07.2-.18.54-.36,1.08-.52,1.64-22.83,63.85-8.77,132.49,38.6,188.37,29.73,35.07,69.65,64.8,118.65,88.35,41.6,20,88.92,35.25,140.64,45.33,39.24,7.65,80.58,12.05,126.38,13.46h.2s46.75-.44,46.75-.44h.28c104.13-3.88,202.58-28.99,277.24-70.73,25.36-14.18,46.65-29.05,65.11-45.46l.22-.19,25.45-25.45.18-.2c12.88-14.32,23.4-29.59,32.12-46.6,18.06-34.41,24.66-72.59,19.09-110.44Z"/>
+      <path fill="#e85a24" d="M567.3,236.21c-2.51-1.46-5.19-2.21-7.96-2.21-3.06,0-5.5.88-7.46,1.59l-.75.27-106.29,37.29c-13.94,4.89-15.45,15.26-15.46,19.49l-.14,103.96c-.5-.01-.99-.02-1.49-.02-16.2,0-31.1,7.19-40.88,19.72-8.79,11.26-10.82,25.75-5.3,37.84,4.84,10.59,14.41,18.07,26.94,21.07,3.8.91,7.73,1.37,11.67,1.37,12.47,0,25.11-4.68,34.65-12.85,10.09-8.63,15.89-20.45,15.92-32.42l.23-98.39,64.11-22.3v45.55c-.5-.01-1.02-.02-1.53-.02-17.69,0-33.86,8.75-43.25,23.41l-.18.29-.17.3c-6.27,11.46-6.97,22.83-2.06,33.82,4.17,9.33,12.99,16.8,23.59,19.98,4.71,1.41,9.63,2.12,14.62,2.12,14.17,0,27.92-5.75,37.72-15.77,8.43-8.62,12.7-19.22,12.7-31.51l-.05-137.08c0-6.34-3.44-12.12-9.2-15.48Z"/>
+    </svg>
+    <span class="footer-brand-name">Stadium Sound</span>
+    <span class="footer-version">v0.1.0</span>
+  </div>
+  <div class="footer-links">
+    <a href="https://github.com/chrissabato/stadium-sound/releases">Releases</a>
+    <a href="https://github.com/chrissabato/stadium-sound/issues">Issues</a>
+    <a href="https://github.com/chrissabato/stadium-sound">GitHub</a>
+  </div>
+</footer>
+
+</body>
+</html>
