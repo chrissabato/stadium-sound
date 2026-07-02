@@ -18,3 +18,7 @@ const pngBuffers = await Promise.all(
 const icoBuffer = await pngToIco(pngBuffers)
 writeFileSync(join(root, 'resources', 'icon.ico'), icoBuffer)
 console.log('resources/icon.ico written')
+
+// 512x512 PNG for macOS (electron-builder converts to .icns on mac)
+await sharp(svgPath).resize(512, 512).png().toFile(join(root, 'resources', 'icon.png'))
+console.log('resources/icon.png written')

@@ -1,5 +1,10 @@
 appId: com.venue.audioplayer
 productName: Stadium Sound
+publish:
+  provider: github
+  owner: chrissabato
+  repo: stadium-sound
+  private: false
 directories:
   buildResources: resources
   output: dist
@@ -10,6 +15,12 @@ win:
   target:
     - target: nsis
       arch: [x64]
+mac:
+  icon: resources/icon.png
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  category: public.app-category.music
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
