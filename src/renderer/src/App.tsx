@@ -147,6 +147,10 @@ export default function App() {
     if (nowPlayingTrack?.id === updated.id) setNowPlayingTrack(updated)
   }
 
+  function reorderBanks(newBanks: Bank[]) {
+    updateConfig((c) => ({ ...c, banks: newBanks }))
+  }
+
   function reorderTracks(newTracks: Track[]) {
     if (!selectedBank) return
     const bankId = selectedBank.id
@@ -209,10 +213,12 @@ export default function App() {
         <Sidebar
           banks={config.banks}
           selectedBankId={config.selectedBankId}
+          isReordering={isReordering}
           onSelectBank={selectBank}
           onAddBank={addBank}
           onRenameBank={renameBank}
           onDeleteBank={deleteBank}
+          onReorderBanks={reorderBanks}
         />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

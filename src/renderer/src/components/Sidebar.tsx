@@ -1,21 +1,59 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import type { Bank } from '../types'
 
 interface Props {
   banks: Bank[]
   selectedBankId: string
+  isReordering: boolean
   onSelectBank: (id: string) => void
   onAddBank: (name: string) => void
   onRenameBank: (id: string, name: string) => void
   onDeleteBank: (id: string) => void
+  onReorderBanks: (newBanks: Bank[]) => void
 }
 
-export function Sidebar({ banks, selectedBankId, onSelectBank, onAddBank, onRenameBank, onDeleteBank }: Props) {
+export function Sidebar({ banks, selectedBankId, isReordering, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [newBankName, setNewBankName] = useState('')
   const [addingBank, setAddingBank] = useState(false)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const dragCounter = useRef(0)
+
+  function handleDragStart(i: number) {
+    setDragIndex(i)
+    dragCounter.current = 0
+  }
+
+  function handleDragEnter(i: number) {
+    dragCounter.current++
+    setDropIndex(i)
+  }
+
+  function handleDragLeave() {
+    dragCounter.current--
+    if (dragCounter.current === 0) setDropIndex(null)
+  }
+
+  function handleDrop(i: number) {
+    if (dragIndex !== null && dragIndex !== i) {
+      const next = [...banks]
+      const [moved] = next.splice(dragIndex, 1)
+      next.splice(i, 0, moved)
+      onReorderBanks(next)
+    }
+    setDragIndex(null)
+    setDropIndex(null)
+    dragCounter.current = 0
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null)
+    setDropIndex(null)
+    dragCounter.current = 0
+  }
 
   function startEdit(bank: Bank) {
     setEditingId(bank.id)
@@ -59,9 +97,16 @@ export function Sidebar({ banks, selectedBankId, onSelectBank, onAddBank, onRena
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {banks.map((bank) => (
+        {banks.map((bank, i) => (
           <div
             key={bank.id}
+            draggable={isReordering}
+            onDragStart={() => handleDragStart(i)}
+            onDragEnter={() => handleDragEnter(i)}
+            onDragLeave={handleDragLeave}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => handleDrop(i)}
+            onDragEnd={handleDragEnd}
             onClick={() => onSelectBank(bank.id)}
             onMouseEnter={() => setHoveredId(bank.id)}
             onMouseLeave={() => setHoveredId(null)}
@@ -69,11 +114,13 @@ export function Sidebar({ banks, selectedBankId, onSelectBank, onAddBank, onRena
               display: 'flex',
               alignItems: 'center',
               padding: '10px 12px',
-              cursor: 'pointer',
-              background: bank.id === selectedBankId ? '#ea580c' : 'transparent',
-              color: bank.id === selectedBankId ? '#fff' : '#cbd5e1',
-              borderBottom: '1px solid #1e293b',
-              gap: 6
+              cursor: isReordering ? 'grab' : 'pointer',
+              background: dragIndex === i ? 'rgba(255,255,255,0.04)' : bank.id === selectedBankId ? '#ea580c' : 'transparent',
+              color: bank.id === selectedBankId && dragIndex !== i ? '#fff' : '#cbd5e1',
+              borderBottom: `1px solid ${dropIndex === i && dragIndex !== i ? '#3b82f6' : '#1e293b'}`,
+              gap: 6,
+              opacity: dragIndex === i ? 0.35 : 1,
+              transition: 'opacity 0.1s'
             }}
           >
             {editingId === bank.id ? (
@@ -99,7 +146,9 @@ export function Sidebar({ banks, selectedBankId, onSelectBank, onAddBank, onRena
                 <span style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {bank.name}
                 </span>
-                {hoveredId === bank.id ? (
+                {isReordering ? (
+                  <span style={{ fontSize: 13, color: '#475569', userSelect: 'none', flexShrink: 0 }}>⠿</span>
+                ) : hoveredId === bank.id ? (
                   <>
                     <button
                       onClick={(e) => { e.stopPropagation(); startEdit(bank) }}
