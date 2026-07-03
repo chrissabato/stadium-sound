@@ -3,12 +3,16 @@ import { join } from 'path'
 import { autoUpdater } from 'electron-updater'
 import { registerIpcHandlers } from './ipcHandlers'
 import { buildMenu } from './menu'
-import { loadSettings } from './settingsStore'
+import { loadSettings, saveWindowBounds } from './settingsStore'
 
 function createWindow(): void {
+  const { windowBounds } = loadSettings()
+
   const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: windowBounds?.width ?? 1280,
+    height: windowBounds?.height ?? 800,
+    x: windowBounds?.x,
+    y: windowBounds?.y,
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#0f172a',
@@ -18,6 +22,12 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       sandbox: false
+    }
+  })
+
+  win.on('close', () => {
+    if (!win.isMinimized() && !win.isMaximized()) {
+      saveWindowBounds(win.getBounds())
     }
   })
 
