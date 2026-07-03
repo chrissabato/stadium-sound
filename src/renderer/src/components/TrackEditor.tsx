@@ -9,7 +9,7 @@ interface Props {
   onRemove: (id: string) => void
   onClose: () => void
   loadBuffer: (id: string, filePath: string) => Promise<AudioBuffer>
-  getBuffer: (id: string) => AudioBuffer | undefined
+  getBuffer: (filePath: string) => AudioBuffer | undefined
   // title of the other track in this bank currently holding the picked hotkey, if any —
   // used only to warn the user it'll be reassigned on save, doesn't block anything
   hotkeyOwner: (hotkey: string) => string | null
@@ -50,7 +50,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     setHotkey(track.hotkey)
     setCapturingHotkey(false)
 
-    const existing = getBuffer(track.id)
+    const existing = getBuffer(track.filePath)
     if (existing) {
       setAudioBuffer(existing)
     } else if (track.filePath) {

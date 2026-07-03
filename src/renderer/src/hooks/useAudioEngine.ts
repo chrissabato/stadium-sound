@@ -3,10 +3,7 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 interface PlayOptions {
   inPoint: number
   outPoint: number
-  // When set, a track with no decoded buffer streams from disk instead of
-  // silently doing nothing — this is what lets a cold click (right after a
-  // bank switch) start playing near-instantly.
-  filePath?: string
+  filePath: string
 }
 
 export interface FadeSettings {
@@ -15,11 +12,18 @@ export interface FadeSettings {
   crossFade: number
 }
 
-// Decoded PCM is huge (~22 MB per stereo minute at 48kHz), so the buffer cache
-// is LRU-capped: past this many bytes the least-recently-played buffers are
-// dropped. An evicted (or never-decoded) track still plays instantly via the
-// streaming path — it just isn't sample-accurate until it's re-decoded.
-const MAX_CACHE_BYTES = 2 * 1024 * 1024 * 1024 // 2 GiB ≈ 90 min of stereo 48kHz
+// Decoded PCM is huge (~22 MB per stereo minute at 48kHz), so full songs are
+// never pre-decoded — they stream from disk via the media:// protocol, which
+// keeps memory constant regardless of bank size. Decoding is reserved for
+// short clips (SFX, stingers, walk-up cuts) where retrigger feel and tight
+// in/out points benefit from the sample-accurate buffer path.
+export const CLIP_DECODE_MAX_SECONDS = 30
+
+// The decoded-buffer cache is LRU-capped: past this many bytes the
+// least-recently-played buffers are dropped. An evicted (or never-decoded)
+// track still plays instantly via the streaming path — it just isn't
+// sample-accurate until it's re-decoded.
+const MAX_CACHE_BYTES = 512 * 1024 * 1024 // 512 MiB ≈ 23 min of stereo 48kHz PCM
 
 // A playing "thing" — either an AudioBufferSourceNode or a streaming <audio>
 // element. Everything downstream (fades, cross-fades, stop) only needs to be
@@ -30,7 +34,7 @@ interface PlaybackHandle {
 
 interface AudioEngine {
   loadBuffer: (id: string, filePath: string) => Promise<AudioBuffer>
-  getBuffer: (id: string) => AudioBuffer | undefined
+  getBuffer: (filePath: string) => AudioBuffer | undefined
   loadingIds: Set<string>
   playTrack: (id: string, opts: PlayOptions, playOpts?: { force?: boolean }) => void
   stopAll: () => void
@@ -57,6 +61,8 @@ function bufferBytes(buffer: AudioBuffer): number {
 export function useAudioEngine(): AudioEngine {
   const ctxRef = useRef<AudioContext | null>(null)
   const masterGainRef = useRef<GainNode | null>(null)
+  // Decoded buffers are keyed by file path (not track id) so the same file
+  // referenced from several banks/playlists is decoded and counted once.
   const bufferCache = useRef<Map<string, AudioBuffer>>(new Map())
   const cacheBytesRef = useRef(0)
   const pendingLoads = useRef<Map<string, Promise<AudioBuffer>>>(new Map())
@@ -75,12 +81,12 @@ export function useAudioEngine(): AudioEngine {
   const [isMonitorMode, setIsMonitorMode] = useState(false)
 
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null)
-  const playingTrackIdRef = useRef<string | null>(null)
+  const playingFilePathRef = useRef<string | null>(null)
   const [playStartCtxTime, setPlayStartCtxTime] = useState<number | null>(null)
   const [playStartWallTime, setPlayStartWallTime] = useState<number | null>(null)
 
-  function setPlaying(id: string | null) {
-    playingTrackIdRef.current = id
+  function setPlaying(id: string | null, filePath: string | null = null) {
+    playingFilePathRef.current = filePath
     setPlayingTrackId(id)
   }
 
@@ -114,32 +120,32 @@ export function useAudioEngine(): AudioEngine {
   }
 
   // Re-inserting on use keeps the Map in LRU order (oldest entry first).
-  function touchBuffer(id: string, buffer: AudioBuffer) {
-    bufferCache.current.delete(id)
-    bufferCache.current.set(id, buffer)
+  function touchBuffer(filePath: string, buffer: AudioBuffer) {
+    bufferCache.current.delete(filePath)
+    bufferCache.current.set(filePath, buffer)
   }
 
   function evictOverCap() {
-    for (const [id, buffer] of bufferCache.current) {
+    for (const [filePath, buffer] of bufferCache.current) {
       if (cacheBytesRef.current <= MAX_CACHE_BYTES) break
-      if (id === playingTrackIdRef.current) continue
-      bufferCache.current.delete(id)
+      if (filePath === playingFilePathRef.current) continue
+      bufferCache.current.delete(filePath)
       cacheBytesRef.current -= bufferBytes(buffer)
     }
   }
 
   const loadBuffer = useCallback((id: string, filePath: string): Promise<AudioBuffer> => {
-    const cached = bufferCache.current.get(id)
+    const cached = bufferCache.current.get(filePath)
     if (cached) {
-      touchBuffer(id, cached)
+      touchBuffer(filePath, cached)
       return Promise.resolve(cached)
     }
 
-    // A background pre-load may already be decoding this exact track — share
+    // A background pre-load may already be decoding this exact file — share
     // that in-flight promise instead of kicking off a second, redundant
     // read+decode of the same file (this used to double the wait whenever a
     // user clicked a track before its pre-load had finished).
-    const pending = pendingLoads.current.get(id)
+    const pending = pendingLoads.current.get(filePath)
     if (pending) return pending
 
     const ctx = getCtx()
@@ -152,12 +158,12 @@ export function useAudioEngine(): AudioEngine {
       try {
         const arrayBuffer = await window.electronAPI.readAudioFile(filePath)
         const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-        bufferCache.current.set(id, audioBuffer)
+        bufferCache.current.set(filePath, audioBuffer)
         cacheBytesRef.current += bufferBytes(audioBuffer)
         evictOverCap()
         return audioBuffer
       } finally {
-        pendingLoads.current.delete(id)
+        pendingLoads.current.delete(filePath)
         setLoadingIds((prev) => {
           if (!prev.has(id)) return prev
           const next = new Set(prev)
@@ -167,11 +173,11 @@ export function useAudioEngine(): AudioEngine {
       }
     })()
 
-    pendingLoads.current.set(id, promise)
+    pendingLoads.current.set(filePath, promise)
     return promise
   }, [])
 
-  const getBuffer = useCallback((id: string) => bufferCache.current.get(id), [])
+  const getBuffer = useCallback((filePath: string) => bufferCache.current.get(filePath), [])
 
   const stopAll = useCallback(() => {
     cancelFadeTimer()
@@ -222,8 +228,7 @@ export function useAudioEngine(): AudioEngine {
     }
 
     const ctx = getCtx()
-    const buffer = bufferCache.current.get(id)
-    if (!buffer && !filePath) return
+    const buffer = bufferCache.current.get(filePath)
 
     const { fadeIn, crossFade } = fadeSettingsRef.current
 
@@ -279,7 +284,7 @@ export function useAudioEngine(): AudioEngine {
     }
 
     if (buffer) {
-      touchBuffer(id, buffer)
+      touchBuffer(filePath, buffer)
 
       const source = ctx.createBufferSource()
       source.buffer = buffer
@@ -292,12 +297,13 @@ export function useAudioEngine(): AudioEngine {
       handle = { stop: () => { try { source.stop() } catch { /* already stopped */ } } }
       source.onended = finish
     } else {
-      // No decoded buffer yet — stream the file through a media element so
-      // playback starts immediately. The caller kicks off a background decode,
-      // so the *next* play of this track uses the sample-accurate buffer path.
+      // No decoded buffer — stream the file through a media element. This is
+      // the normal path for full songs (which are never pre-decoded); for
+      // short clips the caller kicks off a background decode so the *next*
+      // play uses the sample-accurate buffer path.
       const el = new Audio()
       el.preload = 'auto'
-      el.src = toMediaUrl(filePath!)
+      el.src = toMediaUrl(filePath)
       const srcNode = ctx.createMediaElementSource(el)
       srcNode.connect(trackGain)
       if (inPoint > 0) el.currentTime = inPoint
@@ -329,7 +335,7 @@ export function useAudioEngine(): AudioEngine {
 
     activeHandleRef.current = handle
     activeTrackGainRef.current = trackGain
-    setPlaying(id)
+    setPlaying(id, filePath)
     setPlayStartCtxTime(ctx.currentTime)
     setPlayStartWallTime(Date.now())
   }, [playingTrackId, stopAll])

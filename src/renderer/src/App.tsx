@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useAudioEngine } from './hooks/useAudioEngine'
+import { useAudioEngine, CLIP_DECODE_MAX_SECONDS } from './hooks/useAudioEngine'
 import { useConfig } from './hooks/useConfig'
 import { Toolbar } from './components/Toolbar'
 import { Sidebar } from './components/Sidebar'
@@ -14,6 +14,12 @@ import { normalizeHotkeyEvent } from './types'
 
 function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+// Only short clips are worth decoding to PCM — full songs stream from disk.
+// Unknown duration (failed metadata read) is treated as long, i.e. streamed.
+function shouldDecode(t: { duration: number }): boolean {
+  return t.duration > 0 && t.duration <= CLIP_DECODE_MAX_SECONDS
 }
 
 // Runs `tasks` with at most `limit` in flight at once. Keeping background
@@ -120,8 +126,9 @@ export default function App() {
       paths.map(async (filePath) => {
         const meta = await window.electronAPI.getTrackMetadata(filePath)
         const id = makeId()
-        // Pre-load buffer in background so first click is instant
-        audio.loadBuffer(id, filePath).catch(() => {})
+        // Pre-decode short clips so their first click is sample-accurate;
+        // songs stream on demand.
+        if (shouldDecode(meta)) audio.loadBuffer(id, filePath).catch(() => {})
         return {
           id,
           filePath,
@@ -146,10 +153,11 @@ export default function App() {
   // used by the playlist transport, which should never silently no-op even if
   // engine state looks like this track is already playing (e.g. it stalled).
   function playTrackForce(track: Track) {
-    // A cold track streams from disk instantly (the engine falls back to a
-    // media element when no buffer is cached); kick off the decode in the
-    // background so its next play uses the sample-accurate buffer path.
-    if (!audio.getBuffer(track.id)) {
+    // Every track streams from disk instantly when it has no decoded buffer.
+    // Only short clips get a background decode kicked off here, so their
+    // *next* play uses the sample-accurate buffer path — decoding full songs
+    // costs ~22 MB of PCM per minute for no audible benefit.
+    if (shouldDecode(track) && !audio.getBuffer(track.filePath)) {
       audio.loadBuffer(track.id, track.filePath).catch(() => {})
     }
     audio.playTrack(
@@ -338,7 +346,7 @@ export default function App() {
       paths.map(async (filePath) => {
         const meta = await window.electronAPI.getTrackMetadata(filePath)
         const id = makeId()
-        audio.loadBuffer(id, filePath).catch(() => {})
+        if (shouldDecode(meta)) audio.loadBuffer(id, filePath).catch(() => {})
         return {
           id,
           itemId: id,
@@ -449,17 +457,12 @@ export default function App() {
     updateConfig((c) => ({ ...c, masterVolume: v }))
   }, [audio, updateConfig])
 
-  // Pre-load buffers for the selected bank's tracks so its plays are
-  // sample-accurate. Only the very first load (app startup) blocks the UI
-  // behind a loading screen; later bank/playlist switches load in the
-  // background. A click on a not-yet-decoded track never waits — the engine
-  // streams it from disk — and the decoded cache is LRU-capped in the engine,
-  // so RAM stays bounded even across many banks (a full event set decoded up
-  // front was measured to swamp a 16GB machine).
-  const initialLoadRef = useRef(false)
-  const [initialLoading, setInitialLoading] = useState(true)
-  const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 0 })
-
+  // Warm the decoded cache for the selected bank's *short clips* in the
+  // background. Full songs are never pre-decoded — they stream on demand —
+  // so startup and bank switches are instant regardless of bank size, and
+  // RAM stays bounded (a full event set decoded up front was measured to
+  // swamp a 16GB machine).
+  //
   // Capped concurrency: a track the user actually clicks is loaded on-demand
   // via audio.loadBuffer directly (see playTrackForce), which either reuses
   // an already-in-flight decode or — if this queue hasn't reached that track
@@ -468,35 +471,19 @@ export default function App() {
   const PRELOAD_CONCURRENCY = 3
 
   useEffect(() => {
-    // Config hasn't loaded yet, so selectedBank is still the DEFAULT_CONFIG
-    // placeholder (null) — wait rather than treating that as "nothing to load".
-    if (!loaded) return
-    if (!selectedBank) { setInitialLoading(false); return }
-    const toLoad = selectedBank.tracks.filter((t) => !audio.getBuffer(t.id) && t.filePath)
-
-    if (initialLoadRef.current) {
-      // Background warm-up for a bank switch — don't block the UI.
-      runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
-      return
-    }
-    initialLoadRef.current = true
-
-    if (toLoad.length === 0) { setInitialLoading(false); return }
-    setLoadProgress({ loaded: 0, total: toLoad.length })
-    let doneCount = 0
-    runWithConcurrency(
-      toLoad.map((t) => () =>
-        audio.loadBuffer(t.id, t.filePath)
-          .finally(() => setLoadProgress({ loaded: ++doneCount, total: toLoad.length }))
-      ),
-      PRELOAD_CONCURRENCY
-    ).finally(() => setInitialLoading(false))
+    if (!loaded || !selectedBank) return
+    const toLoad = selectedBank.tracks.filter(
+      (t) => t.filePath && shouldDecode(t) && !audio.getBuffer(t.filePath)
+    )
+    runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
   }, [loaded, config.selectedBankId])
 
-  // Pre-load buffers for selected playlist's tracks when playlist switches
+  // Same short-clip warm-up when the selected playlist switches
   useEffect(() => {
     if (!selectedPlaylist) return
-    const toLoad = selectedPlaylist.tracks.filter((t) => !audio.getBuffer(t.id) && t.filePath)
+    const toLoad = selectedPlaylist.tracks.filter(
+      (t) => t.filePath && shouldDecode(t) && !audio.getBuffer(t.filePath)
+    )
     runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
   }, [config.selectedPlaylistId])
 
@@ -570,23 +557,19 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  if (!loaded || initialLoading) {
+  // Only the (fast) config read gates first paint — audio is never a startup
+  // blocker: songs stream on demand and short clips warm in the background.
+  if (!loaded) {
     return (
       <div style={{
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         flex: 1,
-        gap: 10,
-        color: '#94a3b8'
+        color: '#94a3b8',
+        fontSize: 14
       }}>
-        <div style={{ fontSize: 14 }}>Loading tracks…</div>
-        {loadProgress.total > 0 && (
-          <div style={{ fontSize: 12, color: '#64748b' }}>
-            {loadProgress.loaded} / {loadProgress.total}
-          </div>
-        )}
+        Loading…
       </div>
     )
   }
