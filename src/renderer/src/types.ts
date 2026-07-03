@@ -16,7 +16,24 @@ export interface Track {
   playerFirstName?: string
   playerLastName?: string
   hotkey?: string
+  colorLabel?: string
 }
+
+// Predefined color labels for track buttons — shown as a thin bar across the
+// top of the button so it stays visible without overriding the play/missing/
+// played button background colors.
+export const TRACK_COLORS: string[] = [
+  '#ef4444', // red
+  '#f97316', // orange
+  '#f59e0b', // amber
+  '#eab308', // yellow
+  '#22c55e', // green
+  '#14b8a6', // teal
+  '#3b82f6', // blue
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#94a3b8'  // slate
+]
 
 export interface Bank {
   id: string
@@ -43,8 +60,6 @@ export interface AppConfig {
   fadeIn: number      // seconds
   fadeOut: number     // seconds
   crossFade: number   // seconds
-  outputDeviceId: string   // '' = system default
-  monitorDeviceId: string  // '' = system default
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -55,7 +70,18 @@ export const DEFAULT_CONFIG: AppConfig = {
   masterVolume: 1.0,
   fadeIn: 0,
   fadeOut: 0,
-  crossFade: 0,
+  crossFade: 0
+}
+
+// Which physical audio device to play through. Machine-level preference,
+// not part of the event set file — stored in app settings so it persists
+// across restarts and isn't tied to whichever show happens to be open.
+export interface AudioDevicePrefs {
+  outputDeviceId: string   // '' = system default
+  monitorDeviceId: string  // '' = system default
+}
+
+export const DEFAULT_AUDIO_DEVICE_PREFS: AudioDevicePrefs = {
   outputDeviceId: '',
   monitorDeviceId: ''
 }
@@ -63,7 +89,7 @@ export const DEFAULT_CONFIG: AppConfig = {
 export function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
-  const ms = Math.round((seconds % 1) * 10)
+  const ms = Math.floor((seconds % 1) * 10)
   return `${m}:${String(s).padStart(2, '0')}.${ms}`
 }
 

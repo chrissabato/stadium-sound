@@ -32,7 +32,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices } = useConfig()
   const audio = useAudioEngine()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const [nowPlayingTrack, setNowPlayingTrack] = useState<Track | null>(null)
@@ -73,8 +73,8 @@ export default function App() {
 
   // Keep audio engine in sync with output device selection
   useEffect(() => {
-    audio.setOutputDevices(config.outputDeviceId ?? '', config.monitorDeviceId ?? '')
-  }, [config.outputDeviceId, config.monitorDeviceId])
+    audio.setOutputDevices(audioDevices.outputDeviceId, audioDevices.monitorDeviceId)
+  }, [audioDevices.outputDeviceId, audioDevices.monitorDeviceId])
 
   const selectedBank = config.banks.find((b) => b.id === config.selectedBankId) ?? null
   const selectedPlaylist = (config.playlists ?? []).find((p) => p.id === config.selectedPlaylistId) ?? null
@@ -450,16 +450,12 @@ export default function App() {
   }, [audio, updateConfig])
 
   // Pre-load buffers for the selected bank's tracks so its plays are
-  // sample-accurate. Only the very first load (app startup) blocks the UI
-  // behind a loading screen; later bank/playlist switches load in the
-  // background. A click on a not-yet-decoded track never waits — the engine
-  // streams it from disk — and the decoded cache is LRU-capped in the engine,
-  // so RAM stays bounded even across many banks (a full event set decoded up
-  // front was measured to swamp a 16GB machine).
-  const initialLoadRef = useRef(false)
-  const [initialLoading, setInitialLoading] = useState(true)
-  const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 0 })
-
+  // sample-accurate. This always runs in the background — a click on a
+  // not-yet-decoded track never waits, since the engine streams it from disk
+  // — and the decoded cache is LRU-capped in the engine, so RAM stays
+  // bounded even across many banks (a full event set decoded up front was
+  // measured to swamp a 16GB machine).
+  //
   // Capped concurrency: a track the user actually clicks is loaded on-demand
   // via audio.loadBuffer directly (see playTrackForce), which either reuses
   // an already-in-flight decode or — if this queue hasn't reached that track
@@ -470,27 +466,9 @@ export default function App() {
   useEffect(() => {
     // Config hasn't loaded yet, so selectedBank is still the DEFAULT_CONFIG
     // placeholder (null) — wait rather than treating that as "nothing to load".
-    if (!loaded) return
-    if (!selectedBank) { setInitialLoading(false); return }
+    if (!loaded || !selectedBank) return
     const toLoad = selectedBank.tracks.filter((t) => !audio.getBuffer(t.id) && t.filePath)
-
-    if (initialLoadRef.current) {
-      // Background warm-up for a bank switch — don't block the UI.
-      runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
-      return
-    }
-    initialLoadRef.current = true
-
-    if (toLoad.length === 0) { setInitialLoading(false); return }
-    setLoadProgress({ loaded: 0, total: toLoad.length })
-    let doneCount = 0
-    runWithConcurrency(
-      toLoad.map((t) => () =>
-        audio.loadBuffer(t.id, t.filePath)
-          .finally(() => setLoadProgress({ loaded: ++doneCount, total: toLoad.length }))
-      ),
-      PRELOAD_CONCURRENCY
-    ).finally(() => setInitialLoading(false))
+    runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
   }, [loaded, config.selectedBankId])
 
   // Pre-load buffers for selected playlist's tracks when playlist switches
@@ -570,7 +548,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  if (!loaded || initialLoading) {
+  if (!loaded) {
     return (
       <div style={{
         display: 'flex',
@@ -582,11 +560,6 @@ export default function App() {
         color: '#94a3b8'
       }}>
         <div style={{ fontSize: 14 }}>Loading tracks…</div>
-        {loadProgress.total > 0 && (
-          <div style={{ fontSize: 12, color: '#64748b' }}>
-            {loadProgress.loaded} / {loadProgress.total}
-          </div>
-        )}
       </div>
     )
   }
@@ -759,10 +732,13 @@ export default function App() {
           fadeIn: config.fadeIn ?? 0,
           fadeOut: config.fadeOut ?? 0,
           crossFade: config.crossFade ?? 0,
-          outputDeviceId: config.outputDeviceId ?? '',
-          monitorDeviceId: config.monitorDeviceId ?? ''
+          outputDeviceId: audioDevices.outputDeviceId,
+          monitorDeviceId: audioDevices.monitorDeviceId
         }}
-        onChange={(s) => updateConfig((c) => ({ ...c, fadeIn: s.fadeIn, fadeOut: s.fadeOut, crossFade: s.crossFade, outputDeviceId: s.outputDeviceId, monitorDeviceId: s.monitorDeviceId }))}
+        onChange={(s) => {
+          updateConfig((c) => ({ ...c, fadeIn: s.fadeIn, fadeOut: s.fadeOut, crossFade: s.crossFade }))
+          setAudioDevices({ outputDeviceId: s.outputDeviceId, monitorDeviceId: s.monitorDeviceId })
+        }}
         onClose={() => setSettingsOpen(false)}
       />
 

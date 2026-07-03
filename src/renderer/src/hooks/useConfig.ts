@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { AppConfig, Bank, Track } from '../types'
-import { DEFAULT_CONFIG } from '../types'
+import type { AppConfig, AudioDevicePrefs, Bank, Track } from '../types'
+import { DEFAULT_CONFIG, DEFAULT_AUDIO_DEVICE_PREFS } from '../types'
 
 function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -16,6 +16,8 @@ export interface ConfigState {
   currentFilePath: string | null
   loaded: boolean
   updateConfig: (next: AppConfig | ((prev: AppConfig) => AppConfig)) => void
+  audioDevices: AudioDevicePrefs
+  setAudioDevices: (prefs: AudioDevicePrefs) => void
 }
 
 function fileLabel(filePath: string | null): string {
@@ -32,6 +34,7 @@ export function useConfig(): ConfigState {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG)
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [audioDevices, setAudioDevicesState] = useState<AudioDevicePrefs>(DEFAULT_AUDIO_DEVICE_PREFS)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -54,8 +57,14 @@ export function useConfig(): ConfigState {
       } else {
         updateWindowTitle(null)
       }
+      setAudioDevicesState(state.audioDevices)
       setLoaded(true)
     })
+  }, [])
+
+  const setAudioDevices = useCallback((prefs: AudioDevicePrefs) => {
+    setAudioDevicesState(prefs)
+    window.electronAPI.settings.setAudioDevices(prefs.outputDeviceId, prefs.monitorDeviceId)
   }, [])
 
   const scheduleAutoSave = useCallback((updated: AppConfig) => {
@@ -143,5 +152,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices }
 }

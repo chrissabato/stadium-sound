@@ -21,6 +21,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
   const overlayRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number | null>(null)
+  const colorBarOffset = track.colorLabel ? 5 : 0
 
   useEffect(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -77,6 +78,20 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
         if (btn) btn.style.opacity = '0'
       }}
     >
+      {track.colorLabel && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          background: track.colorLabel,
+          borderTopLeftRadius: 4,
+          borderTopRightRadius: 4,
+          pointerEvents: 'none'
+        }} />
+      )}
+
       {/* Progress fill overlay — updated directly by RAF, no React re-renders */}
       <div
         ref={overlayRef}
@@ -91,7 +106,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
       {track.hotkey && !isReordering && !isAddToPlaylistMode && (
         <div style={{
           position: 'absolute',
-          top: isMissing ? 22 : 4,
+          top: (isMissing ? 22 : 4) + colorBarOffset,
           left: 4,
           background: 'rgba(15,23,42,0.85)',
           border: '1px solid #334155',
@@ -110,7 +125,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
       {isMissing && (
         <div style={{
           position: 'absolute',
-          top: 4,
+          top: 4 + colorBarOffset,
           left: 4,
           background: '#92400e',
           border: '1px solid #b45309',
@@ -130,7 +145,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
       {isReordering ? (
         <div style={{
           position: 'absolute',
-          top: 4,
+          top: 4 + colorBarOffset,
           right: 4,
           color: '#475569',
           fontSize: 13,
@@ -145,7 +160,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
           title="Click to add to playlist"
           style={{
             position: 'absolute',
-            top: 4,
+            top: 4 + colorBarOffset,
             right: 4,
             background: '#1e3a5f',
             border: '1px solid #3b82f6',
@@ -166,7 +181,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
           onClick={(e) => { e.stopPropagation(); onEdit() }}
           style={{
             position: 'absolute',
-            top: 4,
+            top: 4 + colorBarOffset,
             right: 4,
             background: 'rgba(15,23,42,0.8)',
             border: '1px solid #334155',

@@ -85,9 +85,14 @@ export function useAudioEngine(): AudioEngine {
   }
 
   function applySinkId(ctx: AudioContext, deviceId: string) {
+    // Chromium enumerates synthetic 'default'/'communications' devices that alias a real
+    // sink, but setSinkId() rejects those ids as "not found". Configs saved before the
+    // picker filtered them out may still have one persisted — fall back to the empty
+    // string (the id setSinkId actually accepts for the system default) in that case.
+    const target = deviceId === 'default' || deviceId === 'communications' ? '' : deviceId
     // setSinkId is not yet in TypeScript's lib types
     ;(ctx as unknown as { setSinkId(id: string): Promise<void> })
-      .setSinkId(deviceId)
+      .setSinkId(target)
       .catch(() => {})
   }
 
@@ -376,6 +381,7 @@ export function useAudioEngine(): AudioEngine {
       activeHandleRef.current?.stop()
       activeHandleRef.current = null
       ctxRef.current?.close()
+      ctxRef.current = null
     }
   }, [])
 

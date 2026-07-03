@@ -80,7 +80,10 @@ export function Settings({ open, config, onChange, onClose }: Props) {
   useEffect(() => {
     if (!open) return
     navigator.mediaDevices.enumerateDevices()
-      .then((devices) => setAudioDevices(devices.filter((d) => d.kind === 'audiooutput')))
+      // Chromium's synthetic 'default'/'communications' entries alias a real device but
+      // AudioContext.setSinkId() rejects those ids outright ("device not found") — our own
+      // "System Default" option (value "") is the one that actually works, so hide these.
+      .then((devices) => setAudioDevices(devices.filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications')))
       .catch(() => {})
     window.electronAPI.app.getVersion().then(setVersion).catch(() => {})
     const unsub = window.electronAPI.app.onUpdateStatus((status) => setUpdateStatus(status))

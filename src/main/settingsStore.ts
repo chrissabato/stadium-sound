@@ -13,6 +13,8 @@ interface AppSettings {
   lastFile: string | null
   recentFiles: string[]
   windowBounds: WindowBounds | null
+  outputDeviceId: string
+  monitorDeviceId: string
 }
 
 function settingsPath(): string {
@@ -31,16 +33,27 @@ export function loadSettings(): AppSettings {
     return {
       lastFile: typeof parsed.lastFile === 'string' ? parsed.lastFile : null,
       recentFiles: Array.isArray(parsed.recentFiles) ? parsed.recentFiles : [],
-      windowBounds
+      windowBounds,
+      outputDeviceId: typeof parsed.outputDeviceId === 'string' ? parsed.outputDeviceId : '',
+      monitorDeviceId: typeof parsed.monitorDeviceId === 'string' ? parsed.monitorDeviceId : ''
     }
   } catch {
-    return { lastFile: null, recentFiles: [], windowBounds: null }
+    return { lastFile: null, recentFiles: [], windowBounds: null, outputDeviceId: '', monitorDeviceId: '' }
   }
 }
 
 export function saveWindowBounds(bounds: WindowBounds): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, windowBounds: bounds }, null, 2), 'utf-8')
+}
+
+export function saveAudioDevices(outputDeviceId: string, monitorDeviceId: string): void {
+  const s = loadSettings()
+  writeFileSync(
+    settingsPath(),
+    JSON.stringify({ ...s, outputDeviceId, monitorDeviceId }, null, 2),
+    'utf-8'
+  )
 }
 
 function saveSettings(s: AppSettings): void {
