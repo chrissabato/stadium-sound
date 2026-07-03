@@ -14,7 +14,7 @@ export interface FadeSettings {
 interface AudioEngine {
   loadBuffer: (id: string, filePath: string) => Promise<AudioBuffer>
   getBuffer: (id: string) => AudioBuffer | undefined
-  playTrack: (id: string, opts: PlayOptions) => void
+  playTrack: (id: string, opts: PlayOptions, playOpts?: { force?: boolean }) => void
   stopAll: () => void
   stopImmediate: () => void
   setMasterVolume: (vol: number) => void
@@ -123,8 +123,8 @@ export function useAudioEngine(): AudioEngine {
     }
   }, [])
 
-  const playTrack = useCallback((id: string, { inPoint, outPoint }: PlayOptions) => {
-    if (playingTrackId === id) {
+  const playTrack = useCallback((id: string, { inPoint, outPoint }: PlayOptions, opts?: { force?: boolean }) => {
+    if (!opts?.force && playingTrackId === id) {
       // Toggle off: if already fading, cancel and stop immediately
       if (fadingNodeRef.current) {
         cancelFadeTimer()

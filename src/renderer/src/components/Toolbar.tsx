@@ -5,13 +5,16 @@ interface Props {
   currentFilePath: string | null
   masterVolume: number
   isMonitorMode: boolean
+  showPlaylistPanel: boolean
   onVolumeChange: (v: number) => void
   onStopAll: () => void
   onToggleMonitor: () => void
+  onTogglePlaylistPanel: () => void
   onOpenSettings: () => void
+  onOpenShortcuts: () => void
 }
 
-export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, onVolumeChange, onStopAll, onToggleMonitor, onOpenSettings }: Props) {
+export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onOpenSettings, onOpenShortcuts }: Props) {
   const fileName = currentFilePath
     ? currentFilePath.split(/[\\/]/).pop() ?? 'Event Set'
     : 'Untitled Event Set'
@@ -70,6 +73,22 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, onVolume
       </button>
 
       <button
+        onClick={onTogglePlaylistPanel}
+        title="Toggle playlist panel"
+        style={{
+          padding: '6px 14px',
+          background: showPlaylistPanel ? '#1e3a5f' : '#1e293b',
+          border: `1px solid ${showPlaylistPanel ? '#3b82f6' : '#334155'}`,
+          borderRadius: 4,
+          color: showPlaylistPanel ? '#93c5fd' : '#94a3b8',
+          fontWeight: showPlaylistPanel ? 600 : 400,
+          fontSize: 13
+        }}
+      >
+        ☰ Playlist
+      </button>
+
+      <button
         onClick={onStopAll}
         style={{
           padding: '6px 16px',
@@ -82,6 +101,23 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, onVolume
         }}
       >
         ■ Stop All
+      </button>
+
+      <button
+        onClick={onOpenShortcuts}
+        title="Keyboard shortcuts"
+        style={{
+          padding: '6px 10px',
+          background: '#1e293b',
+          color: '#94a3b8',
+          border: '1px solid #334155',
+          borderRadius: 4,
+          fontSize: 13,
+          fontWeight: 600,
+          lineHeight: 1
+        }}
+      >
+        ⌨
       </button>
 
       <button

@@ -9,11 +9,12 @@ interface Props {
   isMissing: boolean
   playStartWallTime: number | null
   isReordering: boolean
+  isAddToPlaylistMode: boolean
   onClick: () => void
   onEdit: () => void
 }
 
-export function TrackCell({ track, isPlaying, isPlayed, isMissing, playStartWallTime, isReordering, onClick, onEdit }: Props) {
+export function TrackCell({ track, isPlaying, isPlayed, isMissing, playStartWallTime, isReordering, isAddToPlaylistMode, onClick, onEdit }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
@@ -86,6 +87,25 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, playStartWall
         }}
       />
 
+      {track.hotkey && !isReordering && !isAddToPlaylistMode && (
+        <div style={{
+          position: 'absolute',
+          top: isMissing ? 22 : 4,
+          left: 4,
+          background: 'rgba(15,23,42,0.85)',
+          border: '1px solid #334155',
+          borderRadius: 3,
+          color: '#94a3b8',
+          fontSize: 10,
+          fontWeight: 700,
+          padding: '1px 4px',
+          lineHeight: 1.4,
+          zIndex: 1
+        }}>
+          {track.hotkey}
+        </div>
+      )}
+
       {isMissing && (
         <div style={{
           position: 'absolute',
@@ -118,6 +138,26 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, playStartWall
           zIndex: 1
         }}>
           ⠿
+        </div>
+      ) : isAddToPlaylistMode ? (
+        <div
+          title="Click to add to playlist"
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            background: '#1e3a5f',
+            border: '1px solid #3b82f6',
+            borderRadius: 3,
+            color: '#93c5fd',
+            fontSize: 12,
+            fontWeight: 700,
+            padding: '1px 5px',
+            lineHeight: 1.4,
+            zIndex: 1
+          }}
+        >
+          +
         </div>
       ) : (
         <button

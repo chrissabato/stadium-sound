@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import type { Track } from '../types'
-import { formatTime, parseTime } from '../types'
+import { formatTime, parseTime, normalizeHotkeyEvent } from '../types'
 import { WaveformCanvas } from './WaveformCanvas'
 
 interface Props {
@@ -10,9 +10,12 @@ interface Props {
   onClose: () => void
   loadBuffer: (id: string, filePath: string) => Promise<AudioBuffer>
   getBuffer: (id: string) => AudioBuffer | undefined
+  // title of the other track in this bank currently holding the picked hotkey, if any —
+  // used only to warn the user it'll be reassigned on save, doesn't block anything
+  hotkeyOwner: (hotkey: string) => string | null
 }
 
-export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getBuffer }: Props) {
+export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getBuffer, hotkeyOwner }: Props) {
   const [filePath, setFilePath] = useState('')
   const [artist, setArtist] = useState('')
   const [title, setTitle] = useState('')
@@ -25,6 +28,8 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
   const [playerNumber, setPlayerNumber] = useState('')
   const [playerFirstName, setPlayerFirstName] = useState('')
   const [playerLastName, setPlayerLastName] = useState('')
+  const [hotkey, setHotkey] = useState<string | undefined>(undefined)
+  const [capturingHotkey, setCapturingHotkey] = useState(false)
   const [previewing, setPreviewing] = useState(false)
   const previewNodeRef = React.useRef<AudioBufferSourceNode | null>(null)
   const previewCtxRef = React.useRef<AudioContext | null>(null)
@@ -42,6 +47,8 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     setPlayerNumber(track.playerNumber ?? '')
     setPlayerFirstName(track.playerFirstName ?? '')
     setPlayerLastName(track.playerLastName ?? '')
+    setHotkey(track.hotkey)
+    setCapturingHotkey(false)
 
     const existing = getBuffer(track.id)
     if (existing) {
@@ -143,10 +150,28 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
       outPoint: outPoint || duration,
       playerNumber: playerNumber || undefined,
       playerFirstName: playerFirstName || undefined,
-      playerLastName: playerLastName || undefined
+      playerLastName: playerLastName || undefined,
+      hotkey
     })
     stopPreview()
     onClose()
+  }
+
+  function handleHotkeyCapture(e: React.KeyboardEvent) {
+    e.preventDefault()
+    if (e.key === 'Escape') {
+      setCapturingHotkey(false)
+      return
+    }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      setHotkey(undefined)
+      setCapturingHotkey(false)
+      return
+    }
+    const key = normalizeHotkeyEvent(e.nativeEvent)
+    if (!key) return
+    setHotkey(key)
+    setCapturingHotkey(false)
   }
 
   if (!track) return null
@@ -264,6 +289,59 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
                 placeholder="Jordan"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Hotkey */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, color: '#64748b' }}>Keyboard Shortcut (plays this button — scoped to this bank)</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {capturingHotkey ? (
+              <input
+                autoFocus
+                readOnly
+                value=""
+                placeholder="Press a key… (Esc to cancel, Backspace to clear)"
+                onKeyDown={handleHotkeyCapture}
+                onBlur={() => setCapturingHotkey(false)}
+                style={{ ...fieldStyle, width: 260, color: '#94a3b8' }}
+              />
+            ) : (
+              <>
+                <div style={{
+                  minWidth: 36,
+                  padding: '4px 10px',
+                  textAlign: 'center',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: 4,
+                  color: hotkey ? '#f1f5f9' : '#475569',
+                  fontSize: 13,
+                  fontWeight: 700
+                }}>
+                  {hotkey ?? 'Not set'}
+                </div>
+                <button
+                  onClick={() => setCapturingHotkey(true)}
+                  style={{ padding: '5px 12px', background: '#334155', border: 'none', borderRadius: 4, color: '#f1f5f9', fontSize: 12, cursor: 'pointer' }}
+                >
+                  {hotkey ? 'Change…' : 'Set…'}
+                </button>
+                {hotkey && (
+                  <button
+                    onClick={() => setHotkey(undefined)}
+                    style={{ padding: '5px 12px', background: 'none', border: '1px solid #334155', borderRadius: 4, color: '#94a3b8', fontSize: 12, cursor: 'pointer' }}
+                  >
+                    Clear
+                  </button>
+                )}
+                {hotkey && hotkeyOwner(hotkey) && (
+                  <span style={{ fontSize: 11, color: '#fbbf24' }}>
+                    Currently used by "{hotkeyOwner(hotkey)}" — will be reassigned to this button on save
+                  </span>
+                )}
+              </>
+            )}
           </div>
         </div>
 
