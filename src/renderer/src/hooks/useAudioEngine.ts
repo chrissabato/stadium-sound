@@ -34,6 +34,7 @@ interface PlaybackHandle {
 
 interface AudioEngine {
   loadBuffer: (id: string, filePath: string) => Promise<AudioBuffer>
+  decodeTransient: (filePath: string) => Promise<AudioBuffer>
   getBuffer: (filePath: string) => AudioBuffer | undefined
   loadingIds: Set<string>
   playTrack: (id: string, opts: PlayOptions, playOpts?: { force?: boolean }) => void
@@ -90,6 +91,19 @@ export function useAudioEngine(): AudioEngine {
     setPlayingTrackId(id)
   }
 
+  function markLoading(id: string) {
+    setLoadingIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+  }
+
+  function unmarkLoading(id: string) {
+    setLoadingIds((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+  }
+
   function applySinkId(ctx: AudioContext, deviceId: string) {
     // setSinkId is not yet in TypeScript's lib types
     ;(ctx as unknown as { setSinkId(id: string): Promise<void> })
@@ -144,12 +158,18 @@ export function useAudioEngine(): AudioEngine {
     // A background pre-load may already be decoding this exact file — share
     // that in-flight promise instead of kicking off a second, redundant
     // read+decode of the same file (this used to double the wait whenever a
-    // user clicked a track before its pre-load had finished).
+    // user clicked a track before its pre-load had finished). The pending
+    // decode may have been started under a *different* track id (same file in
+    // two banks/playlists), so this caller's spinner still needs registering.
     const pending = pendingLoads.current.get(filePath)
-    if (pending) return pending
+    if (pending) {
+      markLoading(id)
+      pending.catch(() => {}).finally(() => unmarkLoading(id))
+      return pending
+    }
 
     const ctx = getCtx()
-    setLoadingIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+    markLoading(id)
 
     // Cleanup lives inside this same promise chain (not a separate .finally()
     // hung off it) so its own rejection can't become an unhandled one — the
@@ -164,17 +184,26 @@ export function useAudioEngine(): AudioEngine {
         return audioBuffer
       } finally {
         pendingLoads.current.delete(filePath)
-        setLoadingIds((prev) => {
-          if (!prev.has(id)) return prev
-          const next = new Set(prev)
-          next.delete(id)
-          return next
-        })
+        unmarkLoading(id)
       }
     })()
 
     pendingLoads.current.set(filePath, promise)
     return promise
+  }, [])
+
+  // Decode WITHOUT inserting into the LRU playback cache. For transient uses
+  // (waveform editing) of files too long to be worth caching — a full song's
+  // PCM parked in the cache would evict the warmed short-clip buffers the
+  // cache exists to keep hot. Reuses a cached/in-flight decode when one
+  // happens to exist.
+  const decodeTransient = useCallback(async (filePath: string): Promise<AudioBuffer> => {
+    const cached = bufferCache.current.get(filePath)
+    if (cached) return cached
+    const pending = pendingLoads.current.get(filePath)
+    if (pending) return pending
+    const arrayBuffer = await window.electronAPI.readAudioFile(filePath)
+    return getCtx().decodeAudioData(arrayBuffer)
   }, [])
 
   const getBuffer = useCallback((filePath: string) => bufferCache.current.get(filePath), [])
@@ -229,6 +258,10 @@ export function useAudioEngine(): AudioEngine {
 
     const ctx = getCtx()
     const buffer = bufferCache.current.get(filePath)
+    // The type requires filePath, but runtime data can still carry an empty
+    // one (old/hand-edited event sets load unvalidated) — bail before touching
+    // current playback so a broken button can't silence live audio.
+    if (!buffer && !filePath) return
 
     const { fadeIn, crossFade } = fadeSettingsRef.current
 
@@ -386,7 +419,7 @@ export function useAudioEngine(): AudioEngine {
   }, [])
 
   return {
-    loadBuffer, getBuffer, loadingIds, playTrack, stopAll, stopImmediate,
+    loadBuffer, decodeTransient, getBuffer, loadingIds, playTrack, stopAll, stopImmediate,
     setMasterVolume, setFadeSettings, setOutputDevices, setMonitorMode,
     isMonitorMode,
     playingTrackId,

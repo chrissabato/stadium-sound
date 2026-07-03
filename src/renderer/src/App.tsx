@@ -457,6 +457,16 @@ export default function App() {
     updateConfig((c) => ({ ...c, masterVolume: v }))
   }, [audio, updateConfig])
 
+  // The editor needs a full decode for its waveform regardless of length, but
+  // only short clips belong in the LRU playback cache — a full song's PCM
+  // would evict the warmed clip buffers. Long (or unknown-length) files get a
+  // transient decode instead.
+  function loadEditorBuffer(id: string, filePath: string, duration: number) {
+    return shouldDecode({ duration })
+      ? audio.loadBuffer(id, filePath)
+      : audio.decodeTransient(filePath)
+  }
+
   // Warm the decoded cache for the selected bank's *short clips* in the
   // background. Full songs are never pre-decoded — they stream on demand —
   // so startup and bank switches are instant regardless of bank size, and
@@ -470,21 +480,55 @@ export default function App() {
   // concurrency low is what leaves room for that to jump ahead.
   const PRELOAD_CONCURRENCY = 3
 
+  // Persist a re-probed duration everywhere the track appears (banks and
+  // playlists share ids for copied tracks); outPoint 0 means "unset", so it
+  // gets the real end too.
+  function setTrackDuration(id: string, duration: number) {
+    updateConfig((c) => ({
+      ...c,
+      banks: c.banks.map((b) => ({
+        ...b,
+        tracks: b.tracks.map((t) => t.id === id ? { ...t, duration, outPoint: t.outPoint || duration } : t)
+      })),
+      playlists: (c.playlists ?? []).map((p) => ({
+        ...p,
+        tracks: p.tracks.map((t) => t.id === id ? { ...t, duration, outPoint: t.outPoint || duration } : t)
+      }))
+    }))
+  }
+
+  // Tracks persisted with duration 0 (SSP imports without timing info, failed
+  // metadata reads) are re-probed first and the result persisted — without
+  // this they'd be permanently misclassified as songs and never decode, even
+  // when they're really 3-second stingers.
+  function warmClips(tracks: Track[]) {
+    const tasks = tracks
+      .filter((t) => t.filePath && (shouldDecode(t) || t.duration === 0))
+      .map((t) => async () => {
+        let duration = t.duration
+        if (duration === 0) {
+          const meta = await window.electronAPI.getTrackMetadata(t.filePath)
+          if (meta.duration > 0) {
+            duration = meta.duration
+            setTrackDuration(t.id, duration)
+          }
+        }
+        if (shouldDecode({ duration }) && !audio.getBuffer(t.filePath)) {
+          await audio.loadBuffer(t.id, t.filePath)
+        }
+      })
+    runWithConcurrency(tasks, PRELOAD_CONCURRENCY)
+  }
+
   useEffect(() => {
     if (!loaded || !selectedBank) return
-    const toLoad = selectedBank.tracks.filter(
-      (t) => t.filePath && shouldDecode(t) && !audio.getBuffer(t.filePath)
-    )
-    runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
+    warmClips(selectedBank.tracks)
   }, [loaded, config.selectedBankId])
 
   // Same short-clip warm-up when the selected playlist switches
   useEffect(() => {
     if (!selectedPlaylist) return
-    const toLoad = selectedPlaylist.tracks.filter(
-      (t) => t.filePath && shouldDecode(t) && !audio.getBuffer(t.filePath)
-    )
-    runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
+    warmClips(selectedPlaylist.tracks)
   }, [config.selectedPlaylistId])
 
   // Keyboard shortcuts: per-track hotkeys (scoped to the selected bank) plus a
@@ -731,7 +775,7 @@ export default function App() {
         onSave={saveEditedTrack}
         onRemove={removeTrack}
         onClose={() => setEditingTrack(null)}
-        loadBuffer={audio.loadBuffer}
+        loadBuffer={loadEditorBuffer}
         getBuffer={audio.getBuffer}
         hotkeyOwner={hotkeyOwner}
       />
