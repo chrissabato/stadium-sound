@@ -13,7 +13,6 @@ interface Props {
   config: FadeConfig
   onChange: (c: FadeConfig) => void
   onClose: () => void
-  onResetPlayed: () => void
 }
 
 function FadeRow({
@@ -73,7 +72,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, onClose, onResetPlayed }: Props) {
+export function Settings({ open, config, onChange, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'not-available' | 'error'>('idle')
@@ -213,37 +212,6 @@ export function Settings({ open, config, onChange, onClose, onResetPlayed }: Pro
           </div>
         ))}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Played Indicators
-          </span>
-          <div style={{ height: 1, background: '#334155' }} />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Reset Played</div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-              Clear the red played indicator from all track buttons
-            </div>
-          </div>
-          <button
-            onClick={onResetPlayed}
-            style={{
-              padding: '6px 16px',
-              background: '#7f1d1d',
-              border: '1px solid #991b1b',
-              borderRadius: 4,
-              color: '#fecaca',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              flexShrink: 0
-            }}
-          >
-            Reset
-          </button>
-        </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

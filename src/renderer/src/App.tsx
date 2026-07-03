@@ -22,6 +22,12 @@ export default function App() {
   const [playedIds, setPlayedIds] = useState<Set<string>>(new Set())
   const [isReordering, setIsReordering] = useState(false)
 
+  useEffect(() => {
+    return window.electronAPI.onMenuAction((action) => {
+      if (action === 'resetPlayed') setPlayedIds(new Set())
+    })
+  }, [])
+
   // Keep audio engine in sync with persisted fade settings
   useEffect(() => {
     audio.setFadeSettings({
@@ -327,7 +333,6 @@ export default function App() {
         }}
         onChange={(s) => updateConfig((c) => ({ ...c, fadeIn: s.fadeIn, fadeOut: s.fadeOut, crossFade: s.crossFade, outputDeviceId: s.outputDeviceId, monitorDeviceId: s.monitorDeviceId }))}
         onClose={() => setSettingsOpen(false)}
-        onResetPlayed={() => setPlayedIds(new Set())}
       />
     </>
   )

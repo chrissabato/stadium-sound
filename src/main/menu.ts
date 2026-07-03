@@ -19,6 +19,15 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[]): void {
 
   const template = [
     {
+      label: 'Playback',
+      submenu: [
+        {
+          label: 'Reset Played Indicators',
+          click: () => win.webContents.send('menu:action', 'resetPlayed')
+        }
+      ]
+    },
+    {
       label: 'File',
       submenu: [
         {
