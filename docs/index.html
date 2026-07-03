@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stadium Sound — Live Event Audio Playback</title>
   <meta name="description" content="Professional audio playback for venue operators. Manage banks of tracks and trigger them instantly, one click, zero latency.">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Stadium Sound">
+  <meta property="og:title" content="Stadium Sound — Live Event Audio Playback">
+  <meta property="og:description" content="Professional audio playback for venue operators. Manage banks of tracks and trigger them instantly, one click, zero latency.">
+  <meta property="og:url" content="https://stadiumsound.chrissabato.com/">
+  <meta property="og:image" content="https://stadiumsound.chrissabato.com/stadium-sound-screen.jpg">
+  <meta property="og:image:width" content="1720">
+  <meta property="og:image:height" content="858">
+  <meta property="og:image:alt" content="Stadium Sound app showing the In Game bank with rows of tracks and one playing">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Stadium Sound — Live Event Audio Playback">
+  <meta name="twitter:description" content="Professional audio playback for venue operators. Manage banks of tracks and trigger them instantly, one click, zero latency.">
+  <meta name="twitter:image" content="https://stadiumsound.chrissabato.com/stadium-sound-screen.jpg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -175,158 +190,18 @@
       margin-top: 4px;
     }
 
-    /* ── APP MOCKUP ── */
+    /* ── APP SCREENSHOT ── */
     .mockup {
-      background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+      line-height: 0;
     }
-
-    .mockup-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      background: var(--card);
-    }
-
-    .mockup-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: var(--border2);
-    }
-
-    .mockup-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--sub);
-      letter-spacing: 0.04em;
-      margin-left: 4px;
-    }
-
-    .mockup-body {
-      display: flex;
-    }
-
-    .mockup-sidebar {
-      width: 110px;
-      flex-shrink: 0;
-      border-right: 1px solid var(--border);
-      padding: 8px 0;
-    }
-
-    .m-bank {
-      padding: 7px 14px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--sub);
-      border-left: 2px solid transparent;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .m-bank.active {
-      color: var(--text);
-      border-left-color: var(--orange);
-      background: rgba(232,90,36,0.07);
-    }
-
-    .mockup-grid {
-      flex: 1;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 5px;
-      padding: 10px;
-    }
-
-    .m-cell {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 8px 7px;
-      min-height: 58px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      gap: 4px;
-    }
-    .m-cell.playing {
-      background: var(--green-bg);
-      border-color: var(--green-bd);
-    }
-    .m-cell.played {
-      background: var(--red-bg);
-      border-color: var(--red-bd);
-    }
-
-    .m-bar {
-      height: 3px;
-      border-radius: 1px;
-      background: var(--faint);
-    }
-    .m-cell.playing .m-bar { background: var(--green-bar); }
-    .m-cell.played  .m-bar { background: var(--red-bar); }
-    .m-bar.s { width: 55%; }
-    .m-bar.m { width: 75%; }
-
-    .mockup-now {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      border-top: 1px solid var(--border);
-      background: var(--card);
-    }
-
-    .now-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--green-bar);
-      box-shadow: 0 0 6px var(--green-bar);
-      flex-shrink: 0;
-    }
-
-    .now-track {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .now-name {
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .now-bar-wrap {
-      flex: 1;
-      height: 3px;
-      background: var(--border);
-      border-radius: 2px;
-      margin-left: 8px;
-    }
-
-    .now-bar-fill {
-      width: 38%;
-      height: 100%;
-      background: var(--green-bar);
-      border-radius: 2px;
-    }
-
-    .now-time {
-      font-size: 10px;
-      color: var(--sub);
-      margin-left: 8px;
-      font-variant-numeric: tabular-nums;
-      flex-shrink: 0;
+    .mockup img {
+      display: block;
+      width: 100%;
+      height: auto;
     }
 
     /* ── DIVIDER ── */
@@ -572,48 +447,9 @@
       </div>
     </div>
 
-    <!-- APP MOCKUP -->
+    <!-- APP SCREENSHOT -->
     <div class="mockup">
-      <div class="mockup-bar">
-        <div class="mockup-dot"></div>
-        <div class="mockup-dot"></div>
-        <div class="mockup-dot"></div>
-        <span class="mockup-title">Highlights — Stadium Sound</span>
-      </div>
-      <div class="mockup-body">
-        <div class="mockup-sidebar">
-          <div class="m-bank">Walk-ons</div>
-          <div class="m-bank active">Highlights</div>
-          <div class="m-bank">Intros</div>
-          <div class="m-bank">Timeouts</div>
-          <div class="m-bank">Post-game</div>
-          <div class="m-bank">Promos</div>
-        </div>
-        <div class="mockup-grid">
-          <div class="m-cell playing"><div class="m-bar m"></div><div class="m-bar s"></div></div>
-          <div class="m-cell played"><div class="m-bar"></div><div class="m-bar s"></div></div>
-          <div class="m-cell played"><div class="m-bar m"></div><div class="m-bar s"></div></div>
-          <div class="m-cell"><div class="m-bar m"></div><div class="m-bar s"></div></div>
-
-          <div class="m-cell played"><div class="m-bar m"></div><div class="m-bar s"></div></div>
-          <div class="m-cell"><div class="m-bar"></div><div class="m-bar s"></div></div>
-          <div class="m-cell"><div class="m-bar m"></div><div class="m-bar s"></div></div>
-          <div class="m-cell played"><div class="m-bar m"></div><div class="m-bar s"></div></div>
-
-          <div class="m-cell"><div class="m-bar"></div><div class="m-bar s"></div></div>
-          <div class="m-cell"><div class="m-bar m"></div><div class="m-bar s"></div></div>
-          <div class="m-cell played"><div class="m-bar"></div><div class="m-bar s"></div></div>
-          <div class="m-cell"><div class="m-bar m"></div><div class="m-bar s"></div></div>
-        </div>
-      </div>
-      <div class="mockup-now">
-        <div class="now-track">
-          <div class="now-dot"></div>
-          <span class="now-name">Walk-up — Jordan, Michael</span>
-          <div class="now-bar-wrap"><div class="now-bar-fill"></div></div>
-        </div>
-        <span class="now-time">0:12</span>
-      </div>
+      <img src="stadium-sound-screen.jpg" alt="Stadium Sound app showing the In Game bank with rows of tracks and one playing" width="1720" height="858">
     </div>
   </div>
 </section>
