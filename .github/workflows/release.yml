@@ -52,3 +52,24 @@ jobs:
           # APPLE_ID: ${{ secrets.APPLE_ID }}
           # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+  update-website-version:
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Update version on website
+        run: sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/${{ github.ref_name }}/g" docs/index.html
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No version change to commit"
+            exit 0
+          fi
+          git add docs/index.html
+          git commit -m "chore: update website version to ${{ github.ref_name }}"
+          git push
