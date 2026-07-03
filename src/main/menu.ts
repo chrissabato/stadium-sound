@@ -19,19 +19,6 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[]): void {
 
   const template = [
     {
-      label: 'Playback',
-      submenu: [
-        {
-          label: 'Reset Played Indicators',
-          click: () => win.webContents.send('menu:action', 'resetPlayed')
-        },
-        {
-          label: 'Verify Tracks',
-          click: () => win.webContents.send('menu:action', 'verifyTracks')
-        }
-      ]
-    },
-    {
       label: 'File',
       submenu: [
         {
@@ -67,6 +54,19 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[]): void {
           label: 'Exit',
           accelerator: 'Alt+F4',
           click: () => app.quit()
+        }
+      ]
+    },
+    {
+      label: 'Playback',
+      submenu: [
+        {
+          label: 'Reset Played Indicators',
+          click: () => win.webContents.send('menu:action', 'resetPlayed')
+        },
+        {
+          label: 'Verify Tracks',
+          click: () => win.webContents.send('menu:action', 'verifyTracks')
         }
       ]
     }
