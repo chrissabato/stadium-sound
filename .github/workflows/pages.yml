@@ -26,5 +26,28 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
+      # actions/deploy-pages intermittently fails after successfully creating the
+      # deployment ("Deployment failed, try again later") — a GitHub Pages backend
+      # flake, not a workflow bug. Retry a couple of times instead of relying on a
+      # human to notice and manually re-run.
       - id: deploy
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before retry
+        if: steps.deploy.outcome == 'failure'
+        run: sleep 15
+
+      - name: Retry deploy (attempt 2)
+        id: deploy_retry_1
+        if: steps.deploy.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before retry
+        if: steps.deploy_retry_1.outcome == 'failure'
+        run: sleep 15
+
+      - name: Retry deploy (attempt 3)
+        if: steps.deploy_retry_1.outcome == 'failure'
         uses: actions/deploy-pages@v4
