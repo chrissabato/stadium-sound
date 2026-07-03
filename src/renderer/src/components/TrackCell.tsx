@@ -53,6 +53,7 @@ export function TrackCell({ track, isPlaying, isPlayed, playStartWallTime, isReo
         borderRadius: 4,
         cursor: 'pointer',
         minHeight: 72,
+        minWidth: 0,
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
