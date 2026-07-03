@@ -17,8 +17,10 @@ All releases: [github.com/chrissabato/stadium-sound/releases](https://github.com
 
 ## Features
 
-- Named banks (playlists) for organizing tracks by category
+- Named banks for organizing tracks by category
 - One-click playback — click again to stop, click another to crossfade
+- Playlists — queue tracks from any bank into an ordered run of show
+- Keyboard shortcuts — assign a hotkey to any track for no-mouse triggering
 - Configurable fade in, fade out, and crossfade
 - Track editor with waveform, in/out point trimming, and player name fields
 - Audio output device selection with monitor mode for private previewing
