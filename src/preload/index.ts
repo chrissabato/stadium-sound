@@ -6,6 +6,7 @@ const api: ElectronAPI = {
   openAudioFiles: (defaultPath?: string) => ipcRenderer.invoke('dialog:openAudioFiles', defaultPath),
   readAudioFile: (filePath: string) => ipcRenderer.invoke('fs:readAudioFile', filePath),
   getTrackMetadata: (filePath: string) => ipcRenderer.invoke('meta:getTrackMetadata', filePath),
+  checkFiles: (paths: string[]) => ipcRenderer.invoke('fs:checkFiles', paths),
   eventSet: {
     getInitialState: () => ipcRenderer.invoke('eventSet:getInitialState'),
     open: () => ipcRenderer.invoke('eventSet:open'),

@@ -21,6 +21,7 @@ export interface ElectronAPI {
   openAudioFiles: (defaultPath?: string) => Promise<string[]>
   readAudioFile: (filePath: string) => Promise<ArrayBuffer>
   getTrackMetadata: (filePath: string) => Promise<TrackMetadata>
+  checkFiles: (paths: string[]) => Promise<boolean[]>
   eventSet: {
     getInitialState: () => Promise<EventSetState>
     open: () => Promise<EventSetOpenResult | null>

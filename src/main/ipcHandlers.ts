@@ -1,6 +1,6 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron'
 import { autoUpdater } from 'electron-updater'
-import { readFile } from 'fs/promises'
+import { readFile, access } from 'fs/promises'
 import { readFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
 import { loadSettings, addRecentFile, clearRecentFiles } from './settingsStore'
@@ -125,6 +125,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('eventSet:setTitle', (_event, title: string) => {
     const win = getWin()
     if (win) win.setTitle(title)
+  })
+
+  ipcMain.handle('fs:checkFiles', async (_event, paths: string[]) => {
+    return Promise.all(paths.map((p) => access(p).then(() => true).catch(() => false)))
   })
 
   ipcMain.handle('app:getVersion', () => app.getVersion())

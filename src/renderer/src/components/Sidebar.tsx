@@ -5,6 +5,7 @@ interface Props {
   banks: Bank[]
   selectedBankId: string
   isReordering: boolean
+  missingFileIds: Set<string>
   onSelectBank: (id: string) => void
   onAddBank: (name: string) => void
   onRenameBank: (id: string, name: string) => void
@@ -12,7 +13,7 @@ interface Props {
   onReorderBanks: (newBanks: Bank[]) => void
 }
 
-export function Sidebar({ banks, selectedBankId, isReordering, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks }: Props) {
+export function Sidebar({ banks, selectedBankId, isReordering, missingFileIds, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [newBankName, setNewBankName] = useState('')
@@ -183,11 +184,18 @@ export function Sidebar({ banks, selectedBankId, isReordering, onSelectBank, onA
                       ×
                     </button>
                   </>
-                ) : (
-                  <span style={{ fontSize: 11, color: '#475569', minWidth: 16, textAlign: 'right' }}>
-                    {bank.tracks.length}
-                  </span>
-                )}
+                ) : (() => {
+                  const missingCount = bank.tracks.filter((t) => missingFileIds.has(t.id)).length
+                  return missingCount > 0 ? (
+                    <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, minWidth: 16, textAlign: 'right', flexShrink: 0 }}>
+                      ⚠ {missingCount}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 11, color: '#475569', minWidth: 16, textAlign: 'right' }}>
+                      {bank.tracks.length}
+                    </span>
+                  )
+                })()}
               </>
             )}
           </div>

@@ -6,13 +6,14 @@ interface Props {
   track: Track
   isPlaying: boolean
   isPlayed: boolean
+  isMissing: boolean
   playStartWallTime: number | null
   isReordering: boolean
   onClick: () => void
   onEdit: () => void
 }
 
-export function TrackCell({ track, isPlaying, isPlayed, playStartWallTime, isReordering, onClick, onEdit }: Props) {
+export function TrackCell({ track, isPlaying, isPlayed, isMissing, playStartWallTime, isReordering, onClick, onEdit }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
@@ -48,8 +49,8 @@ export function TrackCell({ track, isPlaying, isPlayed, playStartWallTime, isReo
       style={{
         position: 'relative',
         padding: '10px 12px',
-        background: isPlaying ? '#15803d' : isPlayed ? '#7f1d1d' : '#1e293b',
-        border: `1px solid ${isPlaying ? '#16a34a' : isPlayed ? '#991b1b' : '#334155'}`,
+        background: isPlaying ? '#15803d' : isPlayed ? '#7f1d1d' : isMissing ? '#1c1408' : '#1e293b',
+        border: `1px solid ${isPlaying ? '#16a34a' : isPlayed ? '#991b1b' : isMissing ? '#78350f' : '#334155'}`,
         borderRadius: 4,
         cursor: 'pointer',
         minHeight: 72,
@@ -84,6 +85,26 @@ export function TrackCell({ track, isPlaying, isPlayed, playStartWallTime, isReo
           borderRadius: 4
         }}
       />
+
+      {isMissing && (
+        <div style={{
+          position: 'absolute',
+          top: 4,
+          left: 4,
+          background: '#92400e',
+          border: '1px solid #b45309',
+          borderRadius: 3,
+          color: '#fde68a',
+          fontSize: 10,
+          fontWeight: 700,
+          padding: '1px 4px',
+          lineHeight: 1.4,
+          zIndex: 1,
+          letterSpacing: '0.02em'
+        }}>
+          ⚠ missing
+        </div>
+      )}
 
       {isReordering ? (
         <div style={{

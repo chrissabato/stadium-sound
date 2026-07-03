@@ -21,12 +21,21 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [playedIds, setPlayedIds] = useState<Set<string>>(new Set())
   const [isReordering, setIsReordering] = useState(false)
+  const [missingFileIds, setMissingFileIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    return window.electronAPI.onMenuAction((action) => {
-      if (action === 'resetPlayed') setPlayedIds(new Set())
+    return window.electronAPI.onMenuAction(async (action) => {
+      if (action === 'resetPlayed') {
+        setPlayedIds(new Set())
+      } else if (action === 'verifyTracks') {
+        const allTracks = config.banks.flatMap((b) => b.tracks)
+        const paths = allTracks.map((t) => t.filePath)
+        const results = await window.electronAPI.checkFiles(paths)
+        const missing = new Set(allTracks.filter((_, i) => !results[i]).map((t) => t.id))
+        setMissingFileIds(missing)
+      }
     })
-  }, [])
+  }, [config.banks])
 
   // Keep audio engine in sync with persisted fade settings
   useEffect(() => {
@@ -220,6 +229,7 @@ export default function App() {
           banks={config.banks}
           selectedBankId={config.selectedBankId}
           isReordering={isReordering}
+          missingFileIds={missingFileIds}
           onSelectBank={selectBank}
           onAddBank={addBank}
           onRenameBank={renameBank}
@@ -279,6 +289,7 @@ export default function App() {
               playingTrackId={audio.playingTrackId}
               playStartWallTime={audio.playStartWallTime}
               playedIds={playedIds}
+              missingFileIds={missingFileIds}
               isMonitorMode={audio.isMonitorMode}
               isReordering={isReordering}
               onPlayTrack={playTrack}
