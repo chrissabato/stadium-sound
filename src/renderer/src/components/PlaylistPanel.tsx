@@ -123,15 +123,42 @@ export function PlaylistPanel({
       flexShrink: 0
     }}>
       <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         padding: '8px 12px',
-        fontSize: 11,
-        fontWeight: 600,
-        color: '#64748b',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
         borderBottom: '1px solid #1e293b'
       }}>
-        Playlists
+        <span style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: '#64748b',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em'
+        }}>
+          Playlists
+        </span>
+        <button
+          onClick={() => setAddingPlaylist(true)}
+          title="Add playlist"
+          style={{
+            width: 18,
+            height: 18,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: 4,
+            color: '#94a3b8',
+            fontSize: 12,
+            lineHeight: 1,
+            padding: 0,
+            cursor: 'pointer'
+          }}
+        >
+          +
+        </button>
       </div>
 
       <div style={{ maxHeight: 160, overflowY: 'auto', flexShrink: 0, borderBottom: '1px solid #1e293b' }}>
@@ -233,45 +260,28 @@ export function PlaylistPanel({
         ))}
       </div>
 
-      <div style={{ padding: 8, borderBottom: '1px solid #1e293b' }}>
-        {addingPlaylist ? (
-          <div style={{ display: 'flex', gap: 4 }}>
-            <input
-              autoFocus
-              placeholder="Playlist name"
-              value={newPlaylistName}
-              onChange={(e) => setNewPlaylistName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') setAddingPlaylist(false) }}
-              onBlur={commitAdd}
-              style={{
-                flex: 1,
-                background: '#1e293b',
-                border: '1px solid #3b82f6',
-                borderRadius: 3,
-                color: '#f1f5f9',
-                padding: '5px 8px',
-                fontSize: 12
-              }}
-            />
-          </div>
-        ) : (
-          <button
-            onClick={() => setAddingPlaylist(true)}
+      {addingPlaylist && (
+        <div style={{ padding: 8, borderBottom: '1px solid #1e293b' }}>
+          <input
+            autoFocus
+            placeholder="Playlist name"
+            value={newPlaylistName}
+            onChange={(e) => setNewPlaylistName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') setAddingPlaylist(false) }}
+            onBlur={commitAdd}
             style={{
               width: '100%',
-              padding: '7px 0',
               background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: 4,
-              color: '#94a3b8',
+              border: '1px solid #3b82f6',
+              borderRadius: 3,
+              color: '#f1f5f9',
+              padding: '5px 8px',
               fontSize: 12,
-              fontWeight: 500
+              boxSizing: 'border-box'
             }}
-          >
-            + Add Playlist
-          </button>
-        )}
-      </div>
+          />
+        </div>
+      )}
 
       {selectedPlaylist ? (
         <PlaylistTrackList

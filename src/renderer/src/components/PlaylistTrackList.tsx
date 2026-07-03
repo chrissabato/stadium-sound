@@ -41,6 +41,7 @@ export function PlaylistTrackList({
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const dragCounter = useRef(0)
 
   function handleDragStart(i: number) {
@@ -91,37 +92,89 @@ export function PlaylistTrackList({
         flexShrink: 0,
         gap: 6
       }}>
-        <span style={{ fontSize: 11, color: '#64748b' }}>{playlist.tracks.length} tracks</span>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, color: '#64748b' }}>{playlist.tracks.length} tracks</span>
+          {isAddToPlaylistMode && (
+            <span style={{ fontSize: 10, fontWeight: 600, color: '#93c5fd' }}>● Adding via buttons</span>
+          )}
+        </div>
+        <div style={{ position: 'relative' }}>
           <button
-            onClick={onToggleAddMode}
-            disabled={!hasAnyPlaylist}
-            title="Click soundboard buttons to add them to this playlist"
+            onClick={() => setMenuOpen((v) => !v)}
+            title="Add tracks"
             style={{
-              padding: '5px 10px',
-              background: isAddToPlaylistMode ? '#1e3a5f' : '#1e293b',
-              border: `1px solid ${isAddToPlaylistMode ? '#3b82f6' : '#334155'}`,
-              borderRadius: 4,
-              color: isAddToPlaylistMode ? '#93c5fd' : hasAnyPlaylist ? '#94a3b8' : '#475569',
-              fontSize: 11,
-              fontWeight: isAddToPlaylistMode ? 600 : 400
-            }}
-          >
-            {isAddToPlaylistMode ? '✓ Adding' : '+ Add via Buttons'}
-          </button>
-          <button
-            onClick={onAddTracksFromFile}
-            style={{
-              padding: '5px 10px',
-              background: '#1e293b',
-              border: '1px solid #334155',
+              width: 18,
+              height: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: menuOpen ? '#1e3a5f' : '#1e293b',
+              border: `1px solid ${menuOpen ? '#3b82f6' : '#334155'}`,
               borderRadius: 4,
               color: '#94a3b8',
-              fontSize: 11
+              fontSize: 12,
+              lineHeight: 1,
+              padding: 0,
+              cursor: 'pointer'
             }}
           >
-            + Add from File
+            +
           </button>
+          {menuOpen && (
+            <>
+              <div
+                onClick={() => setMenuOpen(false)}
+                style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+              />
+              <div style={{
+                position: 'absolute',
+                top: 22,
+                right: 0,
+                zIndex: 11,
+                background: '#1e293b',
+                border: '1px solid #334155',
+                borderRadius: 4,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 170,
+                overflow: 'hidden'
+              }}>
+                <button
+                  onClick={() => { onToggleAddMode(); setMenuOpen(false) }}
+                  disabled={!hasAnyPlaylist}
+                  title="Click soundboard buttons to add them to this playlist"
+                  style={{
+                    padding: '8px 10px',
+                    background: isAddToPlaylistMode ? '#1e3a5f' : 'transparent',
+                    border: 'none',
+                    textAlign: 'left',
+                    color: isAddToPlaylistMode ? '#93c5fd' : hasAnyPlaylist ? '#e2e8f0' : '#475569',
+                    fontSize: 12,
+                    fontWeight: isAddToPlaylistMode ? 600 : 400,
+                    cursor: hasAnyPlaylist ? 'pointer' : 'default'
+                  }}
+                >
+                  {isAddToPlaylistMode ? '✓ Adding via Buttons' : 'Add via Buttons'}
+                </button>
+                <button
+                  onClick={() => { onAddTracksFromFile(); setMenuOpen(false) }}
+                  style={{
+                    padding: '8px 10px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderTop: '1px solid #334155',
+                    textAlign: 'left',
+                    color: '#e2e8f0',
+                    fontSize: 12,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add from File
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -274,7 +327,7 @@ export function PlaylistTrackList({
             fontSize: 12
           }}
         >
-          ⏭ Skip
+          ▶▶ Skip
         </button>
         <button
           onClick={onStop}

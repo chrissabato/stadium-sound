@@ -86,15 +86,42 @@ export function Sidebar({ banks, selectedBankId, isReordering, missingFileIds, o
       flexShrink: 0
     }}>
       <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         padding: '8px 12px',
-        fontSize: 11,
-        fontWeight: 600,
-        color: '#64748b',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
         borderBottom: '1px solid #1e293b'
       }}>
-        Banks
+        <span style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: '#64748b',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em'
+        }}>
+          Banks
+        </span>
+        <button
+          onClick={() => setAddingBank(true)}
+          title="Add bank"
+          style={{
+            width: 18,
+            height: 18,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: 4,
+            color: '#94a3b8',
+            fontSize: 12,
+            lineHeight: 1,
+            padding: 0,
+            cursor: 'pointer'
+          }}
+        >
+          +
+        </button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -202,45 +229,28 @@ export function Sidebar({ banks, selectedBankId, isReordering, missingFileIds, o
         ))}
       </div>
 
-      <div style={{ padding: 8, borderTop: '1px solid #1e293b' }}>
-        {addingBank ? (
-          <div style={{ display: 'flex', gap: 4 }}>
-            <input
-              autoFocus
-              placeholder="Bank name"
-              value={newBankName}
-              onChange={(e) => setNewBankName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') setAddingBank(false) }}
-              onBlur={commitAdd}
-              style={{
-                flex: 1,
-                background: '#1e293b',
-                border: '1px solid #3b82f6',
-                borderRadius: 3,
-                color: '#f1f5f9',
-                padding: '5px 8px',
-                fontSize: 12
-              }}
-            />
-          </div>
-        ) : (
-          <button
-            onClick={() => setAddingBank(true)}
+      {addingBank && (
+        <div style={{ padding: 8, borderTop: '1px solid #1e293b' }}>
+          <input
+            autoFocus
+            placeholder="Bank name"
+            value={newBankName}
+            onChange={(e) => setNewBankName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') setAddingBank(false) }}
+            onBlur={commitAdd}
             style={{
               width: '100%',
-              padding: '7px 0',
               background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: 4,
-              color: '#94a3b8',
+              border: '1px solid #3b82f6',
+              borderRadius: 3,
+              color: '#f1f5f9',
+              padding: '5px 8px',
               fontSize: 12,
-              fontWeight: 500
+              boxSizing: 'border-box'
             }}
-          >
-            + Add Bank
-          </button>
-        )}
-      </div>
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import type { Track } from '../types'
-import { formatTime, parseTime, normalizeHotkeyEvent } from '../types'
+import { formatTime, parseTime, normalizeHotkeyEvent, TRACK_COLORS } from '../types'
 import { WaveformCanvas } from './WaveformCanvas'
 
 interface Props {
@@ -32,6 +32,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
   const [playerLastName, setPlayerLastName] = useState('')
   const [hotkey, setHotkey] = useState<string | undefined>(undefined)
   const [capturingHotkey, setCapturingHotkey] = useState(false)
+  const [colorLabel, setColorLabel] = useState<string | undefined>(undefined)
   const [previewing, setPreviewing] = useState(false)
   const previewNodeRef = React.useRef<AudioBufferSourceNode | null>(null)
   const previewCtxRef = React.useRef<AudioContext | null>(null)
@@ -53,6 +54,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     setPlayerLastName(track.playerLastName ?? '')
     setHotkey(track.hotkey)
     setCapturingHotkey(false)
+    setColorLabel(track.colorLabel)
 
     const existing = getBuffer(track.filePath)
     if (existing) {
@@ -154,7 +156,8 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
       playerNumber: playerNumber || undefined,
       playerFirstName: playerFirstName || undefined,
       playerLastName: playerLastName || undefined,
-      hotkey
+      hotkey,
+      colorLabel
     })
     stopPreview()
     onClose()
@@ -348,6 +351,48 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
           </div>
         </div>
 
+        {/* Color label */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, color: '#64748b' }}>Color Label</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setColorLabel(undefined)}
+              title="No color"
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: '50%',
+                background: '#0f172a',
+                border: `2px solid ${!colorLabel ? '#f1f5f9' : '#334155'}`,
+                color: '#64748b',
+                fontSize: 12,
+                lineHeight: 1,
+                padding: 0,
+                cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+            {TRACK_COLORS.map((color) => (
+              <button
+                key={color}
+                onClick={() => setColorLabel(color)}
+                title={color}
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  background: color,
+                  border: `2px solid ${colorLabel === color ? '#f1f5f9' : 'transparent'}`,
+                  boxShadow: colorLabel === color ? '0 0 0 1px rgba(0,0,0,0.4)' : 'none',
+                  padding: 0,
+                  cursor: 'pointer'
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
         {/* Waveform */}
         {audioBuffer ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -362,7 +407,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 12, color: '#22c55e' }}>In</span>
+                <span style={{ fontSize: 12, color: '#38bdf8' }}>In</span>
                 <input
                   style={{ ...fieldStyle, width: 80, fontVariantNumeric: 'tabular-nums' }}
                   value={formatTime(inPoint)}

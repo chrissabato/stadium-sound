@@ -20,6 +20,10 @@ const api: ElectronAPI = {
   ssp: {
     import: () => ipcRenderer.invoke('ssp:import')
   },
+  settings: {
+    setAudioDevices: (outputDeviceId: string, monitorDeviceId: string) =>
+      ipcRenderer.invoke('settings:setAudioDevices', outputDeviceId, monitorDeviceId)
+  },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
     checkForUpdate: () => ipcRenderer.invoke('app:checkForUpdate'),

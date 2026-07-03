@@ -1,9 +1,10 @@
-import type { AppConfig, TrackMetadata } from '../renderer/src/types'
+import type { AppConfig, AudioDevicePrefs, TrackMetadata } from '../renderer/src/types'
 
 export interface EventSetState {
   config: AppConfig | null
   filePath: string | null
   recentFiles: string[]
+  audioDevices: AudioDevicePrefs
 }
 
 export interface EventSetOpenResult {
@@ -33,6 +34,9 @@ export interface ElectronAPI {
   }
   ssp: {
     import: () => Promise<Array<{ name: string; tracks: Array<{ label: string; filePath: string; duration: string; name: string }> }> | null>
+  }
+  settings: {
+    setAudioDevices: (outputDeviceId: string, monitorDeviceId: string) => Promise<void>
   }
   app: {
     getVersion: () => Promise<string>

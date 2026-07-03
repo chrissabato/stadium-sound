@@ -38,7 +38,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices } = useConfig()
   const audio = useAudioEngine()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const [nowPlayingTrack, setNowPlayingTrack] = useState<Track | null>(null)
@@ -79,8 +79,8 @@ export default function App() {
 
   // Keep audio engine in sync with output device selection
   useEffect(() => {
-    audio.setOutputDevices(config.outputDeviceId ?? '', config.monitorDeviceId ?? '')
-  }, [config.outputDeviceId, config.monitorDeviceId])
+    audio.setOutputDevices(audioDevices.outputDeviceId, audioDevices.monitorDeviceId)
+  }, [audioDevices.outputDeviceId, audioDevices.monitorDeviceId])
 
   const selectedBank = config.banks.find((b) => b.id === config.selectedBankId) ?? null
   const selectedPlaylist = (config.playlists ?? []).find((p) => p.id === config.selectedPlaylistId) ?? null
@@ -521,6 +521,8 @@ export default function App() {
   }
 
   useEffect(() => {
+    // Config hasn't loaded yet, so selectedBank is still the DEFAULT_CONFIG
+    // placeholder (null) — wait rather than treating that as "nothing to load".
     if (!loaded || !selectedBank) return
     warmClips(selectedBank.tracks)
   }, [loaded, config.selectedBankId])
@@ -786,10 +788,13 @@ export default function App() {
           fadeIn: config.fadeIn ?? 0,
           fadeOut: config.fadeOut ?? 0,
           crossFade: config.crossFade ?? 0,
-          outputDeviceId: config.outputDeviceId ?? '',
-          monitorDeviceId: config.monitorDeviceId ?? ''
+          outputDeviceId: audioDevices.outputDeviceId,
+          monitorDeviceId: audioDevices.monitorDeviceId
         }}
-        onChange={(s) => updateConfig((c) => ({ ...c, fadeIn: s.fadeIn, fadeOut: s.fadeOut, crossFade: s.crossFade, outputDeviceId: s.outputDeviceId, monitorDeviceId: s.monitorDeviceId }))}
+        onChange={(s) => {
+          updateConfig((c) => ({ ...c, fadeIn: s.fadeIn, fadeOut: s.fadeOut, crossFade: s.crossFade }))
+          setAudioDevices({ outputDeviceId: s.outputDeviceId, monitorDeviceId: s.monitorDeviceId })
+        }}
         onClose={() => setSettingsOpen(false)}
       />
 

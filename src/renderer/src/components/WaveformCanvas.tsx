@@ -52,7 +52,7 @@ export function WaveformCanvas({ audioBuffer, inPoint, outPoint, duration, onInP
     }
 
     // In handle
-    ctx.fillStyle = '#22c55e'
+    ctx.fillStyle = '#38bdf8'
     ctx.fillRect(inX - 1, 0, 2, H)
     ctx.beginPath()
     ctx.moveTo(inX, 0)
