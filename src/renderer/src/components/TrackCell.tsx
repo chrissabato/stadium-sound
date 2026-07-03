@@ -7,6 +7,7 @@ interface Props {
   isPlaying: boolean
   isPlayed: boolean
   isMissing: boolean
+  isLoading: boolean
   playStartWallTime: number | null
   isReordering: boolean
   isAddToPlaylistMode: boolean
@@ -14,7 +15,7 @@ interface Props {
   onEdit: () => void
 }
 
-export function TrackCell({ track, isPlaying, isPlayed, isMissing, playStartWallTime, isReordering, isAddToPlaylistMode, onClick, onEdit }: Props) {
+export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, onClick, onEdit }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
@@ -260,9 +261,24 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, playStartWall
         <span style={{ fontSize: 11, color: isPlaying ? '#86efac' : isPlayed ? '#fca5a5' : '#64748b', fontVariantNumeric: 'tabular-nums' }}>
           {formatTime(trackDuration > 0 ? trackDuration : track.duration)}
         </span>
-        {hasCustomPoints && (
-          <span style={{ fontSize: 10, color: isPlaying ? '#86efac' : isPlayed ? '#fca5a5' : '#475569' }}>✂</span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          {isLoading && !isPlaying && (
+            <div
+              title="Loading audio…"
+              style={{
+                width: 9,
+                height: 9,
+                borderRadius: '50%',
+                border: '1.5px solid rgba(148,163,184,0.35)',
+                borderTopColor: '#94a3b8',
+                animation: 'track-loading-spin 0.7s linear infinite'
+              }}
+            />
+          )}
+          {hasCustomPoints && (
+            <span style={{ fontSize: 10, color: isPlaying ? '#86efac' : isPlayed ? '#fca5a5' : '#475569' }}>✂</span>
+          )}
+        </div>
       </div>
     </div>
   )

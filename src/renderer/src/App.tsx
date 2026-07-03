@@ -16,6 +16,21 @@ function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
+// Runs `tasks` with at most `limit` in flight at once. Keeping background
+// buffer pre-loads capped (rather than firing all of them at once) leaves
+// decode capacity free so an on-demand click for a not-yet-started track
+// can jump the queue instead of waiting behind a big burst of decodes.
+async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: number): Promise<void> {
+  let next = 0
+  async function worker() {
+    while (next < tasks.length) {
+      const task = tasks[next++]
+      await task().catch(() => {})
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker))
+}
+
 export default function App() {
   const { config, currentFilePath, updateConfig, loaded } = useConfig()
   const audio = useAudioEngine()
@@ -131,18 +146,19 @@ export default function App() {
   // used by the playlist transport, which should never silently no-op even if
   // engine state looks like this track is already playing (e.g. it stalled).
   function playTrackForce(track: Track) {
-    function markAndPlay() {
-      audio.playTrack(track.id, { inPoint: track.inPoint, outPoint: track.outPoint || track.duration }, { force: true })
-      setNowPlayingTrack(track)
-      setPlayedIds((prev) => new Set([...prev, track.id]))
+    // A cold track streams from disk instantly (the engine falls back to a
+    // media element when no buffer is cached); kick off the decode in the
+    // background so its next play uses the sample-accurate buffer path.
+    if (!audio.getBuffer(track.id)) {
+      audio.loadBuffer(track.id, track.filePath).catch(() => {})
     }
-
-    const buf = audio.getBuffer(track.id)
-    if (!buf) {
-      audio.loadBuffer(track.id, track.filePath).then(markAndPlay)
-    } else {
-      markAndPlay()
-    }
+    audio.playTrack(
+      track.id,
+      { inPoint: track.inPoint, outPoint: track.outPoint || track.duration, filePath: track.filePath },
+      { force: true }
+    )
+    setNowPlayingTrack(track)
+    setPlayedIds((prev) => new Set([...prev, track.id]))
   }
 
   function playTrack(track: Track) {
@@ -226,29 +242,27 @@ export default function App() {
   function saveEditedTrack(updated: Track) {
     updateConfig((c) => ({
       ...c,
-      // A hotkey can only belong to one track per bank — reassigning it here strips
-      // it from whichever other track in the same bank previously held it.
-      banks: c.banks.map((b) => {
-        const isUpdatedBank = b.tracks.some((t) => t.id === updated.id)
-        return {
-          ...b,
-          tracks: b.tracks.map((t) => {
-            if (t.id === updated.id) return updated
-            if (isUpdatedBank && updated.hotkey && t.hotkey === updated.hotkey) return { ...t, hotkey: undefined }
-            return t
-          })
-        }
-      })
+      // Hotkeys are global (fire from any bank) — reassigning one here strips it
+      // from whichever other track, in any bank, previously held it.
+      banks: c.banks.map((b) => ({
+        ...b,
+        tracks: b.tracks.map((t) => {
+          if (t.id === updated.id) return updated
+          if (updated.hotkey && t.hotkey === updated.hotkey) return { ...t, hotkey: undefined }
+          return t
+        })
+      }))
     }))
     if (nowPlayingTrack?.id === updated.id) setNowPlayingTrack(updated)
   }
 
-  // Which other track in the editing track's bank (if any) currently holds this hotkey —
-  // shown as a warning in the editor, resolved by saveEditedTrack on save.
+  // Which other track (in any bank) currently holds this hotkey — shown as a
+  // warning in the editor, resolved by saveEditedTrack on save.
   function hotkeyOwner(hotkey: string): string | null {
     if (!editingTrack) return null
-    const bank = config.banks.find((b) => b.tracks.some((t) => t.id === editingTrack.id))
-    const owner = bank?.tracks.find((t) => t.id !== editingTrack.id && t.hotkey === hotkey)
+    const owner = config.banks
+      .flatMap((b) => b.tracks)
+      .find((t) => t.id !== editingTrack.id && t.hotkey === hotkey)
     return owner ? (owner.title || owner.filePath) : null
   }
 
@@ -435,24 +449,55 @@ export default function App() {
     updateConfig((c) => ({ ...c, masterVolume: v }))
   }, [audio, updateConfig])
 
-  // Pre-load buffers for selected bank's tracks when bank switches
+  // Pre-load buffers for the selected bank's tracks so its plays are
+  // sample-accurate. Only the very first load (app startup) blocks the UI
+  // behind a loading screen; later bank/playlist switches load in the
+  // background. A click on a not-yet-decoded track never waits — the engine
+  // streams it from disk — and the decoded cache is LRU-capped in the engine,
+  // so RAM stays bounded even across many banks (a full event set decoded up
+  // front was measured to swamp a 16GB machine).
+  const initialLoadRef = useRef(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 0 })
+
+  // Capped concurrency: a track the user actually clicks is loaded on-demand
+  // via audio.loadBuffer directly (see playTrackForce), which either reuses
+  // an already-in-flight decode or — if this queue hasn't reached that track
+  // yet — starts immediately outside the queue. Keeping the queue's own
+  // concurrency low is what leaves room for that to jump ahead.
+  const PRELOAD_CONCURRENCY = 3
+
   useEffect(() => {
-    if (!selectedBank) return
-    selectedBank.tracks.forEach((t) => {
-      if (!audio.getBuffer(t.id) && t.filePath) {
-        audio.loadBuffer(t.id, t.filePath).catch(() => {})
-      }
-    })
-  }, [config.selectedBankId])
+    // Config hasn't loaded yet, so selectedBank is still the DEFAULT_CONFIG
+    // placeholder (null) — wait rather than treating that as "nothing to load".
+    if (!loaded) return
+    if (!selectedBank) { setInitialLoading(false); return }
+    const toLoad = selectedBank.tracks.filter((t) => !audio.getBuffer(t.id) && t.filePath)
+
+    if (initialLoadRef.current) {
+      // Background warm-up for a bank switch — don't block the UI.
+      runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
+      return
+    }
+    initialLoadRef.current = true
+
+    if (toLoad.length === 0) { setInitialLoading(false); return }
+    setLoadProgress({ loaded: 0, total: toLoad.length })
+    let doneCount = 0
+    runWithConcurrency(
+      toLoad.map((t) => () =>
+        audio.loadBuffer(t.id, t.filePath)
+          .finally(() => setLoadProgress({ loaded: ++doneCount, total: toLoad.length }))
+      ),
+      PRELOAD_CONCURRENCY
+    ).finally(() => setInitialLoading(false))
+  }, [loaded, config.selectedBankId])
 
   // Pre-load buffers for selected playlist's tracks when playlist switches
   useEffect(() => {
     if (!selectedPlaylist) return
-    selectedPlaylist.tracks.forEach((t) => {
-      if (!audio.getBuffer(t.id) && t.filePath) {
-        audio.loadBuffer(t.id, t.filePath).catch(() => {})
-      }
-    })
+    const toLoad = selectedPlaylist.tracks.filter((t) => !audio.getBuffer(t.id) && t.filePath)
+    runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
   }, [config.selectedPlaylistId])
 
   // Keyboard shortcuts: per-track hotkeys (scoped to the selected bank) plus a
@@ -503,14 +548,17 @@ export default function App() {
       return
     }
 
-    if (!selectedBank) return
     const key = normalizeHotkeyEvent(e)
     if (!key) return
-    const track = selectedBank.tracks.find((t) => t.hotkey === key)
+    // Hotkeys are global — search every bank, not just the one currently displayed.
+    const track = config.banks.flatMap((b) => b.tracks).find((t) => t.hotkey === key)
     if (!track) return
     e.preventDefault()
-    if (isReordering) return
-    if (isAddToPlaylistMode) addTrackToPlaylist(track)
+    // Reorder/add-to-playlist modes only affect clicks on the visible grid, so they
+    // only intercept a hotkey when it belongs to a track in that same visible bank.
+    const inSelectedBank = !!selectedBank?.tracks.some((t) => t.id === track.id)
+    if (inSelectedBank && isReordering) return
+    if (inSelectedBank && isAddToPlaylistMode) addTrackToPlaylist(track)
     else playTrack(track)
   }
 
@@ -522,10 +570,23 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  if (!loaded) {
+  if (!loaded || initialLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#475569' }}>
-        Loading…
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+        gap: 10,
+        color: '#94a3b8'
+      }}>
+        <div style={{ fontSize: 14 }}>Loading tracks…</div>
+        {loadProgress.total > 0 && (
+          <div style={{ fontSize: 12, color: '#64748b' }}>
+            {loadProgress.loaded} / {loadProgress.total}
+          </div>
+        )}
       </div>
     )
   }
@@ -619,6 +680,7 @@ export default function App() {
               playStartWallTime={audio.playStartWallTime}
               playedIds={playedIds}
               missingFileIds={missingFileIds}
+              loadingIds={audio.loadingIds}
               isMonitorMode={audio.isMonitorMode}
               isReordering={isReordering}
               isAddToPlaylistMode={isAddToPlaylistMode}
@@ -706,8 +768,7 @@ export default function App() {
 
       <ShortcutsModal
         open={shortcutsOpen}
-        bankName={selectedBank?.name ?? null}
-        bankTracks={selectedBank?.tracks ?? []}
+        banks={config.banks}
         onClose={() => setShortcutsOpen(false)}
       />
     </>

@@ -3,6 +3,10 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 interface PlayOptions {
   inPoint: number
   outPoint: number
+  // When set, a track with no decoded buffer streams from disk instead of
+  // silently doing nothing — this is what lets a cold click (right after a
+  // bank switch) start playing near-instantly.
+  filePath?: string
 }
 
 export interface FadeSettings {
@@ -11,9 +15,23 @@ export interface FadeSettings {
   crossFade: number
 }
 
+// Decoded PCM is huge (~22 MB per stereo minute at 48kHz), so the buffer cache
+// is LRU-capped: past this many bytes the least-recently-played buffers are
+// dropped. An evicted (or never-decoded) track still plays instantly via the
+// streaming path — it just isn't sample-accurate until it's re-decoded.
+const MAX_CACHE_BYTES = 2 * 1024 * 1024 * 1024 // 2 GiB ≈ 90 min of stereo 48kHz
+
+// A playing "thing" — either an AudioBufferSourceNode or a streaming <audio>
+// element. Everything downstream (fades, cross-fades, stop) only needs to be
+// able to stop it; the gain envelope lives on a per-track GainNode either way.
+interface PlaybackHandle {
+  stop(): void
+}
+
 interface AudioEngine {
   loadBuffer: (id: string, filePath: string) => Promise<AudioBuffer>
   getBuffer: (id: string) => AudioBuffer | undefined
+  loadingIds: Set<string>
   playTrack: (id: string, opts: PlayOptions, playOpts?: { force?: boolean }) => void
   stopAll: () => void
   stopImmediate: () => void
@@ -28,15 +46,26 @@ interface AudioEngine {
   playStartWallTime: number | null
 }
 
+function toMediaUrl(filePath: string): string {
+  return 'media:///' + filePath.replace(/\\/g, '/').split('/').map(encodeURIComponent).join('/')
+}
+
+function bufferBytes(buffer: AudioBuffer): number {
+  return buffer.length * buffer.numberOfChannels * 4
+}
+
 export function useAudioEngine(): AudioEngine {
   const ctxRef = useRef<AudioContext | null>(null)
   const masterGainRef = useRef<GainNode | null>(null)
   const bufferCache = useRef<Map<string, AudioBuffer>>(new Map())
+  const cacheBytesRef = useRef(0)
+  const pendingLoads = useRef<Map<string, Promise<AudioBuffer>>>(new Map())
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
 
   // Active = currently playing. Fading = being faded out but not yet stopped.
-  const activeNodeRef = useRef<AudioBufferSourceNode | null>(null)
+  const activeHandleRef = useRef<PlaybackHandle | null>(null)
   const activeTrackGainRef = useRef<GainNode | null>(null)
-  const fadingNodeRef = useRef<AudioBufferSourceNode | null>(null)
+  const fadingHandleRef = useRef<PlaybackHandle | null>(null)
   const fadeOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fadeSettingsRef = useRef<FadeSettings>({ fadeIn: 0, fadeOut: 0, crossFade: 0 })
@@ -46,8 +75,14 @@ export function useAudioEngine(): AudioEngine {
   const [isMonitorMode, setIsMonitorMode] = useState(false)
 
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null)
+  const playingTrackIdRef = useRef<string | null>(null)
   const [playStartCtxTime, setPlayStartCtxTime] = useState<number | null>(null)
   const [playStartWallTime, setPlayStartWallTime] = useState<number | null>(null)
+
+  function setPlaying(id: string | null) {
+    playingTrackIdRef.current = id
+    setPlayingTrackId(id)
+  }
 
   function applySinkId(ctx: AudioContext, deviceId: string) {
     // setSinkId is not yet in TypeScript's lib types
@@ -74,16 +109,66 @@ export function useAudioEngine(): AudioEngine {
       clearTimeout(fadeOutTimerRef.current)
       fadeOutTimerRef.current = null
     }
-    try { fadingNodeRef.current?.stop() } catch { /* already stopped */ }
-    fadingNodeRef.current = null
+    fadingHandleRef.current?.stop()
+    fadingHandleRef.current = null
   }
 
-  const loadBuffer = useCallback(async (id: string, filePath: string): Promise<AudioBuffer> => {
+  // Re-inserting on use keeps the Map in LRU order (oldest entry first).
+  function touchBuffer(id: string, buffer: AudioBuffer) {
+    bufferCache.current.delete(id)
+    bufferCache.current.set(id, buffer)
+  }
+
+  function evictOverCap() {
+    for (const [id, buffer] of bufferCache.current) {
+      if (cacheBytesRef.current <= MAX_CACHE_BYTES) break
+      if (id === playingTrackIdRef.current) continue
+      bufferCache.current.delete(id)
+      cacheBytesRef.current -= bufferBytes(buffer)
+    }
+  }
+
+  const loadBuffer = useCallback((id: string, filePath: string): Promise<AudioBuffer> => {
+    const cached = bufferCache.current.get(id)
+    if (cached) {
+      touchBuffer(id, cached)
+      return Promise.resolve(cached)
+    }
+
+    // A background pre-load may already be decoding this exact track — share
+    // that in-flight promise instead of kicking off a second, redundant
+    // read+decode of the same file (this used to double the wait whenever a
+    // user clicked a track before its pre-load had finished).
+    const pending = pendingLoads.current.get(id)
+    if (pending) return pending
+
     const ctx = getCtx()
-    const arrayBuffer = await window.electronAPI.readAudioFile(filePath)
-    const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-    bufferCache.current.set(id, audioBuffer)
-    return audioBuffer
+    setLoadingIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+
+    // Cleanup lives inside this same promise chain (not a separate .finally()
+    // hung off it) so its own rejection can't become an unhandled one — the
+    // caller's handling of the returned promise covers this too.
+    const promise = (async () => {
+      try {
+        const arrayBuffer = await window.electronAPI.readAudioFile(filePath)
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
+        bufferCache.current.set(id, audioBuffer)
+        cacheBytesRef.current += bufferBytes(audioBuffer)
+        evictOverCap()
+        return audioBuffer
+      } finally {
+        pendingLoads.current.delete(id)
+        setLoadingIds((prev) => {
+          if (!prev.has(id)) return prev
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+      }
+    })()
+
+    pendingLoads.current.set(id, promise)
+    return promise
   }, [])
 
   const getBuffer = useCallback((id: string) => bufferCache.current.get(id), [])
@@ -93,42 +178,42 @@ export function useAudioEngine(): AudioEngine {
 
     const { fadeOut } = fadeSettingsRef.current
 
-    if (activeNodeRef.current && activeTrackGainRef.current && fadeOut > 0) {
+    if (activeHandleRef.current && activeTrackGainRef.current && fadeOut > 0) {
       // Fade out: keep UI state until fade completes
       const ctx = getCtx()
-      const node = activeNodeRef.current
+      const handle = activeHandleRef.current
       const gain = activeTrackGainRef.current
       gain.gain.cancelScheduledValues(ctx.currentTime)
       gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
       gain.gain.linearRampToValueAtTime(0, ctx.currentTime + fadeOut)
-      fadingNodeRef.current = node
-      activeNodeRef.current = null
+      fadingHandleRef.current = handle
+      activeHandleRef.current = null
       activeTrackGainRef.current = null
       fadeOutTimerRef.current = setTimeout(() => {
-        try { fadingNodeRef.current?.stop() } catch { /* already stopped */ }
-        fadingNodeRef.current = null
+        fadingHandleRef.current?.stop()
+        fadingHandleRef.current = null
         fadeOutTimerRef.current = null
-        setPlayingTrackId(null)
+        setPlaying(null)
         setPlayStartCtxTime(null)
         setPlayStartWallTime(null)
       }, fadeOut * 1000 + 50)
       // playingTrackId stays set — UI reflects "still stopping"
     } else {
-      try { activeNodeRef.current?.stop() } catch { /* already stopped */ }
-      activeNodeRef.current = null
+      activeHandleRef.current?.stop()
+      activeHandleRef.current = null
       activeTrackGainRef.current = null
-      setPlayingTrackId(null)
+      setPlaying(null)
       setPlayStartCtxTime(null)
       setPlayStartWallTime(null)
     }
   }, [])
 
-  const playTrack = useCallback((id: string, { inPoint, outPoint }: PlayOptions, opts?: { force?: boolean }) => {
+  const playTrack = useCallback((id: string, { inPoint, outPoint, filePath }: PlayOptions, opts?: { force?: boolean }) => {
     if (!opts?.force && playingTrackId === id) {
       // Toggle off: if already fading, cancel and stop immediately
-      if (fadingNodeRef.current) {
+      if (fadingHandleRef.current) {
         cancelFadeTimer()
-        setPlayingTrackId(null)
+        setPlaying(null)
         setPlayStartCtxTime(null)
         return
       }
@@ -138,7 +223,7 @@ export function useAudioEngine(): AudioEngine {
 
     const ctx = getCtx()
     const buffer = bufferCache.current.get(id)
-    if (!buffer) return
+    if (!buffer && !filePath) return
 
     const { fadeIn, crossFade } = fadeSettingsRef.current
 
@@ -147,31 +232,27 @@ export function useAudioEngine(): AudioEngine {
 
     const trackGain = ctx.createGain()
     trackGain.connect(masterGainRef.current!)
-    const source = ctx.createBufferSource()
-    source.buffer = buffer
-    source.connect(trackGain)
 
-    const offset = Math.max(0, Math.min(inPoint, buffer.duration))
-    const dur = Math.max(0, Math.min(outPoint, buffer.duration) - offset)
-
-    if (crossFade > 0 && activeNodeRef.current && activeTrackGainRef.current) {
+    // Gain envelope + retiring the previous track works the same way for both
+    // playback paths since fades live on the per-track gain nodes.
+    if (crossFade > 0 && activeHandleRef.current && activeTrackGainRef.current) {
       // Cross fade: old track fades out, new track fades in simultaneously
-      const oldNode = activeNodeRef.current
+      const oldHandle = activeHandleRef.current
       const oldGain = activeTrackGainRef.current
       oldGain.gain.cancelScheduledValues(ctx.currentTime)
       oldGain.gain.setValueAtTime(oldGain.gain.value, ctx.currentTime)
       oldGain.gain.linearRampToValueAtTime(0, ctx.currentTime + crossFade)
-      fadingNodeRef.current = oldNode
+      fadingHandleRef.current = oldHandle
       fadeOutTimerRef.current = setTimeout(() => {
-        try { fadingNodeRef.current?.stop() } catch { /* already stopped */ }
-        fadingNodeRef.current = null
+        fadingHandleRef.current?.stop()
+        fadingHandleRef.current = null
         fadeOutTimerRef.current = null
       }, crossFade * 1000 + 50)
 
       trackGain.gain.setValueAtTime(0, ctx.currentTime)
       trackGain.gain.linearRampToValueAtTime(1, ctx.currentTime + crossFade)
     } else {
-      try { activeNodeRef.current?.stop() } catch { /* already stopped */ }
+      activeHandleRef.current?.stop()
 
       if (fadeIn > 0) {
         trackGain.gain.setValueAtTime(0, ctx.currentTime)
@@ -181,32 +262,84 @@ export function useAudioEngine(): AudioEngine {
       }
     }
 
-    // Resume context if suspended (created before first user gesture)
+    // Resume context if suspended (created before first user gesture). The
+    // streaming path needs this too — a media element routed through a
+    // suspended context is silent.
     if (ctx.state === 'suspended') ctx.resume()
-    source.start(0, offset, dur > 0 ? dur : undefined)
-    activeNodeRef.current = source
-    activeTrackGainRef.current = trackGain
-    setPlayingTrackId(id)
-    setPlayStartCtxTime(ctx.currentTime)
-    setPlayStartWallTime(Date.now())
 
-    source.onended = () => {
-      if (activeNodeRef.current === source) {
-        activeNodeRef.current = null
+    let handle: PlaybackHandle
+    const finish = () => {
+      if (activeHandleRef.current === handle) {
+        activeHandleRef.current = null
         activeTrackGainRef.current = null
-        setPlayingTrackId(null)
+        setPlaying(null)
         setPlayStartCtxTime(null)
         setPlayStartWallTime(null)
       }
     }
+
+    if (buffer) {
+      touchBuffer(id, buffer)
+
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+      source.connect(trackGain)
+
+      const offset = Math.max(0, Math.min(inPoint, buffer.duration))
+      const dur = Math.max(0, Math.min(outPoint, buffer.duration) - offset)
+      source.start(0, offset, dur > 0 ? dur : undefined)
+
+      handle = { stop: () => { try { source.stop() } catch { /* already stopped */ } } }
+      source.onended = finish
+    } else {
+      // No decoded buffer yet — stream the file through a media element so
+      // playback starts immediately. The caller kicks off a background decode,
+      // so the *next* play of this track uses the sample-accurate buffer path.
+      const el = new Audio()
+      el.preload = 'auto'
+      el.src = toMediaUrl(filePath!)
+      const srcNode = ctx.createMediaElementSource(el)
+      srcNode.connect(trackGain)
+      if (inPoint > 0) el.currentTime = inPoint
+
+      // Media elements have no built-in out-point; poll for it. ~50ms accuracy
+      // is acceptable for the single cold play this path covers.
+      const stopAt = outPoint > 0 ? outPoint : Infinity
+      let watchdog: ReturnType<typeof setInterval> | null = Number.isFinite(stopAt)
+        ? setInterval(() => {
+            if (el.currentTime >= stopAt) { handle.stop(); finish() }
+          }, 50)
+        : null
+
+      handle = {
+        stop: () => {
+          if (watchdog) { clearInterval(watchdog); watchdog = null }
+          el.onended = null
+          el.onerror = null
+          el.pause()
+          el.removeAttribute('src')
+          el.load()
+          try { srcNode.disconnect() } catch { /* already disconnected */ }
+        }
+      }
+      el.onended = () => { handle.stop(); finish() }
+      el.onerror = () => { handle.stop(); finish() }
+      el.play().catch(() => { /* load failures land in onerror */ })
+    }
+
+    activeHandleRef.current = handle
+    activeTrackGainRef.current = trackGain
+    setPlaying(id)
+    setPlayStartCtxTime(ctx.currentTime)
+    setPlayStartWallTime(Date.now())
   }, [playingTrackId, stopAll])
 
   const stopImmediate = useCallback(() => {
     cancelFadeTimer()
-    try { activeNodeRef.current?.stop() } catch { /* already stopped */ }
-    activeNodeRef.current = null
+    activeHandleRef.current?.stop()
+    activeHandleRef.current = null
     activeTrackGainRef.current = null
-    setPlayingTrackId(null)
+    setPlaying(null)
     setPlayStartCtxTime(null)
     setPlayStartWallTime(null)
   }, [])
@@ -238,11 +371,16 @@ export function useAudioEngine(): AudioEngine {
   }, [])
 
   useEffect(() => {
-    return () => { ctxRef.current?.close() }
+    return () => {
+      cancelFadeTimer()
+      activeHandleRef.current?.stop()
+      activeHandleRef.current = null
+      ctxRef.current?.close()
+    }
   }, [])
 
   return {
-    loadBuffer, getBuffer, playTrack, stopAll, stopImmediate,
+    loadBuffer, getBuffer, loadingIds, playTrack, stopAll, stopImmediate,
     setMasterVolume, setFadeSettings, setOutputDevices, setMonitorMode,
     isMonitorMode,
     playingTrackId,

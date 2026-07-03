@@ -79,7 +79,11 @@ export function parseTime(str: string): number {
 // This keeps them layout-independent (matched via e.code, not e.key) and guarantees
 // they never collide with the reserved global shortcuts (Escape/Space/Arrows/Ctrl+M),
 // none of which normalize to a value here.
-export function normalizeHotkeyEvent(e: KeyboardEvent): string | null {
+// Structural param type (not DOM KeyboardEvent): this file is also compiled
+// under tsconfig.node.json (via the preload's import), which has no DOM lib.
+export function normalizeHotkeyEvent(
+  e: { ctrlKey: boolean; metaKey: boolean; altKey: boolean; key: string; code: string }
+): string | null {
   if (e.ctrlKey || e.metaKey || e.altKey) return null
   if (/^F([1-9]|1[0-2])$/.test(e.key)) return e.key
   const digit = /^Digit([0-9])$/.exec(e.code) ?? /^Numpad([0-9])$/.exec(e.code)

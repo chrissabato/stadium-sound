@@ -47,3 +47,7 @@ input, select {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+@keyframes track-loading-spin {
+  to { transform: rotate(360deg); }
+}

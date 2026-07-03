@@ -1,10 +1,9 @@
 import React from 'react'
-import type { Track } from '../types'
+import type { Bank } from '../types'
 
 interface Props {
   open: boolean
-  bankName: string | null
-  bankTracks: Track[]
+  banks: Bank[]
   onClose: () => void
 }
 
@@ -35,12 +34,17 @@ function KeyCap({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function ShortcutsModal({ open, bankName, bankTracks, onClose }: Props) {
+export function ShortcutsModal({ open, banks, onClose }: Props) {
   if (!open) return null
 
-  const trackShortcuts = bankTracks
-    .filter((t) => t.hotkey)
-    .sort((a, b) => a.hotkey!.localeCompare(b.hotkey!, undefined, { numeric: true }))
+  const bankGroups = banks
+    .map((b) => ({
+      bank: b,
+      tracks: b.tracks
+        .filter((t) => t.hotkey)
+        .sort((a, b2) => a.hotkey!.localeCompare(b2.hotkey!, undefined, { numeric: true }))
+    }))
+    .filter((g) => g.tracks.length > 0)
 
   return (
     <div
@@ -94,20 +98,25 @@ export function ShortcutsModal({ open, bankName, bankTracks, onClose }: Props) {
 
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              {bankName ? `Buttons — ${bankName}` : 'Buttons'}
+              Buttons (fire from any bank)
             </div>
-            {trackShortcuts.length === 0 ? (
+            {bankGroups.length === 0 ? (
               <div style={{ fontSize: 12, color: '#475569' }}>
-                No buttons in this bank have a shortcut assigned yet. Set one from a button's editor.
+                No buttons have a shortcut assigned yet. Set one from a button's editor.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {trackShortcuts.map((t) => (
-                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 96, flexShrink: 0 }}><KeyCap>{t.hotkey}</KeyCap></div>
-                    <span style={{ fontSize: 13, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t.title || t.filePath}
-                    </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {bankGroups.map(({ bank, tracks }) => (
+                  <div key={bank.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>{bank.name}</span>
+                    {tracks.map((t) => (
+                      <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 96, flexShrink: 0 }}><KeyCap>{t.hotkey}</KeyCap></div>
+                        <span style={{ fontSize: 13, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {t.title || t.filePath}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>

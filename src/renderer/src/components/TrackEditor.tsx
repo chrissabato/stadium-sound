@@ -294,7 +294,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
 
         {/* Hotkey */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 11, color: '#64748b' }}>Keyboard Shortcut (plays this button — scoped to this bank)</label>
+          <label style={{ fontSize: 11, color: '#64748b' }}>Keyboard Shortcut (plays this button from any bank)</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {capturingHotkey ? (
               <input

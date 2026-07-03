@@ -8,6 +8,7 @@ interface Props {
   playStartWallTime: number | null
   playedIds: Set<string>
   missingFileIds: Set<string>
+  loadingIds: Set<string>
   isMonitorMode: boolean
   isReordering: boolean
   isAddToPlaylistMode: boolean
@@ -18,7 +19,7 @@ interface Props {
   onAddToPlaylist: (track: Track) => void
 }
 
-export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds, missingFileIds, isMonitorMode, isReordering, isAddToPlaylistMode, onPlayTrack, onEditTrack, onAddTracks, onReorder, onAddToPlaylist }: Props) {
+export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, onPlayTrack, onEditTrack, onAddTracks, onReorder, onAddToPlaylist }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const dragCounter = useRef(0)
@@ -116,6 +117,7 @@ export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds
               isPlaying={playingTrackId === track.id}
               isPlayed={playedIds.has(track.id)}
               isMissing={missingFileIds.has(track.id)}
+              isLoading={loadingIds.has(track.id)}
               playStartWallTime={playingTrackId === track.id ? playStartWallTime : null}
               isReordering={isReordering}
               isAddToPlaylistMode={isAddToPlaylistMode}
