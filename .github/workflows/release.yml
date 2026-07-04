@@ -56,6 +56,9 @@ jobs:
   update-website-version:
     needs: create-release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,3 +76,10 @@ jobs:
           git add docs/index.html
           git commit -m "chore: update website version to ${{ github.ref_name }}"
           git push
+      # A GITHUB_TOKEN push does not trigger other workflows (GitHub's
+      # anti-recursion protection), so the Pages push-trigger above never
+      # fires for this commit. Dispatch it explicitly instead.
+      - name: Trigger Pages deploy
+        run: gh workflow run pages.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
