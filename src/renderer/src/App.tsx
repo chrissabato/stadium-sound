@@ -26,6 +26,12 @@ function shouldDecode(t: { duration: number; inPoint?: number; outPoint?: number
   return played > 0 && played <= CLIP_DECODE_MAX_SECONDS
 }
 
+type DecodeRange = {
+  duration: number | Promise<number>
+  inPoint?: number
+  outPoint?: number
+}
+
 // Runs `tasks` with at most `limit` in flight at once. Keeping background
 // buffer pre-loads capped (rather than firing all of them at once) leaves
 // decode capacity free so an on-demand click for a not-yet-started track
@@ -272,6 +278,9 @@ export default function App() {
         })
       }))
     }))
+    if (updated.filePath && shouldDecode(updated) && !audio.getBuffer(updated.filePath)) {
+      audio.loadBuffer(updated.id, updated.filePath).catch(() => {})
+    }
     if (nowPlayingTrack?.id === updated.id) setNowPlayingTrack(updated)
   }
 
@@ -473,23 +482,23 @@ export default function App() {
   // only short clips belong in the LRU playback cache — a full song's PCM
   // would evict the warmed clip buffers. Long (or unknown-length) files get a
   // transient decode instead.
-  function loadEditorBuffer(id: string, filePath: string, duration: number | Promise<number>) {
-    if (typeof duration === 'number') {
-      return shouldDecode({ duration })
+  function loadEditorBuffer(id: string, filePath: string, range: DecodeRange) {
+    if (typeof range.duration === 'number') {
+      return shouldDecode({ duration: range.duration, inPoint: range.inPoint, outPoint: range.outPoint })
         ? audio.loadBuffer(id, filePath)
         : audio.decodeTransient(filePath)
     }
 
     const decoded = audio.decodeTransient(filePath)
+    decoded.catch(() => {})
     return (async () => {
       let resolvedDuration: number
       try {
-        resolvedDuration = await duration
+        resolvedDuration = await range.duration
       } catch (error) {
-        decoded.catch(() => {})
         throw error
       }
-      return shouldDecode({ duration: resolvedDuration })
+      return shouldDecode({ duration: resolvedDuration, inPoint: range.inPoint, outPoint: range.outPoint })
         ? audio.loadBuffer(id, filePath)
         : decoded
     })()

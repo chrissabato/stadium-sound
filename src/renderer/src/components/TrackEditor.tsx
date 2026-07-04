@@ -10,7 +10,11 @@ interface Props {
   onClose: () => void
   // duration steers cache policy upstream: short clips land in the playback
   // cache, long/unknown files get a transient decode
-  loadBuffer: (id: string, filePath: string, duration: number | Promise<number>) => Promise<AudioBuffer>
+  loadBuffer: (
+    id: string,
+    filePath: string,
+    range: { duration: number | Promise<number>; inPoint?: number; outPoint?: number }
+  ) => Promise<AudioBuffer>
   getBuffer: (filePath: string) => AudioBuffer | undefined
   // title of the other track in this bank currently holding the picked hotkey, if any —
   // used only to warn the user it'll be reassigned on save, doesn't block anything
@@ -61,7 +65,11 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
       setAudioBuffer(existing)
     } else if (track.filePath) {
       setLoading(true)
-      loadBuffer(track.id, track.filePath, track.duration)
+      loadBuffer(track.id, track.filePath, {
+        duration: track.duration,
+        inPoint: track.inPoint,
+        outPoint: track.outPoint
+      })
         .then((buf) => { setAudioBuffer(buf); setLoading(false) })
         .catch(() => setLoading(false))
     }
@@ -86,7 +94,10 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     setLoading(true)
     try {
       const metaPromise = window.electronAPI.getTrackMetadata(path)
-      const bufPromise = loadBuffer(track.id, path, metaPromise.then((meta) => meta.duration))
+      const bufPromise = loadBuffer(track.id, path, {
+        duration: metaPromise.then((meta) => meta.duration),
+        inPoint: 0
+      })
       const [meta, buf] = await Promise.all([metaPromise, bufPromise])
       setFilePath(path)
       setArtist(meta.artist)
