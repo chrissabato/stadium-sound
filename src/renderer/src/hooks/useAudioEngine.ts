@@ -169,8 +169,14 @@ export function useAudioEngine(): AudioEngine {
     const pending = pendingLoads.current.get(filePath)
     if (pending) {
       markLoading(id)
-      pending.catch(() => {}).finally(() => unmarkLoading(id))
-      return pending
+      return pending.then((audioBuffer) => {
+        if (!bufferCache.current.has(filePath)) {
+          bufferCache.current.set(filePath, audioBuffer)
+          cacheBytesRef.current += bufferBytes(audioBuffer)
+          evictOverCap()
+        }
+        return audioBuffer
+      }).finally(() => unmarkLoading(id))
     }
 
     const ctx = getCtx()
@@ -207,8 +213,16 @@ export function useAudioEngine(): AudioEngine {
     if (cached) return cached
     const pending = pendingLoads.current.get(filePath)
     if (pending) return pending
-    const arrayBuffer = await window.electronAPI.readAudioFile(filePath)
-    return getCtx().decodeAudioData(arrayBuffer)
+    const promise = (async () => {
+      try {
+        const arrayBuffer = await window.electronAPI.readAudioFile(filePath)
+        return await getCtx().decodeAudioData(arrayBuffer)
+      } finally {
+        pendingLoads.current.delete(filePath)
+      }
+    })()
+    pendingLoads.current.set(filePath, promise)
+    return promise
   }, [])
 
   const getBuffer = useCallback((filePath: string) => bufferCache.current.get(filePath), [])

@@ -16,10 +16,14 @@ function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-// Only short clips are worth decoding to PCM — full songs stream from disk.
-// Unknown duration (failed metadata read) is treated as long, i.e. streamed.
-function shouldDecode(t: { duration: number }): boolean {
-  return t.duration > 0 && t.duration <= CLIP_DECODE_MAX_SECONDS
+// Only short played ranges are worth decoding to PCM — full songs stream from
+// disk. Unknown duration (failed metadata read) is treated as long, i.e.
+// streamed, until a reprobe can self-heal it.
+function shouldDecode(t: { duration: number; inPoint?: number; outPoint?: number }): boolean {
+  const inPoint = t.inPoint ?? 0
+  const outPoint = t.outPoint || t.duration
+  const played = outPoint - inPoint
+  return played > 0 && played <= CLIP_DECODE_MAX_SECONDS
 }
 
 // Runs `tasks` with at most `limit` in flight at once. Keeping background
@@ -147,6 +151,7 @@ export default function App() {
         b.id === c.selectedBankId ? { ...b, tracks: [...b.tracks, ...newTracks] } : b
       )
     }))
+    warmClips(newTracks)
   }
 
   // Always (re)starts playback of this track, bypassing the toggle-off shortcut —
@@ -159,6 +164,12 @@ export default function App() {
     // costs ~22 MB of PCM per minute for no audible benefit.
     if (shouldDecode(track) && !audio.getBuffer(track.filePath)) {
       audio.loadBuffer(track.id, track.filePath).catch(() => {})
+    } else if (track.duration === 0 && track.filePath) {
+      reprobeTrackDuration(track).then((updated) => {
+        if (updated && shouldDecode(updated) && !audio.getBuffer(updated.filePath)) {
+          audio.loadBuffer(updated.id, updated.filePath).catch(() => {})
+        }
+      }).catch(() => {})
     }
     audio.playTrack(
       track.id,
@@ -366,6 +377,7 @@ export default function App() {
         p.id === c.selectedPlaylistId ? { ...p, tracks: [...p.tracks, ...newTracks] } : p
       )
     }))
+    warmClips(newTracks)
   }
 
   function addTrackToPlaylist(track: Track) {
@@ -461,10 +473,26 @@ export default function App() {
   // only short clips belong in the LRU playback cache — a full song's PCM
   // would evict the warmed clip buffers. Long (or unknown-length) files get a
   // transient decode instead.
-  function loadEditorBuffer(id: string, filePath: string, duration: number) {
-    return shouldDecode({ duration })
-      ? audio.loadBuffer(id, filePath)
-      : audio.decodeTransient(filePath)
+  function loadEditorBuffer(id: string, filePath: string, duration: number | Promise<number>) {
+    if (typeof duration === 'number') {
+      return shouldDecode({ duration })
+        ? audio.loadBuffer(id, filePath)
+        : audio.decodeTransient(filePath)
+    }
+
+    const decoded = audio.decodeTransient(filePath)
+    return (async () => {
+      let resolvedDuration: number
+      try {
+        resolvedDuration = await duration
+      } catch (error) {
+        decoded.catch(() => {})
+        throw error
+      }
+      return shouldDecode({ duration: resolvedDuration })
+        ? audio.loadBuffer(id, filePath)
+        : decoded
+    })()
   }
 
   // Warm the decoded cache for the selected bank's *short clips* in the
@@ -497,6 +525,14 @@ export default function App() {
     }))
   }
 
+  async function reprobeTrackDuration<T extends Track>(track: T): Promise<T | null> {
+    if (!track.filePath || track.duration !== 0) return track
+    const meta = await window.electronAPI.getTrackMetadata(track.filePath)
+    if (meta.duration <= 0) return null
+    setTrackDuration(track.id, meta.duration)
+    return { ...track, duration: meta.duration, outPoint: track.outPoint || meta.duration }
+  }
+
   // Tracks persisted with duration 0 (SSP imports without timing info, failed
   // metadata reads) are re-probed first and the result persisted — without
   // this they'd be permanently misclassified as songs and never decode, even
@@ -505,16 +541,9 @@ export default function App() {
     const tasks = tracks
       .filter((t) => t.filePath && (shouldDecode(t) || t.duration === 0))
       .map((t) => async () => {
-        let duration = t.duration
-        if (duration === 0) {
-          const meta = await window.electronAPI.getTrackMetadata(t.filePath)
-          if (meta.duration > 0) {
-            duration = meta.duration
-            setTrackDuration(t.id, duration)
-          }
-        }
-        if (shouldDecode({ duration }) && !audio.getBuffer(t.filePath)) {
-          await audio.loadBuffer(t.id, t.filePath)
+        const track = await reprobeTrackDuration(t)
+        if (track && shouldDecode(track) && !audio.getBuffer(track.filePath)) {
+          await audio.loadBuffer(track.id, track.filePath)
         }
       })
     runWithConcurrency(tasks, PRELOAD_CONCURRENCY)
