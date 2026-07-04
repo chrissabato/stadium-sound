@@ -8,8 +8,14 @@ interface Props {
   onSave: (updated: Track) => void
   onRemove: (id: string) => void
   onClose: () => void
-  loadBuffer: (id: string, filePath: string) => Promise<AudioBuffer>
-  getBuffer: (id: string) => AudioBuffer | undefined
+  // duration steers cache policy upstream: short clips land in the playback
+  // cache, long/unknown files get a transient decode
+  loadBuffer: (
+    id: string,
+    filePath: string,
+    range: { duration: number | Promise<number>; inPoint?: number; outPoint?: number }
+  ) => Promise<AudioBuffer>
+  getBuffer: (filePath: string) => AudioBuffer | undefined
   // title of the other track in this bank currently holding the picked hotkey, if any —
   // used only to warn the user it'll be reassigned on save, doesn't block anything
   hotkeyOwner: (hotkey: string) => string | null
@@ -38,7 +44,9 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
   const previewStartInPointRef = React.useRef<number>(0)
 
   useEffect(() => {
-    if (!track) return
+    // Release the decoded buffer on close — a full song's PCM held in state
+    // would otherwise outlive the editor.
+    if (!track) { setAudioBuffer(null); return }
     setFilePath(track.filePath)
     setArtist(track.artist)
     setTitle(track.title)
@@ -52,12 +60,16 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     setCapturingHotkey(false)
     setColorLabel(track.colorLabel)
 
-    const existing = getBuffer(track.id)
+    const existing = getBuffer(track.filePath)
     if (existing) {
       setAudioBuffer(existing)
     } else if (track.filePath) {
       setLoading(true)
-      loadBuffer(track.id, track.filePath)
+      loadBuffer(track.id, track.filePath, {
+        duration: track.duration,
+        inPoint: track.inPoint,
+        outPoint: track.outPoint
+      })
         .then((buf) => { setAudioBuffer(buf); setLoading(false) })
         .catch(() => setLoading(false))
     }
@@ -81,10 +93,12 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     const path = paths[0]
     setLoading(true)
     try {
-      const [meta, buf] = await Promise.all([
-        window.electronAPI.getTrackMetadata(path),
-        loadBuffer(track.id, path)
-      ])
+      const metaPromise = window.electronAPI.getTrackMetadata(path)
+      const bufPromise = loadBuffer(track.id, path, {
+        duration: metaPromise.then((meta) => meta.duration),
+        inPoint: 0
+      })
+      const [meta, buf] = await Promise.all([metaPromise, bufPromise])
       setFilePath(path)
       setArtist(meta.artist)
       setTitle(meta.title)

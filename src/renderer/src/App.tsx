@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useAudioEngine } from './hooks/useAudioEngine'
+import { useAudioEngine, CLIP_DECODE_MAX_SECONDS } from './hooks/useAudioEngine'
 import { useConfig } from './hooks/useConfig'
 import { Toolbar } from './components/Toolbar'
 import { Sidebar } from './components/Sidebar'
@@ -14,6 +14,22 @@ import { normalizeHotkeyEvent } from './types'
 
 function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+// Only short played ranges are worth decoding to PCM — full songs stream from
+// disk. Unknown duration (failed metadata read) is treated as long, i.e.
+// streamed, until a reprobe can self-heal it.
+function shouldDecode(t: { duration: number; inPoint?: number; outPoint?: number }): boolean {
+  const inPoint = t.inPoint ?? 0
+  const outPoint = t.outPoint || t.duration
+  const played = outPoint - inPoint
+  return played > 0 && played <= CLIP_DECODE_MAX_SECONDS
+}
+
+type DecodeRange = {
+  duration: number | Promise<number>
+  inPoint?: number
+  outPoint?: number
 }
 
 // Runs `tasks` with at most `limit` in flight at once. Keeping background
@@ -120,8 +136,9 @@ export default function App() {
       paths.map(async (filePath) => {
         const meta = await window.electronAPI.getTrackMetadata(filePath)
         const id = makeId()
-        // Pre-load buffer in background so first click is instant
-        audio.loadBuffer(id, filePath).catch(() => {})
+        // Pre-decode short clips so their first click is sample-accurate;
+        // songs stream on demand.
+        if (shouldDecode(meta)) audio.loadBuffer(id, filePath).catch(() => {})
         return {
           id,
           filePath,
@@ -140,17 +157,25 @@ export default function App() {
         b.id === c.selectedBankId ? { ...b, tracks: [...b.tracks, ...newTracks] } : b
       )
     }))
+    warmClips(newTracks)
   }
 
   // Always (re)starts playback of this track, bypassing the toggle-off shortcut —
   // used by the playlist transport, which should never silently no-op even if
   // engine state looks like this track is already playing (e.g. it stalled).
   function playTrackForce(track: Track) {
-    // A cold track streams from disk instantly (the engine falls back to a
-    // media element when no buffer is cached); kick off the decode in the
-    // background so its next play uses the sample-accurate buffer path.
-    if (!audio.getBuffer(track.id)) {
+    // Every track streams from disk instantly when it has no decoded buffer.
+    // Only short clips get a background decode kicked off here, so their
+    // *next* play uses the sample-accurate buffer path — decoding full songs
+    // costs ~22 MB of PCM per minute for no audible benefit.
+    if (shouldDecode(track) && !audio.getBuffer(track.filePath)) {
       audio.loadBuffer(track.id, track.filePath).catch(() => {})
+    } else if (track.duration === 0 && track.filePath) {
+      reprobeTrackDuration(track).then((updated) => {
+        if (updated && shouldDecode(updated) && !audio.getBuffer(updated.filePath)) {
+          audio.loadBuffer(updated.id, updated.filePath).catch(() => {})
+        }
+      }).catch(() => {})
     }
     audio.playTrack(
       track.id,
@@ -253,6 +278,9 @@ export default function App() {
         })
       }))
     }))
+    if (updated.filePath && shouldDecode(updated) && !audio.getBuffer(updated.filePath)) {
+      audio.loadBuffer(updated.id, updated.filePath).catch(() => {})
+    }
     if (nowPlayingTrack?.id === updated.id) setNowPlayingTrack(updated)
   }
 
@@ -338,7 +366,7 @@ export default function App() {
       paths.map(async (filePath) => {
         const meta = await window.electronAPI.getTrackMetadata(filePath)
         const id = makeId()
-        audio.loadBuffer(id, filePath).catch(() => {})
+        if (shouldDecode(meta)) audio.loadBuffer(id, filePath).catch(() => {})
         return {
           id,
           itemId: id,
@@ -358,6 +386,7 @@ export default function App() {
         p.id === c.selectedPlaylistId ? { ...p, tracks: [...p.tracks, ...newTracks] } : p
       )
     }))
+    warmClips(newTracks)
   }
 
   function addTrackToPlaylist(track: Track) {
@@ -449,12 +478,37 @@ export default function App() {
     updateConfig((c) => ({ ...c, masterVolume: v }))
   }, [audio, updateConfig])
 
-  // Pre-load buffers for the selected bank's tracks so its plays are
-  // sample-accurate. This always runs in the background — a click on a
-  // not-yet-decoded track never waits, since the engine streams it from disk
-  // — and the decoded cache is LRU-capped in the engine, so RAM stays
-  // bounded even across many banks (a full event set decoded up front was
-  // measured to swamp a 16GB machine).
+  // The editor needs a full decode for its waveform regardless of length, but
+  // only short clips belong in the LRU playback cache — a full song's PCM
+  // would evict the warmed clip buffers. Long (or unknown-length) files get a
+  // transient decode instead.
+  function loadEditorBuffer(id: string, filePath: string, range: DecodeRange) {
+    if (typeof range.duration === 'number') {
+      return shouldDecode({ duration: range.duration, inPoint: range.inPoint, outPoint: range.outPoint })
+        ? audio.loadBuffer(id, filePath)
+        : audio.decodeTransient(filePath)
+    }
+
+    const decoded = audio.decodeTransient(filePath)
+    decoded.catch(() => {})
+    return (async () => {
+      let resolvedDuration: number
+      try {
+        resolvedDuration = await range.duration
+      } catch (error) {
+        throw error
+      }
+      return shouldDecode({ duration: resolvedDuration, inPoint: range.inPoint, outPoint: range.outPoint })
+        ? audio.loadBuffer(id, filePath)
+        : decoded
+    })()
+  }
+
+  // Warm the decoded cache for the selected bank's *short clips* in the
+  // background. Full songs are never pre-decoded — they stream on demand —
+  // so startup and bank switches are instant regardless of bank size, and
+  // RAM stays bounded (a full event set decoded up front was measured to
+  // swamp a 16GB machine).
   //
   // Capped concurrency: a track the user actually clicks is loaded on-demand
   // via audio.loadBuffer directly (see playTrackForce), which either reuses
@@ -463,19 +517,58 @@ export default function App() {
   // concurrency low is what leaves room for that to jump ahead.
   const PRELOAD_CONCURRENCY = 3
 
+  // Persist a re-probed duration everywhere the track appears (banks and
+  // playlists share ids for copied tracks); outPoint 0 means "unset", so it
+  // gets the real end too.
+  function setTrackDuration(id: string, duration: number) {
+    updateConfig((c) => ({
+      ...c,
+      banks: c.banks.map((b) => ({
+        ...b,
+        tracks: b.tracks.map((t) => t.id === id ? { ...t, duration, outPoint: t.outPoint || duration } : t)
+      })),
+      playlists: (c.playlists ?? []).map((p) => ({
+        ...p,
+        tracks: p.tracks.map((t) => t.id === id ? { ...t, duration, outPoint: t.outPoint || duration } : t)
+      }))
+    }))
+  }
+
+  async function reprobeTrackDuration<T extends Track>(track: T): Promise<T | null> {
+    if (!track.filePath || track.duration !== 0) return track
+    const meta = await window.electronAPI.getTrackMetadata(track.filePath)
+    if (meta.duration <= 0) return null
+    setTrackDuration(track.id, meta.duration)
+    return { ...track, duration: meta.duration, outPoint: track.outPoint || meta.duration }
+  }
+
+  // Tracks persisted with duration 0 (SSP imports without timing info, failed
+  // metadata reads) are re-probed first and the result persisted — without
+  // this they'd be permanently misclassified as songs and never decode, even
+  // when they're really 3-second stingers.
+  function warmClips(tracks: Track[]) {
+    const tasks = tracks
+      .filter((t) => t.filePath && (shouldDecode(t) || t.duration === 0))
+      .map((t) => async () => {
+        const track = await reprobeTrackDuration(t)
+        if (track && shouldDecode(track) && !audio.getBuffer(track.filePath)) {
+          await audio.loadBuffer(track.id, track.filePath)
+        }
+      })
+    runWithConcurrency(tasks, PRELOAD_CONCURRENCY)
+  }
+
   useEffect(() => {
     // Config hasn't loaded yet, so selectedBank is still the DEFAULT_CONFIG
     // placeholder (null) — wait rather than treating that as "nothing to load".
     if (!loaded || !selectedBank) return
-    const toLoad = selectedBank.tracks.filter((t) => !audio.getBuffer(t.id) && t.filePath)
-    runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
+    warmClips(selectedBank.tracks)
   }, [loaded, config.selectedBankId])
 
-  // Pre-load buffers for selected playlist's tracks when playlist switches
+  // Same short-clip warm-up when the selected playlist switches
   useEffect(() => {
     if (!selectedPlaylist) return
-    const toLoad = selectedPlaylist.tracks.filter((t) => !audio.getBuffer(t.id) && t.filePath)
-    runWithConcurrency(toLoad.map((t) => () => audio.loadBuffer(t.id, t.filePath)), PRELOAD_CONCURRENCY)
+    warmClips(selectedPlaylist.tracks)
   }, [config.selectedPlaylistId])
 
   // Keyboard shortcuts: per-track hotkeys (scoped to the selected bank) plus a
@@ -548,18 +641,19 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  // Only the (fast) config read gates first paint — audio is never a startup
+  // blocker: songs stream on demand and short clips warm in the background.
   if (!loaded) {
     return (
       <div style={{
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         flex: 1,
-        gap: 10,
-        color: '#94a3b8'
+        color: '#94a3b8',
+        fontSize: 14
       }}>
-        <div style={{ fontSize: 14 }}>Loading tracks…</div>
+        Loading…
       </div>
     )
   }
@@ -721,7 +815,7 @@ export default function App() {
         onSave={saveEditedTrack}
         onRemove={removeTrack}
         onClose={() => setEditingTrack(null)}
-        loadBuffer={audio.loadBuffer}
+        loadBuffer={loadEditorBuffer}
         getBuffer={audio.getBuffer}
         hotkeyOwner={hotkeyOwner}
       />
