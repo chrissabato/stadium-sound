@@ -110,6 +110,46 @@
     }
     .nav-cta:hover { background: var(--orange-d); }
 
+    /* ── DOWNLOAD DROPDOWNS ── */
+    .dl-dd { position: relative; }
+    .dl-dd > summary {
+      list-style: none;
+      cursor: pointer;
+    }
+    .dl-dd > summary::-webkit-details-marker { display: none; }
+    .dl-dd > summary::after {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-left: 3px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: rotate(45deg) translateY(-2px);
+      opacity: 0.75;
+    }
+    .dl-dd > summary:focus-visible {
+      outline: 2px solid var(--orange);
+      outline-offset: 3px;
+    }
+    .dl-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      min-width: 260px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      z-index: 50;
+    }
+    .dl-menu a { white-space: nowrap; }
+    .nav-dl .dl-menu { left: auto; right: 0; }
+
     /* ── HERO ── */
     .hero {
       display: grid;
@@ -392,7 +432,7 @@
     /* ── RESPONSIVE ── */
     @media (max-width: 860px) {
       nav { padding: 0 20px; }
-      .nav-cta { display: none; }
+      .nav-dl { display: none; }
 
       .hero {
         grid-template-columns: 1fr;
@@ -423,7 +463,27 @@
     <span class="nav-brand-name">Stadium Sound</span>
   </a>
   <div class="nav-right">
-    <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup.exe" class="nav-cta">Download</a>
+    <details class="dl-dd nav-dl">
+      <summary class="nav-cta">Download</summary>
+      <div class="dl-menu">
+        <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-x64.exe" class="dl-link">
+          <span class="dl-link-left">Windows · x64</span>
+          <span class="dl-link-arrow">↓</span>
+        </a>
+        <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-arm64.exe" class="dl-link">
+          <span class="dl-link-left">Windows · ARM64</span>
+          <span class="dl-link-arrow">↓</span>
+        </a>
+        <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-x64.dmg" class="dl-link">
+          <span class="dl-link-left">macOS · Intel</span>
+          <span class="dl-link-arrow">↓</span>
+        </a>
+        <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-arm64.dmg" class="dl-link">
+          <span class="dl-link-left">macOS · Apple Silicon</span>
+          <span class="dl-link-arrow">↓</span>
+        </a>
+      </div>
+    </details>
   </div>
 </nav>
 
@@ -435,14 +495,38 @@
       <h1>Stadium<br>Sound</h1>
       <p class="hero-sub">Professional audio playback for venue operators. Organize tracks into banks, trigger them instantly, and control the room.</p>
       <div class="cta-row">
-        <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup.exe" class="btn btn-win">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-          Download for Windows
-        </a>
-        <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-x64.dmg" class="btn btn-mac">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
-          Download for macOS
-        </a>
+        <details class="dl-dd">
+          <summary class="btn btn-win">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+            Download for Windows
+          </summary>
+          <div class="dl-menu">
+            <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-x64.exe" class="dl-link">
+              <span class="dl-link-left">Windows · x64</span>
+              <span class="dl-link-arrow">↓</span>
+            </a>
+            <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-arm64.exe" class="dl-link">
+              <span class="dl-link-left">Windows · ARM64</span>
+              <span class="dl-link-arrow">↓</span>
+            </a>
+          </div>
+        </details>
+        <details class="dl-dd">
+          <summary class="btn btn-mac">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+            Download for macOS
+          </summary>
+          <div class="dl-menu">
+            <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-x64.dmg" class="dl-link">
+              <span class="dl-link-left">macOS · Intel</span>
+              <span class="dl-link-arrow">↓</span>
+            </a>
+            <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-arm64.dmg" class="dl-link">
+              <span class="dl-link-left">macOS · Apple Silicon</span>
+              <span class="dl-link-arrow">↓</span>
+            </a>
+          </div>
+        </details>
         <span class="cta-note">v0.1.5 · Free &amp; open source</span>
       </div>
     </div>
@@ -508,12 +592,19 @@
       <div class="dl-card">
         <div class="dl-platform">Windows</div>
         <div class="dl-name">Windows Installer</div>
-        <div class="dl-req">Windows 10 or later · x64</div>
+        <div class="dl-req">Windows 10 or later · x64 &amp; ARM64</div>
         <div class="dl-links">
-          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup.exe" class="dl-link">
+          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-x64.exe" class="dl-link">
             <span class="dl-link-left">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-              Stadium-Sound-Setup.exe
+              Stadium-Sound-Setup-x64.exe
+            </span>
+            <span class="dl-link-arrow">↓</span>
+          </a>
+          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-arm64.exe" class="dl-link">
+            <span class="dl-link-left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+              Stadium-Sound-Setup-arm64.exe — ARM64
             </span>
             <span class="dl-link-arrow">↓</span>
           </a>
@@ -559,6 +650,14 @@
     <a href="https://github.com/chrissabato/stadium-sound" target="_blank" rel="noopener">GitHub ↗</a>
   </div>
 </footer>
+
+<script>
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.dl-dd[open]').forEach((dd) => {
+      if (!dd.contains(e.target)) dd.removeAttribute('open')
+    })
+  })
+</script>
 
 </body>
 </html>

@@ -5,7 +5,8 @@ A soundboard app for sporting events. Manage named banks of audio tracks and pla
 ## Download
 
 ### Windows
-[Download for Windows](https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup.exe)
+[Download for Windows (x64)](https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-x64.exe)  
+[Download for Windows (ARM64)](https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-arm64.exe)
 
 ### macOS
 [Download for macOS (Intel)](https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-x64.dmg)  
