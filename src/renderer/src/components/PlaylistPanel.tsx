@@ -23,7 +23,7 @@ interface Props {
   onPlaylistPlay: () => void
   onPlaylistPause: () => void
   onPlaylistSkip: () => void
-  onPlaylistStop: () => void
+  onPlaylistShuffle: () => void
 }
 
 export function PlaylistPanel({
@@ -47,7 +47,7 @@ export function PlaylistPanel({
   onPlaylistPlay,
   onPlaylistPause,
   onPlaylistSkip,
-  onPlaylistStop
+  onPlaylistShuffle
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
@@ -300,7 +300,7 @@ export function PlaylistPanel({
           onPlay={onPlaylistPlay}
           onPause={onPlaylistPause}
           onSkip={onPlaylistSkip}
-          onStop={onPlaylistStop}
+          onShuffle={onPlaylistShuffle}
         />
       ) : (
         <div style={{

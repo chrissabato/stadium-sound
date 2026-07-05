@@ -48,7 +48,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips } = useConfig()
   const audio = useAudioEngine()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const [nowPlayingTrack, setNowPlayingTrack] = useState<Track | null>(null)
@@ -207,6 +207,16 @@ export default function App() {
     setPlaylistIndex(-1)
   }
 
+  // Move the visible selection past the track that was just stopped, so the
+  // next Play continues the playlist instead of replaying the same track.
+  function advancePastStoppedTrack() {
+    if (playingPlaylistId === null) return
+    const playlist = (config.playlists ?? []).find((p) => p.id === playingPlaylistId)
+    if (!playlist || playlist.id !== config.selectedPlaylistId) return
+    const next = playlistIndex + 1
+    setSelectedTrackIndex(next < playlist.tracks.length ? next : 0)
+  }
+
   function playPlaylistTrackAt(playlist: Playlist, index: number) {
     const t = playlist.tracks[index]
     if (!t) {
@@ -255,11 +265,13 @@ export default function App() {
   }, [audio.playingTrackId])
 
   function stopAll() {
+    advancePastStoppedTrack()
     breakPlaylistChain()
     audio.stopImmediate()
   }
 
   function stopWithFade() {
+    advancePastStoppedTrack()
     breakPlaylistChain()
     audio.stopAll()
   }
@@ -428,6 +440,23 @@ export default function App() {
     }))
   }
 
+  function shufflePlaylistTracks(playlist: Playlist) {
+    const shuffled = [...playlist.tracks]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    if (playingPlaylistId === playlist.id) {
+      breakPlaylistChain()
+      audio.stopImmediate()
+    }
+    if (playlist.id === config.selectedPlaylistId) setSelectedTrackIndex(-1)
+    updateConfig((c) => ({
+      ...c,
+      playlists: (c.playlists ?? []).map((p) => p.id === playlist.id ? { ...p, tracks: shuffled } : p)
+    }))
+  }
+
   function toggleAddToPlaylistMode() {
     setIsAddToPlaylistMode((v) => {
       const next = !v
@@ -459,18 +488,6 @@ export default function App() {
   function playlistSkip(playlist: Playlist) {
     if (playingPlaylistId !== playlist.id) return
     playPlaylistTrackAt(playlist, playlistIndex + 1)
-  }
-
-  function playlistStop(playlist: Playlist) {
-    if (playingPlaylistId !== playlist.id) return
-    // Advance the selection past the track that was playing, so the next Play
-    // resumes the playlist from where it left off instead of replaying it.
-    if (playlist.id === config.selectedPlaylistId) {
-      const next = playlistIndex + 1
-      setSelectedTrackIndex(next < playlist.tracks.length ? next : 0)
-    }
-    breakPlaylistChain()
-    audio.stopAll()
   }
 
   const handleVolumeChange = useCallback((v: number) => {
@@ -751,6 +768,7 @@ export default function App() {
               isMonitorMode={audio.isMonitorMode}
               isReordering={isReordering}
               isAddToPlaylistMode={isAddToPlaylistMode}
+              showTrackTooltips={showTrackTooltips}
               onPlayTrack={playTrack}
               onEditTrack={setEditingTrack}
               onAddTracks={addTracks}
@@ -795,7 +813,7 @@ export default function App() {
             onPlaylistPlay={() => selectedPlaylist && playlistPlay(selectedPlaylist)}
             onPlaylistPause={() => selectedPlaylist && playlistPause(selectedPlaylist)}
             onPlaylistSkip={() => selectedPlaylist && playlistSkip(selectedPlaylist)}
-            onPlaylistStop={() => selectedPlaylist && playlistStop(selectedPlaylist)}
+            onPlaylistShuffle={() => selectedPlaylist && shufflePlaylistTracks(selectedPlaylist)}
           />
         )}
       </div>
@@ -833,6 +851,8 @@ export default function App() {
           updateConfig((c) => ({ ...c, fadeIn: s.fadeIn, fadeOut: s.fadeOut, crossFade: s.crossFade }))
           setAudioDevices({ outputDeviceId: s.outputDeviceId, monitorDeviceId: s.monitorDeviceId })
         }}
+        showTrackTooltips={showTrackTooltips}
+        onShowTrackTooltipsChange={setShowTrackTooltips}
         onClose={() => setSettingsOpen(false)}
       />
 

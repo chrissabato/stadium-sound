@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { Track } from '../types'
 import { formatTime } from '../types'
 
@@ -11,17 +11,19 @@ interface Props {
   playStartWallTime: number | null
   isReordering: boolean
   isAddToPlaylistMode: boolean
+  showTooltip: boolean
   onClick: () => void
   onEdit: () => void
 }
 
-export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, onClick, onEdit }: Props) {
+export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, onClick, onEdit }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
   const overlayRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number | null>(null)
   const colorBarOffset = track.colorLabel ? 5 : 0
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; above: boolean } | null>(null)
 
   useEffect(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -70,12 +72,18 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
         if (!isPlaying) el.style.background = isPlayed ? '#991b1b' : '#263548'
         const btn = el.querySelector<HTMLElement>('.edit-btn')
         if (btn) btn.style.opacity = '1'
+        if (showTooltip) {
+          const rect = el.getBoundingClientRect()
+          const above = rect.top > 70
+          setTooltip({ x: rect.left + rect.width / 2, y: above ? rect.top : rect.bottom, above })
+        }
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget
         if (!isPlaying) el.style.background = isPlayed ? '#7f1d1d' : '#1e293b'
         const btn = el.querySelector<HTMLElement>('.edit-btn')
         if (btn) btn.style.opacity = '0'
+        setTooltip(null)
       }}
     >
       {track.colorLabel && (
@@ -295,6 +303,33 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
           )}
         </div>
       </div>
+
+      {showTooltip && tooltip && (
+        <div style={{
+          position: 'fixed',
+          left: tooltip.x,
+          top: tooltip.y,
+          transform: `translate(-50%, ${tooltip.above ? 'calc(-100% - 8px)' : '8px'})`,
+          background: '#0f172a',
+          border: '1px solid #334155',
+          borderRadius: 4,
+          padding: '6px 10px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          pointerEvents: 'none',
+          zIndex: 100,
+          maxWidth: 260,
+          whiteSpace: 'normal'
+        }}>
+          {hasPlayer && (
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>
+              {[track.playerNumber && `#${track.playerNumber}`, track.playerFirstName, track.playerLastName].filter(Boolean).join(' ')}
+            </div>
+          )}
+          <div style={{ fontSize: 12, fontWeight: hasPlayer ? 400 : 700, color: hasPlayer ? '#94a3b8' : '#f1f5f9' }}>
+            {track.artist ? `${track.artist} — ${track.title}` : track.title}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

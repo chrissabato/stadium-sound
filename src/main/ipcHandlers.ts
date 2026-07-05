@@ -3,7 +3,7 @@ import { autoUpdater } from 'electron-updater'
 import { readFile, access } from 'fs/promises'
 import { readFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
-import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices } from './settingsStore'
+import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips } from './settingsStore'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
 
@@ -65,23 +65,29 @@ export function registerIpcHandlers(): void {
       outputDeviceId: settings.outputDeviceId,
       monitorDeviceId: settings.monitorDeviceId
     }
+    const showTrackTooltips = settings.showTrackTooltips
     if (settings.lastFile && eventSetExists(settings.lastFile)) {
       try {
         const config = loadEventSet(settings.lastFile)
-        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices }
+        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips }
       } catch {
         // File exists but is unreadable — remove from recents and start blank
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
-        return { config: null, filePath: null, recentFiles, audioDevices }
+        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips }
       }
     }
-    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices }
+    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips }
   })
 
   // Machine-level audio device preference — saved independently of the event
   // set file so it persists across restarts even for an unsaved show.
   ipcMain.handle('settings:setAudioDevices', (_event, outputDeviceId: string, monitorDeviceId: string) => {
     saveAudioDevices(outputDeviceId, monitorDeviceId)
+  })
+
+  // Machine-level UI preference — same rationale as audio devices above.
+  ipcMain.handle('settings:setShowTrackTooltips', (_event, enabled: boolean) => {
+    saveShowTrackTooltips(enabled)
   })
 
   ipcMain.handle('eventSet:open', async () => {

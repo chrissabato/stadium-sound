@@ -5,6 +5,7 @@ export interface EventSetState {
   filePath: string | null
   recentFiles: string[]
   audioDevices: AudioDevicePrefs
+  showTrackTooltips: boolean
 }
 
 export interface EventSetOpenResult {
@@ -37,6 +38,7 @@ export interface ElectronAPI {
   }
   settings: {
     setAudioDevices: (outputDeviceId: string, monitorDeviceId: string) => Promise<void>
+    setShowTrackTooltips: (enabled: boolean) => Promise<void>
   }
   app: {
     getVersion: () => Promise<string>

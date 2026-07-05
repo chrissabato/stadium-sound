@@ -12,6 +12,7 @@ interface Props {
   isMonitorMode: boolean
   isReordering: boolean
   isAddToPlaylistMode: boolean
+  showTrackTooltips: boolean
   onPlayTrack: (track: Track) => void
   onEditTrack: (track: Track) => void
   onAddTracks: () => void
@@ -19,7 +20,7 @@ interface Props {
   onAddToPlaylist: (track: Track) => void
 }
 
-export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, onPlayTrack, onEditTrack, onAddTracks, onReorder, onAddToPlaylist }: Props) {
+export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, showTrackTooltips, onPlayTrack, onEditTrack, onAddTracks, onReorder, onAddToPlaylist }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const dragCounter = useRef(0)
@@ -121,6 +122,7 @@ export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds
               playStartWallTime={playingTrackId === track.id ? playStartWallTime : null}
               isReordering={isReordering}
               isAddToPlaylistMode={isAddToPlaylistMode}
+              showTooltip={showTrackTooltips}
               onClick={isReordering ? () => {} : isAddToPlaylistMode ? () => onAddToPlaylist(track) : () => onPlayTrack(track)}
               onEdit={(isReordering || isAddToPlaylistMode) ? () => {} : () => onEditTrack(track)}
             />

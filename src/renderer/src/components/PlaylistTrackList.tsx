@@ -18,7 +18,7 @@ interface Props {
   onPlay: () => void
   onPause: () => void
   onSkip: () => void
-  onStop: () => void
+  onShuffle: () => void
 }
 
 export function PlaylistTrackList({
@@ -37,7 +37,7 @@ export function PlaylistTrackList({
   onPlay,
   onPause,
   onSkip,
-  onStop
+  onShuffle
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
@@ -79,7 +79,6 @@ export function PlaylistTrackList({
 
   const canPause = isPlayingThis && isTrackPlaying
   const canSkip = isPlayingThis && playlistIndex + 1 < playlist.tracks.length
-  const canStop = isPlayingThis
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -98,7 +97,29 @@ export function PlaylistTrackList({
             <span style={{ fontSize: 10, fontWeight: 600, color: '#93c5fd' }}>● Adding via buttons</span>
           )}
         </div>
-        <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
+          <button
+            onClick={onShuffle}
+            disabled={playlist.tracks.length < 2}
+            title="Shuffle track order"
+            style={{
+              width: 18,
+              height: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: 4,
+              color: playlist.tracks.length < 2 ? '#475569' : '#94a3b8',
+              fontSize: 11,
+              lineHeight: 1,
+              padding: 0,
+              cursor: playlist.tracks.length < 2 ? 'default' : 'pointer'
+            }}
+          >
+            ⇄
+          </button>
           <button
             onClick={() => setMenuOpen((v) => !v)}
             title="Add tracks"
@@ -328,22 +349,6 @@ export function PlaylistTrackList({
           }}
         >
           ▶▶ Skip
-        </button>
-        <button
-          onClick={onStop}
-          disabled={!canStop}
-          title="Stop"
-          style={{
-            padding: '6px 14px',
-            background: canStop ? '#dc2626' : '#1e293b',
-            color: canStop ? '#fff' : '#475569',
-            border: `1px solid ${canStop ? '#dc2626' : '#1e293b'}`,
-            borderRadius: 4,
-            fontWeight: 600,
-            fontSize: 12
-          }}
-        >
-          ■ Stop
         </button>
       </div>
     </div>

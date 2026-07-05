@@ -18,6 +18,8 @@ export interface ConfigState {
   updateConfig: (next: AppConfig | ((prev: AppConfig) => AppConfig)) => void
   audioDevices: AudioDevicePrefs
   setAudioDevices: (prefs: AudioDevicePrefs) => void
+  showTrackTooltips: boolean
+  setShowTrackTooltips: (enabled: boolean) => void
 }
 
 function fileLabel(filePath: string | null): string {
@@ -35,6 +37,7 @@ export function useConfig(): ConfigState {
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [audioDevices, setAudioDevicesState] = useState<AudioDevicePrefs>(DEFAULT_AUDIO_DEVICE_PREFS)
+  const [showTrackTooltips, setShowTrackTooltipsState] = useState(true)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -58,6 +61,7 @@ export function useConfig(): ConfigState {
         updateWindowTitle(null)
       }
       setAudioDevicesState(state.audioDevices)
+      setShowTrackTooltipsState(state.showTrackTooltips)
       setLoaded(true)
     })
   }, [])
@@ -65,6 +69,11 @@ export function useConfig(): ConfigState {
   const setAudioDevices = useCallback((prefs: AudioDevicePrefs) => {
     setAudioDevicesState(prefs)
     window.electronAPI.settings.setAudioDevices(prefs.outputDeviceId, prefs.monitorDeviceId)
+  }, [])
+
+  const setShowTrackTooltips = useCallback((enabled: boolean) => {
+    setShowTrackTooltipsState(enabled)
+    window.electronAPI.settings.setShowTrackTooltips(enabled)
   }, [])
 
   const scheduleAutoSave = useCallback((updated: AppConfig) => {
@@ -152,5 +161,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips }
 }
