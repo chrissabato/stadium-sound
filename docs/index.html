@@ -310,54 +310,7 @@
       line-height: 1.6;
     }
 
-    /* ── DOWNLOAD ── */
-    .download {
-      border-top: 1px solid var(--border);
-      padding: 80px 48px;
-    }
-
-    .download-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .dl-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
-      margin-top: 48px;
-    }
-
-    .dl-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 32px;
-    }
-
-    .dl-platform {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--sub);
-      margin-bottom: 6px;
-    }
-
-    .dl-name {
-      font-size: 22px;
-      font-weight: 900;
-      color: #fff;
-      letter-spacing: -0.02em;
-      margin-bottom: 4px;
-    }
-
-    .dl-req {
-      font-size: 12px;
-      color: var(--faint);
-      margin-bottom: 24px;
-    }
-
+    /* ── DOWNLOAD LINKS ── */
     .dl-links { display: flex; flex-direction: column; gap: 8px; }
 
     .dl-link {
@@ -443,9 +396,6 @@
       .features { padding: 56px 24px; }
       .feat-grid { grid-template-columns: 1fr 1fr; }
 
-      .download { padding: 56px 24px; }
-      .dl-grid { grid-template-columns: 1fr; }
-
       footer { padding: 24px; flex-direction: column; gap: 16px; }
     }
 
@@ -529,6 +479,10 @@
         </details>
         <span class="cta-note">v0.1.6 · Free &amp; open source</span>
       </div>
+      <p class="dl-note">
+        macOS app is not yet code-signed. To open: right-click the app → <strong>Open</strong> → click Open in the dialog.
+        <a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac"> Learn more ↗</a>
+      </p>
     </div>
 
     <!-- APP SCREENSHOT -->
@@ -582,62 +536,6 @@
     </div>
   </div>
 </section>
-
-<!-- DOWNLOAD -->
-<div class="download">
-  <div class="download-inner">
-    <div class="section-eye">Download</div>
-    <h2 class="section-h">Free for Windows<br>and macOS.</h2>
-    <div class="dl-grid">
-      <div class="dl-card">
-        <div class="dl-platform">Windows</div>
-        <div class="dl-name">Windows Installer</div>
-        <div class="dl-req">Windows 10 or later · x64 &amp; ARM64</div>
-        <div class="dl-links">
-          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-x64.exe" class="dl-link">
-            <span class="dl-link-left">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-              Stadium-Sound-Setup-x64.exe
-            </span>
-            <span class="dl-link-arrow">↓</span>
-          </a>
-          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Setup-arm64.exe" class="dl-link">
-            <span class="dl-link-left">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-              Stadium-Sound-Setup-arm64.exe — ARM64
-            </span>
-            <span class="dl-link-arrow">↓</span>
-          </a>
-        </div>
-      </div>
-      <div class="dl-card">
-        <div class="dl-platform">macOS</div>
-        <div class="dl-name">Mac Disk Image</div>
-        <div class="dl-req">macOS 10.15 or later</div>
-        <div class="dl-links">
-          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-x64.dmg" class="dl-link">
-            <span class="dl-link-left">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
-              Stadium-Sound-x64.dmg — Intel
-            </span>
-            <span class="dl-link-arrow">↓</span>
-          </a>
-          <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-arm64.dmg" class="dl-link">
-            <span class="dl-link-left">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
-              Stadium-Sound-arm64.dmg — Apple Silicon
-            </span>
-            <span class="dl-link-arrow">↓</span>
-          </a>
-        </div>
-        <p class="dl-note">
-          App is not yet code-signed. To open: right-click the app → <strong>Open</strong> → click Open in the dialog.
-          <a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac"> Learn more ↗</a>
-        </p>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- FOOTER -->
 <footer>
