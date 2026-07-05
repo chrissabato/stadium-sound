@@ -37,3 +37,7 @@ npm run dev
 ```
 
 Built with Electron + React + TypeScript.
+
+## License
+
+[MIT](LICENSE)
