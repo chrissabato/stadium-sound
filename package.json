@@ -1,6 +1,6 @@
 {
   "name": "audio-player",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Stadium Sound",
   "author": "Christopher Sabato",
   "main": "./out/main/index.js",
