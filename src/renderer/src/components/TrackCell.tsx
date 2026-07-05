@@ -54,10 +54,10 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
       style={{
         position: 'relative',
         padding: '10px 12px',
-        background: isPlaying ? '#15803d' : isPlayed ? '#7f1d1d' : isMissing ? '#1c1408' : '#1e293b',
-        border: `1px solid ${isPlaying ? '#16a34a' : isPlayed ? '#991b1b' : isMissing ? '#78350f' : '#334155'}`,
+        background: isReordering ? '#1e3a5f' : isPlaying ? '#15803d' : isPlayed ? '#7f1d1d' : isMissing ? '#1c1408' : '#1e293b',
+        border: `1px solid ${isReordering ? '#3b82f6' : isPlaying ? '#16a34a' : isPlayed ? '#991b1b' : isMissing ? '#78350f' : '#334155'}`,
         borderRadius: 4,
-        cursor: 'pointer',
+        cursor: isReordering ? 'grab' : 'pointer',
         minHeight: 72,
         minWidth: 0,
         display: 'flex',
@@ -69,7 +69,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
       }}
       onMouseEnter={(e) => {
         const el = e.currentTarget
-        if (!isPlaying) el.style.background = isPlayed ? '#991b1b' : '#263548'
+        if (!isPlaying) el.style.background = isReordering ? '#254a7a' : isPlayed ? '#991b1b' : '#263548'
         const btn = el.querySelector<HTMLElement>('.edit-btn')
         if (btn) btn.style.opacity = '1'
         if (showTooltip) {
@@ -80,7 +80,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget
-        if (!isPlaying) el.style.background = isPlayed ? '#7f1d1d' : '#1e293b'
+        if (!isPlaying) el.style.background = isReordering ? '#1e3a5f' : isPlayed ? '#7f1d1d' : '#1e293b'
         const btn = el.querySelector<HTMLElement>('.edit-btn')
         if (btn) btn.style.opacity = '0'
         setTooltip(null)
@@ -155,7 +155,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
           position: 'absolute',
           top: 4 + colorBarOffset,
           right: 4,
-          color: '#475569',
+          color: '#93c5fd',
           fontSize: 13,
           lineHeight: 1,
           userSelect: 'none',

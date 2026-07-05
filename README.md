@@ -20,10 +20,11 @@ All releases: [github.com/chrissabato/stadium-sound/releases](https://github.com
 
 - Named banks for organizing tracks by category
 - One-click playback — click again to stop, click another to crossfade
-- Playlists — queue tracks from any bank into an ordered run of show
+- Playlists — queue tracks from any bank into an ordered run of show, with shuffle
 - Keyboard shortcuts — assign a hotkey to any track for no-mouse triggering
 - Configurable fade in, fade out, and crossfade
 - Track editor with waveform, in/out point trimming, and player name fields
+- Hover tooltips reveal full track info when a soundboard button's text is cut off (toggle in Settings)
 - Audio output device selection with monitor mode for private previewing
 - File-based event sets (.eset) with recent files and auto-save
 - Sports Sounds Pro (.set) file importer

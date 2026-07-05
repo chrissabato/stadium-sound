@@ -142,10 +142,13 @@ export function Sidebar({ banks, selectedBankId, isReordering, missingFileIds, o
               display: 'flex',
               alignItems: 'center',
               padding: '10px 12px',
+              margin: isReordering ? '2px 6px' : 0,
               cursor: isReordering ? 'grab' : 'pointer',
-              background: dragIndex === i ? 'rgba(255,255,255,0.04)' : bank.id === selectedBankId ? '#ea580c' : 'transparent',
+              background: dragIndex === i ? 'rgba(255,255,255,0.04)' : bank.id === selectedBankId ? '#ea580c' : isReordering ? '#1e3a5f' : 'transparent',
               color: bank.id === selectedBankId && dragIndex !== i ? '#fff' : '#cbd5e1',
-              borderBottom: `1px solid ${dropIndex === i && dragIndex !== i ? '#3b82f6' : '#1e293b'}`,
+              border: `1px solid ${isReordering ? '#3b82f6' : 'transparent'}`,
+              borderRadius: isReordering ? 4 : 0,
+              borderBottom: `1px solid ${dropIndex === i && dragIndex !== i ? '#3b82f6' : isReordering ? '#3b82f6' : '#1e293b'}`,
               gap: 6,
               opacity: dragIndex === i ? 0.35 : 1,
               transition: 'opacity 0.1s'
@@ -175,7 +178,7 @@ export function Sidebar({ banks, selectedBankId, isReordering, missingFileIds, o
                   {bank.name}
                 </span>
                 {isReordering ? (
-                  <span style={{ fontSize: 13, color: '#475569', userSelect: 'none', flexShrink: 0 }}>⠿</span>
+                  <span style={{ fontSize: 13, color: '#93c5fd', userSelect: 'none', flexShrink: 0 }}>⠿</span>
                 ) : hoveredId === bank.id ? (
                   <>
                     <button
