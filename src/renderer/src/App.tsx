@@ -62,6 +62,7 @@ export default function App() {
   const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null)
   const [playlistIndex, setPlaylistIndex] = useState(-1)
   const [selectedTrackIndex, setSelectedTrackIndex] = useState(-1)
+  const [highlightedTrackId, setHighlightedTrackId] = useState<string | null>(null)
   const suppressPlaylistAdvanceRef = useRef(false)
 
   useEffect(() => {
@@ -99,6 +100,18 @@ export default function App() {
     setIsReordering(false)
     updateConfig((c) => ({ ...c, selectedBankId: id }))
   }
+
+  function jumpToSearchResult(bankId: string, track: Track) {
+    selectBank(bankId)
+    setHighlightedTrackId(track.id)
+  }
+
+  // Auto-fade the search-result highlight after a few seconds.
+  useEffect(() => {
+    if (!highlightedTrackId) return
+    const t = setTimeout(() => setHighlightedTrackId(null), 2500)
+    return () => clearTimeout(t)
+  }, [highlightedTrackId])
 
   function addBank(name: string) {
     const bank: Bank = { id: makeId(), name, tracks: [] }
@@ -682,6 +695,7 @@ export default function App() {
         masterVolume={config.masterVolume}
         isMonitorMode={audio.isMonitorMode}
         showPlaylistPanel={showPlaylistPanel}
+        banks={config.banks}
         onVolumeChange={handleVolumeChange}
         onStopAll={stopAll}
         onToggleMonitor={() => audio.setMonitorMode(!audio.isMonitorMode)}
@@ -692,6 +706,7 @@ export default function App() {
         })}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenShortcuts={() => setShortcutsOpen(true)}
+        onSelectSearchResult={jumpToSearchResult}
       />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -769,6 +784,7 @@ export default function App() {
               isReordering={isReordering}
               isAddToPlaylistMode={isAddToPlaylistMode}
               showTrackTooltips={showTrackTooltips}
+              highlightedTrackId={highlightedTrackId}
               onPlayTrack={playTrack}
               onEditTrack={setEditingTrack}
               onAddTracks={addTracks}

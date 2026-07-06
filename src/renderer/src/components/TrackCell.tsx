@@ -12,18 +12,24 @@ interface Props {
   isReordering: boolean
   isAddToPlaylistMode: boolean
   showTooltip: boolean
+  isHighlighted: boolean
   onClick: () => void
   onEdit: () => void
 }
 
-export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, onClick, onEdit }: Props) {
+export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, onClick, onEdit }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
   const overlayRef = useRef<HTMLDivElement>(null)
+  const cellRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number | null>(null)
   const colorBarOffset = track.colorLabel ? 5 : 0
   const [tooltip, setTooltip] = useState<{ x: number; y: number; above: boolean } | null>(null)
+
+  useEffect(() => {
+    if (isHighlighted) cellRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [isHighlighted])
 
   useEffect(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -50,12 +56,13 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
 
   return (
     <div
+      ref={cellRef}
       onClick={onClick}
       style={{
         position: 'relative',
         padding: '10px 12px',
         background: isReordering ? '#1e3a5f' : isPlaying ? '#15803d' : isPlayed ? '#7f1d1d' : isMissing ? '#1c1408' : '#1e293b',
-        border: `1px solid ${isReordering ? '#3b82f6' : isPlaying ? '#16a34a' : isPlayed ? '#991b1b' : isMissing ? '#78350f' : '#334155'}`,
+        border: `1px solid ${isHighlighted ? '#3b82f6' : isReordering ? '#3b82f6' : isPlaying ? '#16a34a' : isPlayed ? '#991b1b' : isMissing ? '#78350f' : '#334155'}`,
         borderRadius: 4,
         cursor: isReordering ? 'grab' : 'pointer',
         minHeight: 72,
@@ -63,8 +70,10 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
-        transition: 'background 0.1s, border-color 0.1s',
-        boxShadow: isPlaying ? '0 0 12px rgba(21,128,61,0.5)' : 'none',
+        transition: 'background 0.1s, border-color 0.1s, box-shadow 0.2s',
+        boxShadow: isHighlighted
+          ? `0 0 0 3px #3b82f6, 0 0 16px rgba(59,130,246,0.6)${isPlaying ? ', 0 0 12px rgba(21,128,61,0.5)' : ''}`
+          : isPlaying ? '0 0 12px rgba(21,128,61,0.5)' : 'none',
         overflow: 'hidden'
       }}
       onMouseEnter={(e) => {

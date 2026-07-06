@@ -19,6 +19,7 @@ All releases: [github.com/chrissabato/stadium-sound/releases](https://github.com
 ## Features
 
 - Named banks for organizing tracks by category
+- Search by artist or title with autocomplete — jumps to the matching bank and highlights the track
 - One-click playback — click again to stop, click another to crossfade
 - Playlists — queue tracks from any bank into an ordered run of show, with shuffle
 - Keyboard shortcuts — assign a hotkey to any track for no-mouse triggering
