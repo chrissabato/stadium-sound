@@ -63,19 +63,19 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlay
 
       <button
         onClick={onToggleMonitor}
-        title={isMonitorMode ? 'Monitor mode on — audio to monitor output. Click to switch to main output.' : 'Click to enable monitor mode (audio to monitor output)'}
+        title={isMonitorMode ? 'Monitor bus armed — clicking a track sends it to the monitor output. Click to disarm.' : 'Click to arm the monitor bus (send the next clicked track to monitor output)'}
         style={{
-          padding: '6px 14px',
-          background: isMonitorMode ? '#78350f' : '#1e293b',
-          color: isMonitorMode ? '#fde68a' : '#64748b',
-          border: `1px solid ${isMonitorMode ? '#d97706' : '#334155'}`,
+          padding: '6px 10px',
+          background: isMonitorMode ? '#052e12' : '#1e293b',
+          color: isMonitorMode ? '#39ff14' : '#64748b',
+          border: `1px solid ${isMonitorMode ? '#39ff14' : '#334155'}`,
           borderRadius: 4,
-          fontWeight: isMonitorMode ? 700 : 400,
-          fontSize: 13,
-          letterSpacing: isMonitorMode ? '0.02em' : undefined
+          fontSize: 16,
+          lineHeight: 1,
+          boxShadow: isMonitorMode ? '0 0 8px rgba(57,255,20,0.7)' : 'none'
         }}
       >
-        {isMonitorMode ? '● Monitor' : '○ Monitor'}
+        🎧
       </button>
 
       <button

@@ -4,6 +4,7 @@ import type { Bank } from '../types'
 interface Props {
   banks: Bank[]
   selectedBankId: string
+  monitorPlayingBankId: string | null
   isReordering: boolean
   missingFileIds: Set<string>
   onSelectBank: (id: string) => void
@@ -13,7 +14,7 @@ interface Props {
   onReorderBanks: (newBanks: Bank[]) => void
 }
 
-export function Sidebar({ banks, selectedBankId, isReordering, missingFileIds, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks }: Props) {
+export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReordering, missingFileIds, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [newBankName, setNewBankName] = useState('')
@@ -177,6 +178,14 @@ export function Sidebar({ banks, selectedBankId, isReordering, missingFileIds, o
                 <span style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {bank.name}
                 </span>
+                {monitorPlayingBankId === bank.id && (
+                  <span
+                    title="Playing on monitor bus"
+                    style={{ fontSize: 12, flexShrink: 0, filter: 'drop-shadow(0 0 4px rgba(57,255,20,0.8))' }}
+                  >
+                    🎧
+                  </span>
+                )}
                 {isReordering ? (
                   <span style={{ fontSize: 13, color: '#93c5fd', userSelect: 'none', flexShrink: 0 }}>⠿</span>
                 ) : hoveredId === bank.id ? (

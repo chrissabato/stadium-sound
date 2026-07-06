@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useAudioEngine, CLIP_DECODE_MAX_SECONDS } from './hooks/useAudioEngine'
+import { useAudioEngine, CLIP_DECODE_MAX_SECONDS, type AudioBus } from './hooks/useAudioEngine'
 import { useConfig } from './hooks/useConfig'
 import { Toolbar } from './components/Toolbar'
 import { Sidebar } from './components/Sidebar'
@@ -96,6 +96,12 @@ export default function App() {
   const selectedBank = config.banks.find((b) => b.id === config.selectedBankId) ?? null
   const selectedPlaylist = (config.playlists ?? []).find((p) => p.id === config.selectedPlaylistId) ?? null
 
+  // Lets the Sidebar flag which bank owns the track currently cued on the
+  // monitor bus, so it stays visible even after switching to a different bank.
+  const monitorPlayingBankId = audio.monitorPlayingTrackId
+    ? config.banks.find((b) => b.tracks.some((t) => t.id === audio.monitorPlayingTrackId))?.id ?? null
+    : null
+
   function selectBank(id: string) {
     setIsReordering(false)
     updateConfig((c) => ({ ...c, selectedBankId: id }))
@@ -176,7 +182,9 @@ export default function App() {
   // Always (re)starts playback of this track, bypassing the toggle-off shortcut —
   // used by the playlist transport, which should never silently no-op even if
   // engine state looks like this track is already playing (e.g. it stalled).
-  function playTrackForce(track: Track) {
+  // bus defaults to 'main' so playlist call sites (which never pass it) are
+  // always unaffected by whether Monitor mode is currently armed.
+  function playTrackForce(track: Track, bus: AudioBus = 'main') {
     // Every track streams from disk instantly when it has no decoded buffer.
     // Only short clips get a background decode kicked off here, so their
     // *next* play uses the sample-accurate buffer path — decoding full songs
@@ -193,13 +201,28 @@ export default function App() {
     audio.playTrack(
       track.id,
       { inPoint: track.inPoint, outPoint: track.outPoint || track.duration, filePath: track.filePath },
-      { force: true }
+      { force: true, bus }
     )
-    setNowPlayingTrack(track)
-    setPlayedIds((prev) => new Set([...prev, track.id]))
+    // NowPlayingBar and the "played" tint both reflect main-bus/PA activity —
+    // a monitor audition is a private cue and must never affect either.
+    if (bus === 'main') {
+      setNowPlayingTrack(track)
+      setPlayedIds((prev) => new Set([...prev, track.id]))
+    }
   }
 
   function playTrack(track: Track) {
+    // A track cued on the monitor bus always toggles off from there when
+    // clicked again — even after Monitor mode has been disarmed — rather
+    // than starting a redundant main-bus play.
+    if (audio.monitorPlayingTrackId === track.id) {
+      audio.stopMonitor()
+      return
+    }
+    if (audio.isMonitorMode) {
+      playTrackForce(track, 'monitor')
+      return
+    }
     if (audio.playingTrackId === track.id) {
       breakPlaylistChain()
       audio.stopAll()
@@ -281,6 +304,7 @@ export default function App() {
     advancePastStoppedTrack()
     breakPlaylistChain()
     audio.stopImmediate()
+    audio.stopMonitorImmediate()
   }
 
   function stopWithFade() {
@@ -713,6 +737,7 @@ export default function App() {
         <Sidebar
           banks={config.banks}
           selectedBankId={config.selectedBankId}
+          monitorPlayingBankId={monitorPlayingBankId}
           isReordering={isReordering}
           missingFileIds={missingFileIds}
           onSelectBank={selectBank}
@@ -776,6 +801,7 @@ export default function App() {
             <TrackGrid
               tracks={selectedBank.tracks}
               playingTrackId={audio.playingTrackId}
+              monitorPlayingTrackId={audio.monitorPlayingTrackId}
               playStartWallTime={audio.playStartWallTime}
               playedIds={playedIds}
               missingFileIds={missingFileIds}

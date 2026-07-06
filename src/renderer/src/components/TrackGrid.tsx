@@ -5,6 +5,7 @@ import { TrackCell } from './TrackCell'
 interface Props {
   tracks: Track[]
   playingTrackId: string | null
+  monitorPlayingTrackId: string | null
   playStartWallTime: number | null
   playedIds: Set<string>
   missingFileIds: Set<string>
@@ -21,7 +22,7 @@ interface Props {
   onAddToPlaylist: (track: Track) => void
 }
 
-export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, showTrackTooltips, highlightedTrackId, onPlayTrack, onEditTrack, onAddTracks, onReorder, onAddToPlaylist }: Props) {
+export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, showTrackTooltips, highlightedTrackId, onPlayTrack, onEditTrack, onAddTracks, onReorder, onAddToPlaylist }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const dragCounter = useRef(0)
@@ -89,7 +90,7 @@ export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: isMonitorMode ? '#431407' : undefined, transition: 'background 0.2s' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: isMonitorMode ? '#166534' : undefined, transition: 'background 0.2s' }}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(6, 1fr)',
@@ -117,6 +118,7 @@ export function TrackGrid({ tracks, playingTrackId, playStartWallTime, playedIds
             <TrackCell
               track={track}
               isPlaying={playingTrackId === track.id}
+              isMonitorPlaying={monitorPlayingTrackId === track.id}
               isPlayed={playedIds.has(track.id)}
               isMissing={missingFileIds.has(track.id)}
               isLoading={loadingIds.has(track.id)}

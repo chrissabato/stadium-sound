@@ -5,6 +5,7 @@ import { formatTime } from '../types'
 interface Props {
   track: Track
   isPlaying: boolean
+  isMonitorPlaying: boolean
   isPlayed: boolean
   isMissing: boolean
   isLoading: boolean
@@ -17,7 +18,7 @@ interface Props {
   onEdit: () => void
 }
 
-export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, onClick, onEdit }: Props) {
+export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, onClick, onEdit }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
@@ -61,8 +62,8 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
       style={{
         position: 'relative',
         padding: '10px 12px',
-        background: isReordering ? '#1e3a5f' : isPlaying ? '#15803d' : isPlayed ? '#7f1d1d' : isMissing ? '#1c1408' : '#1e293b',
-        border: `1px solid ${isHighlighted ? '#3b82f6' : isReordering ? '#3b82f6' : isPlaying ? '#16a34a' : isPlayed ? '#991b1b' : isMissing ? '#78350f' : '#334155'}`,
+        background: isReordering ? '#1e3a5f' : isPlaying ? '#15803d' : isMonitorPlaying ? '#052e12' : isPlayed ? '#7f1d1d' : isMissing ? '#1c1408' : '#1e293b',
+        border: `1px solid ${isHighlighted ? '#3b82f6' : isReordering ? '#3b82f6' : isPlaying ? '#16a34a' : isMonitorPlaying ? '#39ff14' : isPlayed ? '#991b1b' : isMissing ? '#78350f' : '#334155'}`,
         borderRadius: 4,
         cursor: isReordering ? 'grab' : 'pointer',
         minHeight: 72,
@@ -71,14 +72,16 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
         flexDirection: 'column',
         gap: 2,
         transition: 'background 0.1s, border-color 0.1s, box-shadow 0.2s',
-        boxShadow: isHighlighted
-          ? `0 0 0 3px #3b82f6, 0 0 16px rgba(59,130,246,0.6)${isPlaying ? ', 0 0 12px rgba(21,128,61,0.5)' : ''}`
-          : isPlaying ? '0 0 12px rgba(21,128,61,0.5)' : 'none',
+        boxShadow: [
+          isHighlighted ? '0 0 0 3px #3b82f6, 0 0 16px rgba(59,130,246,0.6)' : null,
+          isPlaying ? '0 0 12px rgba(21,128,61,0.5)' : null,
+          isMonitorPlaying ? '0 0 8px rgba(57,255,20,0.7)' : null
+        ].filter(Boolean).join(', ') || 'none',
         overflow: 'hidden'
       }}
       onMouseEnter={(e) => {
         const el = e.currentTarget
-        if (!isPlaying) el.style.background = isReordering ? '#254a7a' : isPlayed ? '#991b1b' : '#263548'
+        if (!isPlaying) el.style.background = isReordering ? '#254a7a' : isMonitorPlaying ? '#0a3d18' : isPlayed ? '#991b1b' : '#263548'
         const btn = el.querySelector<HTMLElement>('.edit-btn')
         if (btn) btn.style.opacity = '1'
         if (showTooltip) {
@@ -89,7 +92,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget
-        if (!isPlaying) el.style.background = isReordering ? '#1e3a5f' : isPlayed ? '#7f1d1d' : '#1e293b'
+        if (!isPlaying) el.style.background = isReordering ? '#1e3a5f' : isMonitorPlaying ? '#052e12' : isPlayed ? '#7f1d1d' : '#1e293b'
         const btn = el.querySelector<HTMLElement>('.edit-btn')
         if (btn) btn.style.opacity = '0'
         setTooltip(null)
@@ -223,7 +226,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
               fontSize: 28,
               fontWeight: 800,
               lineHeight: 1,
-              color: isPlaying ? '#ffffff' : isPlayed ? '#fecaca' : '#f1f5f9',
+              color: isPlaying || isMonitorPlaying ? '#ffffff' : isPlayed ? '#fecaca' : '#f1f5f9',
               position: 'relative'
             }}>
               #{track.playerNumber}
@@ -234,7 +237,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
               <div style={{
                 fontSize: 13,
                 fontWeight: 700,
-                color: isPlaying ? '#ffffff' : isPlayed ? '#fecaca' : '#e2e8f0',
+                color: isPlaying || isMonitorPlaying ? '#ffffff' : isPlayed ? '#fecaca' : '#e2e8f0',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -247,7 +250,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
             {track.playerFirstName && (
               <div style={{
                 fontSize: 11,
-                color: isPlaying ? '#86efac' : isPlayed ? '#fca5a5' : '#94a3b8',
+                color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#94a3b8',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
@@ -290,7 +293,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
         alignItems: 'center',
         position: 'relative'
       }}>
-        <span style={{ fontSize: 11, color: isPlaying ? '#86efac' : isPlayed ? '#fca5a5' : '#64748b', fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ fontSize: 11, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#64748b', fontVariantNumeric: 'tabular-nums' }}>
           {formatTime(trackDuration > 0 ? trackDuration : track.duration)}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -308,7 +311,7 @@ export function TrackCell({ track, isPlaying, isPlayed, isMissing, isLoading, pl
             />
           )}
           {hasCustomPoints && (
-            <span style={{ fontSize: 10, color: isPlaying ? '#86efac' : isPlayed ? '#fca5a5' : '#475569' }}>✂</span>
+            <span style={{ fontSize: 10, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#475569' }}>✂</span>
           )}
         </div>
       </div>
