@@ -179,7 +179,7 @@ export function PlaylistPanel({
               display: 'flex',
               alignItems: 'center',
               padding: '10px 12px',
-              cursor: 'grab',
+              cursor: dragIndex === i ? 'grabbing' : 'pointer',
               background: dragIndex === i ? 'rgba(255,255,255,0.04)' : playlist.id === selectedPlaylistId ? '#ea580c' : 'transparent',
               color: playlist.id === selectedPlaylistId && dragIndex !== i ? '#fff' : '#cbd5e1',
               borderBottom: `1px solid ${dropIndex === i && dragIndex !== i ? '#3b82f6' : '#1e293b'}`,
