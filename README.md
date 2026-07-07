@@ -27,6 +27,7 @@ All releases: [github.com/chrissabato/stadium-sound/releases](https://github.com
 - Track editor with waveform, in/out point trimming, and player name fields
 - Hover tooltips reveal full track info when a soundboard button's text is cut off (toggle in Settings)
 - Audio output device selection with a second monitor bus — audition a track privately on a separate output while the main track keeps playing
+- Fullscreen mode (toolbar button or F11) for a clean, distraction-free booth view
 - File-based event sets (.eset) with recent files and auto-save
 - Sports Sounds Pro (.set) file importer
 - Auto-update — new versions install in the background
