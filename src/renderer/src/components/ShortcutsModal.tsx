@@ -12,6 +12,7 @@ const GLOBAL_SHORTCUTS: { keys: string; description: string }[] = [
   { keys: 'Space', description: 'Stop all audio with a fade out' },
   { keys: '→', description: 'Skip to the next track in the playing playlist' },
   { keys: 'Ctrl/Cmd + M', description: 'Toggle Monitor mode' },
+  { keys: 'Ctrl/Cmd + F', description: 'Jump to the track search box' },
   { keys: '?', description: 'Open this shortcuts reference' }
 ]
 
@@ -27,7 +28,8 @@ function KeyCap({ children }: { children: React.ReactNode }) {
       borderRadius: 4,
       color: '#f1f5f9',
       fontSize: 12,
-      fontWeight: 700
+      fontWeight: 700,
+      whiteSpace: 'nowrap'
     }}>
       {children}
     </span>
@@ -64,7 +66,7 @@ export function ShortcutsModal({ open, banks, onClose }: Props) {
         border: '1px solid #334155',
         borderRadius: 8,
         padding: 24,
-        width: 440,
+        width: 480,
         maxWidth: '90vw',
         maxHeight: '80vh',
         display: 'flex',
@@ -89,7 +91,7 @@ export function ShortcutsModal({ open, banks, onClose }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {GLOBAL_SHORTCUTS.map((s) => (
                 <div key={s.keys} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 96, flexShrink: 0 }}><KeyCap>{s.keys}</KeyCap></div>
+                  <div style={{ width: 128, flexShrink: 0 }}><KeyCap>{s.keys}</KeyCap></div>
                   <span style={{ fontSize: 13, color: '#cbd5e1' }}>{s.description}</span>
                 </div>
               ))}
@@ -111,7 +113,7 @@ export function ShortcutsModal({ open, banks, onClose }: Props) {
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>{bank.name}</span>
                     {tracks.map((t) => (
                       <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 96, flexShrink: 0 }}><KeyCap>{t.hotkey}</KeyCap></div>
+                        <div style={{ width: 128, flexShrink: 0 }}><KeyCap>{t.hotkey}</KeyCap></div>
                         <span style={{ fontSize: 13, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {t.title || t.filePath}
                         </span>

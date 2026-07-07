@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react'
-import type { Track } from '../types'
+import React, { useState, useRef, useEffect } from 'react'
+import { TRACK_DRAG_MIME, type Track } from '../types'
 import { TrackCell } from './TrackCell'
 
 interface Props {
@@ -27,9 +27,24 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const dragCounter = useRef(0)
 
-  function handleDragStart(i: number) {
+  // When a track is dropped on an external target (e.g. a sidebar bank row)
+  // and relocates out of this bank, its cell is removed from the DOM before
+  // the browser delivers "dragend" — so handleDragEnd never runs and a stale
+  // dragIndex would otherwise grey out whichever track slides into that slot.
+  useEffect(() => {
+    setDragIndex(null)
+    setDropIndex(null)
+    dragCounter.current = 0
+  }, [tracks])
+
+  function handleDragStart(e: React.DragEvent, i: number) {
     setDragIndex(i)
     dragCounter.current = 0
+    // Lets a drop target outside this grid (e.g. a sidebar bank row) identify
+    // and relocate the dragged track — this component's own reorder-by-index
+    // drop handling below doesn't need it.
+    e.dataTransfer.setData(TRACK_DRAG_MIME, tracks[i].id)
+    e.dataTransfer.effectAllowed = 'move'
   }
 
   function handleDragEnter(i: number) {
@@ -100,7 +115,7 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
           <div
             key={track.id}
             draggable={isReordering}
-            onDragStart={() => handleDragStart(i)}
+            onDragStart={(e) => handleDragStart(e, i)}
             onDragEnter={() => handleDragEnter(i)}
             onDragLeave={handleDragLeave}
             onDragOver={(e) => e.preventDefault()}

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useAudioEngine, CLIP_DECODE_MAX_SECONDS, type AudioBus } from './hooks/useAudioEngine'
 import { useConfig } from './hooks/useConfig'
 import { Toolbar } from './components/Toolbar'
+import type { TrackSearchHandle } from './components/TrackSearch'
 import { Sidebar } from './components/Sidebar'
 import { TrackGrid } from './components/TrackGrid'
 import { NowPlayingBar } from './components/NowPlayingBar'
@@ -64,6 +65,7 @@ export default function App() {
   const [selectedTrackIndex, setSelectedTrackIndex] = useState(-1)
   const [highlightedTrackId, setHighlightedTrackId] = useState<string | null>(null)
   const suppressPlaylistAdvanceRef = useRef(false)
+  const searchRef = useRef<TrackSearchHandle>(null)
 
   useEffect(() => {
     return window.electronAPI.onMenuAction(async (action) => {
@@ -354,6 +356,24 @@ export default function App() {
       ...c,
       banks: c.banks.map((b) => b.id === bankId ? { ...b, tracks: newTracks } : b)
     }))
+  }
+
+  // Dragging a track cell (reorder mode) onto a different bank in the sidebar
+  // relocates it there, appended to the end — a no-op if dropped on its own bank.
+  function moveTrackToBank(trackId: string, targetBankId: string) {
+    updateConfig((c) => {
+      const sourceBank = c.banks.find((b) => b.tracks.some((t) => t.id === trackId))
+      if (!sourceBank || sourceBank.id === targetBankId) return c
+      const track = sourceBank.tracks.find((t) => t.id === trackId)!
+      return {
+        ...c,
+        banks: c.banks.map((b) => {
+          if (b.id === sourceBank.id) return { ...b, tracks: b.tracks.filter((t) => t.id !== trackId) }
+          if (b.id === targetBankId) return { ...b, tracks: [...b.tracks, track] }
+          return b
+        })
+      }
+    })
   }
 
   function removeTrack(id: string) {
@@ -672,6 +692,11 @@ export default function App() {
       audio.setMonitorMode(!audio.isMonitorMode)
       return
     }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+      e.preventDefault()
+      searchRef.current?.focus()
+      return
+    }
 
     const key = normalizeHotkeyEvent(e)
     if (!key) return
@@ -720,6 +745,7 @@ export default function App() {
         isMonitorMode={audio.isMonitorMode}
         showPlaylistPanel={showPlaylistPanel}
         banks={config.banks}
+        searchRef={searchRef}
         onVolumeChange={handleVolumeChange}
         onStopAll={stopAll}
         onToggleMonitor={() => audio.setMonitorMode(!audio.isMonitorMode)}
@@ -745,6 +771,7 @@ export default function App() {
           onRenameBank={renameBank}
           onDeleteBank={deleteBank}
           onReorderBanks={reorderBanks}
+          onDropTrackOnBank={moveTrackToBank}
         />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

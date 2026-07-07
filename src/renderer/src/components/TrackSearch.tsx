@@ -1,9 +1,13 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import type { Bank, Track } from '../types'
 
 interface Props {
   banks: Bank[]
   onSelectResult: (bankId: string, track: Track) => void
+}
+
+export interface TrackSearchHandle {
+  focus: () => void
 }
 
 interface Match {
@@ -14,11 +18,15 @@ interface Match {
 
 const MAX_RESULTS = 8
 
-export function TrackSearch({ banks, onSelectResult }: Props) {
+export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSearch({ banks, onSelectResult }, ref) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus()
+  }))
 
   const matches = useMemo<Match[]>(() => {
     const q = query.trim().toLowerCase()
@@ -183,4 +191,4 @@ export function TrackSearch({ banks, onSelectResult }: Props) {
       )}
     </div>
   )
-}
+})

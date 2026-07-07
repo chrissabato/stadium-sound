@@ -19,6 +19,11 @@ export interface Track {
   colorLabel?: string
 }
 
+// dataTransfer type used to carry a track id when dragging a track cell out of
+// the grid (reorder mode) so a drop target (e.g. a sidebar bank row) can tell
+// a track drag apart from other native drag operations (like bank reordering).
+export const TRACK_DRAG_MIME = 'application/x-stadiumsound-track-id'
+
 // Predefined color labels for track buttons — shown as a thin bar across the
 // top of the button so it stays visible without overriding the play/missing/
 // played button background colors.

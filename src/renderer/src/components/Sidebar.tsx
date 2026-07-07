@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import type { Bank } from '../types'
+import { TRACK_DRAG_MIME, type Bank } from '../types'
 
 interface Props {
   banks: Bank[]
@@ -12,9 +12,10 @@ interface Props {
   onRenameBank: (id: string, name: string) => void
   onDeleteBank: (id: string) => void
   onReorderBanks: (newBanks: Bank[]) => void
+  onDropTrackOnBank: (trackId: string, bankId: string) => void
 }
 
-export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReordering, missingFileIds, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks }: Props) {
+export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReordering, missingFileIds, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks, onDropTrackOnBank }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [newBankName, setNewBankName] = useState('')
@@ -39,8 +40,13 @@ export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReorder
     if (dragCounter.current === 0) setDropIndex(null)
   }
 
-  function handleDrop(i: number) {
-    if (dragIndex !== null && dragIndex !== i) {
+  function handleDrop(e: React.DragEvent, i: number) {
+    // A track cell dragged out of the grid (reorder mode) takes priority over
+    // this row's own bank-reorder drop handling.
+    if (e.dataTransfer.types.includes(TRACK_DRAG_MIME)) {
+      const trackId = e.dataTransfer.getData(TRACK_DRAG_MIME)
+      if (trackId) onDropTrackOnBank(trackId, banks[i].id)
+    } else if (dragIndex !== null && dragIndex !== i) {
       const next = [...banks]
       const [moved] = next.splice(dragIndex, 1)
       next.splice(i, 0, moved)
@@ -134,7 +140,7 @@ export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReorder
             onDragEnter={() => handleDragEnter(i)}
             onDragLeave={handleDragLeave}
             onDragOver={(e) => e.preventDefault()}
-            onDrop={() => handleDrop(i)}
+            onDrop={(e) => handleDrop(e, i)}
             onDragEnd={handleDragEnd}
             onClick={() => onSelectBank(bank.id)}
             onMouseEnter={() => setHoveredId(bank.id)}

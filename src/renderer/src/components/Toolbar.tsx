@@ -1,6 +1,6 @@
 import React from 'react'
 import logoUrl from '../assets/logo.svg'
-import { TrackSearch } from './TrackSearch'
+import { TrackSearch, type TrackSearchHandle } from './TrackSearch'
 import type { Bank, Track } from '../types'
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
   isMonitorMode: boolean
   showPlaylistPanel: boolean
   banks: Bank[]
+  searchRef?: React.Ref<TrackSearchHandle>
   onVolumeChange: (v: number) => void
   onStopAll: () => void
   onToggleMonitor: () => void
@@ -18,7 +19,7 @@ interface Props {
   onSelectSearchResult: (bankId: string, track: Track) => void
 }
 
-export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, banks, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onOpenSettings, onOpenShortcuts, onSelectSearchResult }: Props) {
+export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, banks, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onOpenSettings, onOpenShortcuts, onSelectSearchResult }: Props) {
   const fileName = currentFilePath
     ? currentFilePath.split(/[\\/]/).pop() ?? 'Event Set'
     : 'Untitled Event Set'
@@ -43,7 +44,7 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlay
         </div>
       </div>
 
-      <TrackSearch banks={banks} onSelectResult={onSelectSearchResult} />
+      <TrackSearch ref={searchRef} banks={banks} onSelectResult={onSelectSearchResult} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
         <span style={{ color: '#94a3b8', fontSize: 12 }}>Volume</span>
