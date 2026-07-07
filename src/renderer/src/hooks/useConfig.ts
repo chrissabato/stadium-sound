@@ -20,6 +20,8 @@ export interface ConfigState {
   setAudioDevices: (prefs: AudioDevicePrefs) => void
   showTrackTooltips: boolean
   setShowTrackTooltips: (enabled: boolean) => void
+  showPlayedIndicator: boolean
+  setShowPlayedIndicator: (enabled: boolean) => void
 }
 
 function fileLabel(filePath: string | null): string {
@@ -38,6 +40,7 @@ export function useConfig(): ConfigState {
   const [loaded, setLoaded] = useState(false)
   const [audioDevices, setAudioDevicesState] = useState<AudioDevicePrefs>(DEFAULT_AUDIO_DEVICE_PREFS)
   const [showTrackTooltips, setShowTrackTooltipsState] = useState(true)
+  const [showPlayedIndicator, setShowPlayedIndicatorState] = useState(true)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -62,6 +65,7 @@ export function useConfig(): ConfigState {
       }
       setAudioDevicesState(state.audioDevices)
       setShowTrackTooltipsState(state.showTrackTooltips)
+      setShowPlayedIndicatorState(state.showPlayedIndicator)
       setLoaded(true)
     })
   }, [])
@@ -74,6 +78,11 @@ export function useConfig(): ConfigState {
   const setShowTrackTooltips = useCallback((enabled: boolean) => {
     setShowTrackTooltipsState(enabled)
     window.electronAPI.settings.setShowTrackTooltips(enabled)
+  }, [])
+
+  const setShowPlayedIndicator = useCallback((enabled: boolean) => {
+    setShowPlayedIndicatorState(enabled)
+    window.electronAPI.settings.setShowPlayedIndicator(enabled)
   }, [])
 
   const scheduleAutoSave = useCallback((updated: AppConfig) => {
@@ -161,5 +170,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator }
 }

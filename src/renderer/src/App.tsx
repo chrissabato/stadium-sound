@@ -17,6 +17,8 @@ function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
+const EMPTY_PLAYED_IDS = new Set<string>()
+
 // Only short played ranges are worth decoding to PCM — full songs stream from
 // disk. Unknown duration (failed metadata read) is treated as long, i.e.
 // streamed, until a reprobe can self-heal it.
@@ -49,7 +51,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator } = useConfig()
   const audio = useAudioEngine()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const [nowPlayingTrack, setNowPlayingTrack] = useState<Track | null>(null)
@@ -842,7 +844,7 @@ export default function App() {
               playingTrackId={audio.playingTrackId}
               monitorPlayingTrackId={audio.monitorPlayingTrackId}
               playStartWallTime={audio.playStartWallTime}
-              playedIds={playedIds}
+              playedIds={showPlayedIndicator ? playedIds : EMPTY_PLAYED_IDS}
               missingFileIds={missingFileIds}
               loadingIds={audio.loadingIds}
               isMonitorMode={audio.isMonitorMode}
@@ -934,6 +936,8 @@ export default function App() {
         }}
         showTrackTooltips={showTrackTooltips}
         onShowTrackTooltipsChange={setShowTrackTooltips}
+        showPlayedIndicator={showPlayedIndicator}
+        onShowPlayedIndicatorChange={setShowPlayedIndicator}
         onClose={() => setSettingsOpen(false)}
       />
 

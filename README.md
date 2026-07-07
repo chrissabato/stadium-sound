@@ -26,6 +26,7 @@ All releases: [github.com/chrissabato/stadium-sound/releases](https://github.com
 - Configurable fade in, fade out, and crossfade
 - Track editor with waveform, in/out point trimming, and player name fields
 - Hover tooltips reveal full track info when a soundboard button's text is cut off (toggle in Settings)
+- Right-click a track to edit it; a "played" tint marking already-run tracks can be toggled in Settings
 - Audio output device selection with a second monitor bus — audition a track privately on a separate output while the main track keeps playing
 - Fullscreen mode (toolbar button or F11) for a clean, distraction-free booth view
 - File-based event sets (.eset) with recent files and auto-save

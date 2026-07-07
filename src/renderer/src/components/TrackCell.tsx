@@ -27,6 +27,28 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
   const rafRef = useRef<number | null>(null)
   const colorBarOffset = track.colorLabel ? 5 : 0
   const [tooltip, setTooltip] = useState<{ x: number; y: number; above: boolean } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    if (!contextMenu) return
+    function close() { setContextMenu(null) }
+    function closeOnEscape(e: KeyboardEvent) { if (e.key === 'Escape') setContextMenu(null) }
+    window.addEventListener('keydown', closeOnEscape)
+    // Right-clicking fires a trailing 'click' event right after 'contextmenu' on
+    // this interaction — registering the outside-click listener synchronously
+    // would catch that trailing click and close the menu instantly. Deferring
+    // to the next tick lets that click pass before we start listening.
+    const timer = setTimeout(() => {
+      window.addEventListener('click', close)
+      window.addEventListener('contextmenu', close)
+    }, 0)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('click', close)
+      window.removeEventListener('contextmenu', close)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [contextMenu])
 
   useEffect(() => {
     if (isHighlighted) cellRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -59,6 +81,11 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
     <div
       ref={cellRef}
       onClick={onClick}
+      onContextMenu={(e) => {
+        if (isReordering || isAddToPlaylistMode) return
+        e.preventDefault()
+        setContextMenu({ x: e.clientX, y: e.clientY })
+      }}
       style={{
         position: 'relative',
         padding: '10px 12px',
@@ -82,8 +109,6 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
       onMouseEnter={(e) => {
         const el = e.currentTarget
         if (!isPlaying) el.style.background = isReordering ? '#254a7a' : isMonitorPlaying ? '#0a3d18' : isPlayed ? '#991b1b' : '#263548'
-        const btn = el.querySelector<HTMLElement>('.edit-btn')
-        if (btn) btn.style.opacity = '1'
         if (showTooltip) {
           const rect = el.getBoundingClientRect()
           const above = rect.top > 70
@@ -93,8 +118,6 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
       onMouseLeave={(e) => {
         const el = e.currentTarget
         if (!isPlaying) el.style.background = isReordering ? '#1e3a5f' : isMonitorPlaying ? '#052e12' : isPlayed ? '#7f1d1d' : '#1e293b'
-        const btn = el.querySelector<HTMLElement>('.edit-btn')
-        if (btn) btn.style.opacity = '0'
         setTooltip(null)
       }}
     >
@@ -195,29 +218,7 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
         >
           +
         </div>
-      ) : (
-        <button
-          className="edit-btn"
-          onClick={(e) => { e.stopPropagation(); onEdit() }}
-          style={{
-            position: 'absolute',
-            top: 4 + colorBarOffset,
-            right: 4,
-            background: 'rgba(15,23,42,0.8)',
-            border: '1px solid #334155',
-            borderRadius: 3,
-            color: '#94a3b8',
-            fontSize: 11,
-            padding: '2px 5px',
-            opacity: 0,
-            transition: 'opacity 0.15s',
-            lineHeight: 1.2,
-            zIndex: 1
-          }}
-        >
-          ✎
-        </button>
-      )}
+      ) : null}
 
       {hasPlayer ? (
         <>
@@ -340,6 +341,44 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
           <div style={{ fontSize: 12, fontWeight: hasPlayer ? 400 : 700, color: hasPlayer ? '#94a3b8' : '#f1f5f9' }}>
             {track.artist ? `${track.artist} — ${track.title}` : track.title}
           </div>
+        </div>
+      )}
+
+      {contextMenu && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            left: contextMenu.x,
+            top: contextMenu.y,
+            background: '#0f172a',
+            border: '1px solid #334155',
+            borderRadius: 4,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+            padding: 4,
+            zIndex: 200,
+            minWidth: 140
+          }}
+        >
+          <button
+            onClick={() => { setContextMenu(null); onEdit() }}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              background: 'none',
+              border: 'none',
+              borderRadius: 3,
+              color: '#e2e8f0',
+              fontSize: 13,
+              padding: '6px 10px',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#1e293b' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
+          >
+            ✎ Edit Track
+          </button>
         </div>
       )}
     </div>

@@ -24,7 +24,9 @@ const api: ElectronAPI = {
     setAudioDevices: (outputDeviceId: string, monitorDeviceId: string) =>
       ipcRenderer.invoke('settings:setAudioDevices', outputDeviceId, monitorDeviceId),
     setShowTrackTooltips: (enabled: boolean) =>
-      ipcRenderer.invoke('settings:setShowTrackTooltips', enabled)
+      ipcRenderer.invoke('settings:setShowTrackTooltips', enabled),
+    setShowPlayedIndicator: (enabled: boolean) =>
+      ipcRenderer.invoke('settings:setShowPlayedIndicator', enabled)
   },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),

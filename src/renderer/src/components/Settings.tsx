@@ -14,6 +14,8 @@ interface Props {
   onChange: (c: FadeConfig) => void
   showTrackTooltips: boolean
   onShowTrackTooltipsChange: (enabled: boolean) => void
+  showPlayedIndicator: boolean
+  onShowPlayedIndicatorChange: (enabled: boolean) => void
   onClose: () => void
 }
 
@@ -74,7 +76,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'not-available' | 'error'>('idle')
@@ -251,6 +253,23 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
                 type="checkbox"
                 checked={showTrackTooltips}
                 onChange={(e) => onShowTrackTooltipsChange(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Played Indicator</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Tint a soundboard button red after its track has played
+              </div>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', flexShrink: 0, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={showPlayedIndicator}
+                onChange={(e) => onShowPlayedIndicatorChange(e.target.checked)}
                 style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
               />
             </label>
