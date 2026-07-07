@@ -45,6 +45,10 @@ export interface ElectronAPI {
     checkForUpdate: () => Promise<void>
     onUpdateStatus: (callback: (status: 'checking' | 'available' | 'not-available' | 'error') => void) => () => void
   }
+  window: {
+    toggleFullscreen: () => Promise<boolean>
+    onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
+  }
   onMenuAction: (callback: (action: string, data?: string) => void) => () => void
 }
 

@@ -98,6 +98,11 @@ function createWindow(): void {
     }
   })
 
+  // Keeps the renderer's fullscreen button in sync when fullscreen is
+  // entered/exited by some other means (OS shortcut, window controls).
+  win.on('enter-full-screen', () => win.webContents.send('window:fullscreenChanged', true))
+  win.on('leave-full-screen', () => win.webContents.send('window:fullscreenChanged', false))
+
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }

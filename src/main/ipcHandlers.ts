@@ -147,6 +147,13 @@ export function registerIpcHandlers(): void {
     return Promise.all(paths.map((p) => access(p).then(() => true).catch(() => false)))
   })
 
+  ipcMain.handle('window:toggleFullscreen', () => {
+    const win = getWin()
+    if (!win) return false
+    win.setFullScreen(!win.isFullScreen())
+    return win.isFullScreen()
+  })
+
   ipcMain.handle('app:getVersion', () => app.getVersion())
 
   ipcMain.handle('app:checkForUpdate', () => {

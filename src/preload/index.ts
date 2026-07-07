@@ -35,6 +35,14 @@ const api: ElectronAPI = {
       return () => ipcRenderer.removeListener('app:updateStatus', handler)
     }
   },
+  window: {
+    toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
+    onFullscreenChange: (callback) => {
+      const handler = (_: Electron.IpcRendererEvent, isFullscreen: boolean) => callback(isFullscreen)
+      ipcRenderer.on('window:fullscreenChanged', handler)
+      return () => ipcRenderer.removeListener('window:fullscreenChanged', handler)
+    }
+  },
   onMenuAction: (callback: (action: string, data?: string) => void) => {
     const handler = (_: Electron.IpcRendererEvent, action: string, data?: string) =>
       callback(action, data)

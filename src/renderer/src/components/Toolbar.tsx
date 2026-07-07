@@ -8,18 +8,20 @@ interface Props {
   masterVolume: number
   isMonitorMode: boolean
   showPlaylistPanel: boolean
+  isFullscreen: boolean
   banks: Bank[]
   searchRef?: React.Ref<TrackSearchHandle>
   onVolumeChange: (v: number) => void
   onStopAll: () => void
   onToggleMonitor: () => void
   onTogglePlaylistPanel: () => void
+  onToggleFullscreen: () => void
   onOpenSettings: () => void
   onOpenShortcuts: () => void
   onSelectSearchResult: (bankId: string, track: Track) => void
 }
 
-export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, banks, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onOpenSettings, onOpenShortcuts, onSelectSearchResult }: Props) {
+export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, isFullscreen, banks, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onOpenShortcuts, onSelectSearchResult }: Props) {
   const fileName = currentFilePath
     ? currentFilePath.split(/[\\/]/).pop() ?? 'Event Set'
     : 'Untitled Event Set'
@@ -125,6 +127,22 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlay
         }}
       >
         ⌨
+      </button>
+
+      <button
+        onClick={onToggleFullscreen}
+        title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+        style={{
+          padding: '6px 10px',
+          background: isFullscreen ? '#1e3a5f' : '#1e293b',
+          color: isFullscreen ? '#93c5fd' : '#94a3b8',
+          border: `1px solid ${isFullscreen ? '#3b82f6' : '#334155'}`,
+          borderRadius: 4,
+          fontSize: 15,
+          lineHeight: 1
+        }}
+      >
+        ⛶
       </button>
 
       <button

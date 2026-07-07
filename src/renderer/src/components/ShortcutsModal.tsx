@@ -13,6 +13,7 @@ const GLOBAL_SHORTCUTS: { keys: string; description: string }[] = [
   { keys: '→', description: 'Skip to the next track in the playing playlist' },
   { keys: 'Ctrl/Cmd + M', description: 'Toggle Monitor mode' },
   { keys: 'Ctrl/Cmd + F', description: 'Jump to the track search box' },
+  { keys: 'F11', description: 'Toggle fullscreen' },
   { keys: '?', description: 'Open this shortcuts reference' }
 ]
 

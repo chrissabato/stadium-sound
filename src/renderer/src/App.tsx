@@ -64,6 +64,7 @@ export default function App() {
   const [playlistIndex, setPlaylistIndex] = useState(-1)
   const [selectedTrackIndex, setSelectedTrackIndex] = useState(-1)
   const [highlightedTrackId, setHighlightedTrackId] = useState<string | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const suppressPlaylistAdvanceRef = useRef(false)
   const searchRef = useRef<TrackSearchHandle>(null)
 
@@ -80,6 +81,10 @@ export default function App() {
       }
     })
   }, [config.banks])
+
+  useEffect(() => {
+    return window.electronAPI.window.onFullscreenChange(setIsFullscreen)
+  }, [])
 
   // Keep audio engine in sync with persisted fade settings
   useEffect(() => {
@@ -697,6 +702,11 @@ export default function App() {
       searchRef.current?.focus()
       return
     }
+    if (e.key === 'F11') {
+      e.preventDefault()
+      window.electronAPI.window.toggleFullscreen()
+      return
+    }
 
     const key = normalizeHotkeyEvent(e)
     if (!key) return
@@ -744,11 +754,13 @@ export default function App() {
         masterVolume={config.masterVolume}
         isMonitorMode={audio.isMonitorMode}
         showPlaylistPanel={showPlaylistPanel}
+        isFullscreen={isFullscreen}
         banks={config.banks}
         searchRef={searchRef}
         onVolumeChange={handleVolumeChange}
         onStopAll={stopAll}
         onToggleMonitor={() => audio.setMonitorMode(!audio.isMonitorMode)}
+        onToggleFullscreen={() => window.electronAPI.window.toggleFullscreen()}
         onTogglePlaylistPanel={() => setShowPlaylistPanel((v) => {
           const next = !v
           if (!next) setIsAddToPlaylistMode(false)
