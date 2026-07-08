@@ -49,6 +49,8 @@ export interface ElectronAPI {
     getPlatform: () => Promise<NodeJS.Platform>
     checkForUpdate: () => Promise<void>
     onUpdateStatus: (callback: (status: 'checking' | 'available' | 'not-available' | 'error') => void) => () => void
+    onFlushBeforeQuit: (callback: () => void) => () => void
+    flushBeforeQuitDone: () => void
   }
   window: {
     toggleFullscreen: () => Promise<boolean>

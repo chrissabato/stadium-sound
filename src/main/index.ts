@@ -1,4 +1,4 @@
-import { app, BrowserWindow, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
 import { extname, join } from 'path'
 import { createReadStream } from 'fs'
 import { stat } from 'fs/promises'
@@ -73,7 +73,7 @@ function registerMediaProtocol(): void {
 }
 
 function createWindow(): void {
-  const { windowBounds } = loadSettings()
+  const { windowBounds, isMaximized } = loadSettings()
 
   const win = new BrowserWindow({
     width: windowBounds?.width ?? 1280,
@@ -92,10 +92,29 @@ function createWindow(): void {
     }
   })
 
-  win.on('close', () => {
-    if (!win.isMinimized() && !win.isMaximized()) {
-      saveWindowBounds(win.getBounds())
+  if (isMaximized) win.maximize()
+
+  // Intercept close (fires on every quit path — close button, Cmd+Q, File
+  // > Quit — while webContents is still alive) so the renderer gets a
+  // chance to flush its debounced autosave before the window disappears.
+  let closing = false
+  win.on('close', (e) => {
+    if (closing) return
+    e.preventDefault()
+
+    const bounds = win.isMaximized() ? win.getNormalBounds() : win.getBounds()
+    saveWindowBounds(bounds, win.isMaximized())
+
+    let settled = false
+    const finish = (): void => {
+      if (settled) return
+      settled = true
+      closing = true
+      win.close()
     }
+    ipcMain.once('app:flushBeforeQuitDone', finish)
+    win.webContents.send('app:flushBeforeQuit')
+    setTimeout(finish, 1000)
   })
 
   // Keeps the renderer's fullscreen button in sync when fullscreen is

@@ -116,6 +116,26 @@ export function useConfig(): ConfigState {
     [scheduleAutoSave]
   )
 
+  // Main process asks us to flush any pending debounced autosave before
+  // the window actually closes (see main's `close` handler).
+  useEffect(() => {
+    const remove = window.electronAPI.app.onFlushBeforeQuit(async () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current)
+        saveTimer.current = null
+      }
+      try {
+        const fp = filePathRef.current
+        if (fp) {
+          await window.electronAPI.eventSet.save(configRef.current, fp)
+        }
+      } finally {
+        window.electronAPI.app.flushBeforeQuitDone()
+      }
+    })
+    return remove
+  }, [])
+
   // Native menu actions from main process
   useEffect(() => {
     const remove = window.electronAPI.onMenuAction(async (action, data) => {

@@ -13,6 +13,7 @@ interface AppSettings {
   lastFile: string | null
   recentFiles: string[]
   windowBounds: WindowBounds | null
+  isMaximized: boolean
   outputDeviceId: string
   monitorDeviceId: string
   showTrackTooltips: boolean
@@ -37,6 +38,7 @@ export function loadSettings(): AppSettings {
       lastFile: typeof parsed.lastFile === 'string' ? parsed.lastFile : null,
       recentFiles: Array.isArray(parsed.recentFiles) ? parsed.recentFiles : [],
       windowBounds,
+      isMaximized: typeof parsed.isMaximized === 'boolean' ? parsed.isMaximized : false,
       outputDeviceId: typeof parsed.outputDeviceId === 'string' ? parsed.outputDeviceId : '',
       monitorDeviceId: typeof parsed.monitorDeviceId === 'string' ? parsed.monitorDeviceId : '',
       showTrackTooltips: typeof parsed.showTrackTooltips === 'boolean' ? parsed.showTrackTooltips : true,
@@ -48,6 +50,7 @@ export function loadSettings(): AppSettings {
       lastFile: null,
       recentFiles: [],
       windowBounds: null,
+      isMaximized: false,
       outputDeviceId: '',
       monitorDeviceId: '',
       showTrackTooltips: true,
@@ -57,9 +60,13 @@ export function loadSettings(): AppSettings {
   }
 }
 
-export function saveWindowBounds(bounds: WindowBounds): void {
+export function saveWindowBounds(bounds: WindowBounds, isMaximized: boolean): void {
   const s = loadSettings()
-  writeFileSync(settingsPath(), JSON.stringify({ ...s, windowBounds: bounds }, null, 2), 'utf-8')
+  writeFileSync(
+    settingsPath(),
+    JSON.stringify({ ...s, windowBounds: bounds, isMaximized }, null, 2),
+    'utf-8'
+  )
 }
 
 export function saveAudioDevices(outputDeviceId: string, monitorDeviceId: string): void {

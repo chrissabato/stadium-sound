@@ -38,7 +38,13 @@ const api: ElectronAPI = {
       const handler = (_: Electron.IpcRendererEvent, status: string) => callback(status as never)
       ipcRenderer.on('app:updateStatus', handler)
       return () => ipcRenderer.removeListener('app:updateStatus', handler)
-    }
+    },
+    onFlushBeforeQuit: (callback) => {
+      const handler = (): void => callback()
+      ipcRenderer.on('app:flushBeforeQuit', handler)
+      return () => ipcRenderer.removeListener('app:flushBeforeQuit', handler)
+    },
+    flushBeforeQuitDone: () => ipcRenderer.send('app:flushBeforeQuitDone')
   },
   window: {
     toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
