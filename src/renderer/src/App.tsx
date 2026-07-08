@@ -105,6 +105,7 @@ export default function App() {
 
   const selectedBank = config.banks.find((b) => b.id === config.selectedBankId) ?? null
   const selectedPlaylist = (config.playlists ?? []).find((p) => p.id === config.selectedPlaylistId) ?? null
+  const hasUnplayedTracks = !!selectedBank?.tracks.some((t) => !playedIds.has(t.id) && !missingFileIds.has(t.id))
 
   // Lets the Sidebar flag which bank owns the track currently cued on the
   // monitor bus, so it stays visible even after switching to a different bank.
@@ -219,6 +220,17 @@ export default function App() {
       setNowPlayingTrack(track)
       setPlayedIds((prev) => new Set([...prev, track.id]))
     }
+  }
+
+  // Excludes tracks already played this event (see playedIds) and tracks whose
+  // file is known missing, so Random never re-triggers something just heard
+  // or silently no-ops on a broken file.
+  function playRandomTrack() {
+    if (!selectedBank) return
+    const candidates = selectedBank.tracks.filter((t) => !playedIds.has(t.id) && !missingFileIds.has(t.id))
+    if (candidates.length === 0) return
+    const track = candidates[Math.floor(Math.random() * candidates.length)]
+    playTrack(track)
   }
 
   function playTrack(track: Track) {
@@ -806,6 +818,22 @@ export default function App() {
               <span style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>{selectedBank.name}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12, color: '#64748b' }}>{selectedBank.tracks.length} tracks</span>
+                <button
+                  onClick={playRandomTrack}
+                  disabled={!hasUnplayedTracks}
+                  title={hasUnplayedTracks ? 'Play a random track that hasn\'t played yet' : 'All tracks in this bank have played'}
+                  style={{
+                    padding: '5px 12px',
+                    background: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: 4,
+                    color: hasUnplayedTracks ? '#94a3b8' : '#475569',
+                    fontSize: 12,
+                    cursor: hasUnplayedTracks ? 'pointer' : 'default'
+                  }}
+                >
+                  🔀 Random
+                </button>
                 <button
                   onClick={() => setIsReordering((v) => {
                     const next = !v
