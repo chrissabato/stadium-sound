@@ -46,6 +46,8 @@ interface PlaybackHandle {
 interface BusState {
   ctx: AudioContext | null
   masterGain: GainNode | null
+  analyserL: AnalyserNode | null
+  analyserR: AnalyserNode | null
   activeHandle: PlaybackHandle | null
   activeTrackGain: GainNode | null
   fadingHandle: PlaybackHandle | null
@@ -58,6 +60,8 @@ function newBusState(): BusState {
   return {
     ctx: null,
     masterGain: null,
+    analyserL: null,
+    analyserR: null,
     activeHandle: null,
     activeTrackGain: null,
     fadingHandle: null,
@@ -65,6 +69,11 @@ function newBusState(): BusState {
     playingId: null,
     playingFilePath: null
   }
+}
+
+export interface BusAnalysers {
+  left: AnalyserNode
+  right: AnalyserNode
 }
 
 interface PlaybackSnapshot {
@@ -90,6 +99,7 @@ interface AudioEngine {
   setOutputDevices: (outputDeviceId: string, monitorDeviceId: string) => void
   setMonitorMode: (enabled: boolean) => void
   isMonitorMode: boolean
+  getBusAnalysers: (bus: AudioBus) => BusAnalysers | null
   playingTrackId: string | null
   audioCtx: AudioContext | null
   playStartCtxTime: number | null
@@ -182,6 +192,21 @@ export function useAudioEngine(): AudioEngine {
       state.masterGain = state.ctx.createGain()
       state.masterGain.gain.value = masterVolumeRef.current
       state.masterGain.connect(state.ctx.destination)
+
+      // Level-meter tap: a parallel splitter+analyser pair off the master gain,
+      // never inline with the destination path, so meters can be read (or the
+      // splitter simply left unused) without any risk of altering the output.
+      const splitter = state.ctx.createChannelSplitter(2)
+      state.masterGain.connect(splitter)
+      state.analyserL = state.ctx.createAnalyser()
+      state.analyserL.fftSize = 256
+      state.analyserL.smoothingTimeConstant = 0.4
+      state.analyserR = state.ctx.createAnalyser()
+      state.analyserR.fftSize = 256
+      state.analyserR.smoothingTimeConstant = 0.4
+      splitter.connect(state.analyserL, 0)
+      splitter.connect(state.analyserR, 1)
+
       const deviceId = bus === 'main' ? outputDeviceIdRef.current : monitorDeviceIdRef.current
       if (deviceId) applySinkId(state.ctx, deviceId)
     }
@@ -485,6 +510,11 @@ export function useAudioEngine(): AudioEngine {
     setIsMonitorMode(enabled)
   }, [])
 
+  const getBusAnalysers = useCallback((bus: AudioBus): BusAnalysers | null => {
+    const state = busState(bus)
+    return state.analyserL && state.analyserR ? { left: state.analyserL, right: state.analyserR } : null
+  }, [])
+
   useEffect(() => {
     return () => {
       cancelFadeTimer('main')
@@ -505,6 +535,7 @@ export function useAudioEngine(): AudioEngine {
     stopAll, stopImmediate, stopMonitor, stopMonitorImmediate,
     setMasterVolume, setFadeSettings, setOutputDevices, setMonitorMode,
     isMonitorMode,
+    getBusAnalysers,
     playingTrackId: mainPlayback.id,
     audioCtx: mainRef.current.ctx,
     playStartCtxTime: mainPlayback.ctxTime,

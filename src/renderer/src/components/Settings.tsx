@@ -16,6 +16,8 @@ interface Props {
   onShowTrackTooltipsChange: (enabled: boolean) => void
   showPlayedIndicator: boolean
   onShowPlayedIndicatorChange: (enabled: boolean) => void
+  showMeters: boolean
+  onShowMetersChange: (enabled: boolean) => void
   onClose: () => void
 }
 
@@ -76,7 +78,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'not-available' | 'error'>('idle')
@@ -270,6 +272,23 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
                 type="checkbox"
                 checked={showPlayedIndicator}
                 onChange={(e) => onShowPlayedIndicatorChange(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Level Meters</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Show vertical L/R meters for the main output on the right side of the display
+              </div>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', flexShrink: 0, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={showMeters}
+                onChange={(e) => onShowMetersChange(e.target.checked)}
                 style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
               />
             </label>

@@ -26,7 +26,9 @@ const api: ElectronAPI = {
     setShowTrackTooltips: (enabled: boolean) =>
       ipcRenderer.invoke('settings:setShowTrackTooltips', enabled),
     setShowPlayedIndicator: (enabled: boolean) =>
-      ipcRenderer.invoke('settings:setShowPlayedIndicator', enabled)
+      ipcRenderer.invoke('settings:setShowPlayedIndicator', enabled),
+    setShowMeters: (enabled: boolean) =>
+      ipcRenderer.invoke('settings:setShowMeters', enabled)
   },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),

@@ -22,6 +22,8 @@ export interface ConfigState {
   setShowTrackTooltips: (enabled: boolean) => void
   showPlayedIndicator: boolean
   setShowPlayedIndicator: (enabled: boolean) => void
+  showMeters: boolean
+  setShowMeters: (enabled: boolean) => void
 }
 
 function fileLabel(filePath: string | null): string {
@@ -41,6 +43,7 @@ export function useConfig(): ConfigState {
   const [audioDevices, setAudioDevicesState] = useState<AudioDevicePrefs>(DEFAULT_AUDIO_DEVICE_PREFS)
   const [showTrackTooltips, setShowTrackTooltipsState] = useState(true)
   const [showPlayedIndicator, setShowPlayedIndicatorState] = useState(true)
+  const [showMeters, setShowMetersState] = useState(true)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -66,6 +69,7 @@ export function useConfig(): ConfigState {
       setAudioDevicesState(state.audioDevices)
       setShowTrackTooltipsState(state.showTrackTooltips)
       setShowPlayedIndicatorState(state.showPlayedIndicator)
+      setShowMetersState(state.showMeters)
       setLoaded(true)
     })
   }, [])
@@ -83,6 +87,11 @@ export function useConfig(): ConfigState {
   const setShowPlayedIndicator = useCallback((enabled: boolean) => {
     setShowPlayedIndicatorState(enabled)
     window.electronAPI.settings.setShowPlayedIndicator(enabled)
+  }, [])
+
+  const setShowMeters = useCallback((enabled: boolean) => {
+    setShowMetersState(enabled)
+    window.electronAPI.settings.setShowMeters(enabled)
   }, [])
 
   const scheduleAutoSave = useCallback((updated: AppConfig) => {
@@ -170,5 +179,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters }
 }

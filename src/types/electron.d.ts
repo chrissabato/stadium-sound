@@ -7,6 +7,7 @@ export interface EventSetState {
   audioDevices: AudioDevicePrefs
   showTrackTooltips: boolean
   showPlayedIndicator: boolean
+  showMeters: boolean
 }
 
 export interface EventSetOpenResult {
@@ -41,6 +42,7 @@ export interface ElectronAPI {
     setAudioDevices: (outputDeviceId: string, monitorDeviceId: string) => Promise<void>
     setShowTrackTooltips: (enabled: boolean) => Promise<void>
     setShowPlayedIndicator: (enabled: boolean) => Promise<void>
+    setShowMeters: (enabled: boolean) => Promise<void>
   }
   app: {
     getVersion: () => Promise<string>

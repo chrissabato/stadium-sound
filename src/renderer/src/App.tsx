@@ -6,6 +6,7 @@ import type { TrackSearchHandle } from './components/TrackSearch'
 import { Sidebar } from './components/Sidebar'
 import { TrackGrid } from './components/TrackGrid'
 import { NowPlayingBar } from './components/NowPlayingBar'
+import { LevelMeters } from './components/LevelMeters'
 import { TrackEditor } from './components/TrackEditor'
 import { Settings } from './components/Settings'
 import { PlaylistPanel } from './components/PlaylistPanel'
@@ -51,7 +52,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters } = useConfig()
   const audio = useAudioEngine()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const [nowPlayingTrack, setNowPlayingTrack] = useState<Track | null>(null)
@@ -554,6 +555,8 @@ export default function App() {
     playPlaylistTrackAt(playlist, playlistIndex + 1)
   }
 
+  const getMainAnalysers = useCallback(() => audio.getBusAnalysers('main'), [audio.getBusAnalysers])
+
   const handleVolumeChange = useCallback((v: number) => {
     audio.setMasterVolume(v)
     updateConfig((c) => ({ ...c, masterVolume: v }))
@@ -874,6 +877,8 @@ export default function App() {
           )}
         </div>
 
+        {showMeters && <LevelMeters getAnalysers={getMainAnalysers} />}
+
         {showPlaylistPanel && (
           <PlaylistPanel
             playlists={config.playlists ?? []}
@@ -938,6 +943,8 @@ export default function App() {
         onShowTrackTooltipsChange={setShowTrackTooltips}
         showPlayedIndicator={showPlayedIndicator}
         onShowPlayedIndicatorChange={setShowPlayedIndicator}
+        showMeters={showMeters}
+        onShowMetersChange={setShowMeters}
         onClose={() => setSettingsOpen(false)}
       />
 

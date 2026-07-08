@@ -17,6 +17,7 @@ interface AppSettings {
   monitorDeviceId: string
   showTrackTooltips: boolean
   showPlayedIndicator: boolean
+  showMeters: boolean
 }
 
 function settingsPath(): string {
@@ -39,7 +40,8 @@ export function loadSettings(): AppSettings {
       outputDeviceId: typeof parsed.outputDeviceId === 'string' ? parsed.outputDeviceId : '',
       monitorDeviceId: typeof parsed.monitorDeviceId === 'string' ? parsed.monitorDeviceId : '',
       showTrackTooltips: typeof parsed.showTrackTooltips === 'boolean' ? parsed.showTrackTooltips : true,
-      showPlayedIndicator: typeof parsed.showPlayedIndicator === 'boolean' ? parsed.showPlayedIndicator : true
+      showPlayedIndicator: typeof parsed.showPlayedIndicator === 'boolean' ? parsed.showPlayedIndicator : true,
+      showMeters: typeof parsed.showMeters === 'boolean' ? parsed.showMeters : true
     }
   } catch {
     return {
@@ -49,7 +51,8 @@ export function loadSettings(): AppSettings {
       outputDeviceId: '',
       monitorDeviceId: '',
       showTrackTooltips: true,
-      showPlayedIndicator: true
+      showPlayedIndicator: true,
+      showMeters: true
     }
   }
 }
@@ -76,6 +79,11 @@ export function saveShowTrackTooltips(showTrackTooltips: boolean): void {
 export function saveShowPlayedIndicator(showPlayedIndicator: boolean): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, showPlayedIndicator }, null, 2), 'utf-8')
+}
+
+export function saveShowMeters(showMeters: boolean): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, showMeters }, null, 2), 'utf-8')
 }
 
 function saveSettings(s: AppSettings): void {

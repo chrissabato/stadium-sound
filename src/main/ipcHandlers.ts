@@ -3,7 +3,7 @@ import { autoUpdater } from 'electron-updater'
 import { readFile, access } from 'fs/promises'
 import { readFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
-import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator } from './settingsStore'
+import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters } from './settingsStore'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
 
@@ -67,17 +67,18 @@ export function registerIpcHandlers(): void {
     }
     const showTrackTooltips = settings.showTrackTooltips
     const showPlayedIndicator = settings.showPlayedIndicator
+    const showMeters = settings.showMeters
     if (settings.lastFile && eventSetExists(settings.lastFile)) {
       try {
         const config = loadEventSet(settings.lastFile)
-        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator }
+        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters }
       } catch {
         // File exists but is unreadable — remove from recents and start blank
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
-        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator }
+        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters }
       }
     }
-    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator }
+    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters }
   })
 
   // Machine-level audio device preference — saved independently of the event
@@ -94,6 +95,11 @@ export function registerIpcHandlers(): void {
   // Machine-level UI preference — same rationale as audio devices above.
   ipcMain.handle('settings:setShowPlayedIndicator', (_event, enabled: boolean) => {
     saveShowPlayedIndicator(enabled)
+  })
+
+  // Machine-level UI preference — same rationale as audio devices above.
+  ipcMain.handle('settings:setShowMeters', (_event, enabled: boolean) => {
+    saveShowMeters(enabled)
   })
 
   ipcMain.handle('eventSet:open', async () => {
