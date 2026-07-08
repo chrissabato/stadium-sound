@@ -41,12 +41,12 @@ export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, 
     <div style={{
       background: '#1e293b',
       borderTop: '1px solid #334155',
-      padding: '8px 16px',
+      padding: '10px 20px',
       flexShrink: 0,
       display: 'flex',
       alignItems: 'center',
-      gap: 16,
-      minHeight: 52
+      gap: 20,
+      minHeight: 68
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         {track ? (
@@ -69,27 +69,35 @@ export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, 
       </div>
 
       {track && (
-        <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 240 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 2, minWidth: 0 }}>
+          <span style={{ fontSize: 12, color: '#64748b', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+            {formatTime(elapsed)}
+          </span>
+          <div style={{
+            flex: 1,
+            height: 12,
+            background: '#334155',
+            borderRadius: 6,
+            overflow: 'hidden'
+          }}>
             <div style={{
-              height: 4,
-              background: '#334155',
-              borderRadius: 2,
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                height: '100%',
-                width: `${progress * 100}%`,
-                background: '#22c55e',
-                transition: 'width 0.1s linear'
-              }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>
-              <span>{formatTime(elapsed)}</span>
-              <span>-{formatTime(Math.max(0, duration - elapsed))}</span>
-            </div>
+              height: '100%',
+              width: `${progress * 100}%`,
+              background: '#22c55e',
+              transition: 'width 0.1s linear'
+            }} />
           </div>
-        </>
+          <span style={{
+            fontSize: 28,
+            fontWeight: 700,
+            color: '#f1f5f9',
+            fontVariantNumeric: 'tabular-nums',
+            flexShrink: 0,
+            textAlign: 'right'
+          }}>
+            -{formatTime(Math.max(0, duration - elapsed))}
+          </span>
+        </div>
       )}
 
       <button
