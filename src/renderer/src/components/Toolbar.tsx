@@ -18,10 +18,11 @@ interface Props {
   onToggleFullscreen: () => void
   onOpenSettings: () => void
   onOpenShortcuts: () => void
+  onOpenFeedback: () => void
   onSelectSearchResult: (bankId: string, track: Track) => void
 }
 
-export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, isFullscreen, banks, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onOpenShortcuts, onSelectSearchResult }: Props) {
+export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, isFullscreen, banks, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onOpenShortcuts, onOpenFeedback, onSelectSearchResult }: Props) {
   const fileName = currentFilePath
     ? currentFilePath.split(/[\\/]/).pop() ?? 'Event Set'
     : 'Untitled Event Set'
@@ -127,6 +128,22 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlay
         }}
       >
         ⌨
+      </button>
+
+      <button
+        onClick={onOpenFeedback}
+        title="Send feedback"
+        style={{
+          padding: '6px 10px',
+          background: '#1e293b',
+          color: '#94a3b8',
+          border: '1px solid #334155',
+          borderRadius: 4,
+          fontSize: 15,
+          lineHeight: 1
+        }}
+      >
+        💬
       </button>
 
       <button

@@ -46,6 +46,7 @@ export interface ElectronAPI {
   }
   app: {
     getVersion: () => Promise<string>
+    getPlatform: () => Promise<NodeJS.Platform>
     checkForUpdate: () => Promise<void>
     onUpdateStatus: (callback: (status: 'checking' | 'available' | 'not-available' | 'error') => void) => () => void
   }

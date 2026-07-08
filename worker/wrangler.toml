@@ -1,0 +1,7 @@
+name = "stadium-sound-feedback"
+main = "src/index.ts"
+compatibility_date = "2026-07-08"
+
+# Secrets (set via `wrangler secret put <NAME>` — do not put values here):
+#   GITHUB_TOKEN      fine-grained PAT with Issues: write on chrissabato/stadium-sound
+#   APP_SHARED_SECRET must match the value baked into FeedbackModal.tsx

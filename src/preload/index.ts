@@ -32,6 +32,7 @@ const api: ElectronAPI = {
   },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
+    getPlatform: () => ipcRenderer.invoke('app:getPlatform'),
     checkForUpdate: () => ipcRenderer.invoke('app:checkForUpdate'),
     onUpdateStatus: (callback) => {
       const handler = (_: Electron.IpcRendererEvent, status: string) => callback(status as never)

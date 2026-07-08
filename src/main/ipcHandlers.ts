@@ -168,6 +168,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('app:getVersion', () => app.getVersion())
 
+  ipcMain.handle('app:getPlatform', () => process.platform)
+
   ipcMain.handle('app:checkForUpdate', () => {
     const win = getWin()
     if (!app.isPackaged) {

@@ -9,6 +9,7 @@ import { NowPlayingBar } from './components/NowPlayingBar'
 import { LevelMeters } from './components/LevelMeters'
 import { TrackEditor } from './components/TrackEditor'
 import { Settings } from './components/Settings'
+import { FeedbackModal } from './components/FeedbackModal'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import type { Bank, Track, Playlist, PlaylistTrack } from './types'
@@ -57,6 +58,7 @@ export default function App() {
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const [nowPlayingTrack, setNowPlayingTrack] = useState<Track | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [playedIds, setPlayedIds] = useState<Set<string>>(new Set())
   const [isReordering, setIsReordering] = useState(false)
@@ -790,6 +792,7 @@ export default function App() {
         })}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenShortcuts={() => setShortcutsOpen(true)}
+        onOpenFeedback={() => setFeedbackOpen(true)}
         onSelectSearchResult={jumpToSearchResult}
       />
 
@@ -979,6 +982,11 @@ export default function App() {
         showMeters={showMeters}
         onShowMetersChange={setShowMeters}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <FeedbackModal
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
       />
 
       <ShortcutsModal

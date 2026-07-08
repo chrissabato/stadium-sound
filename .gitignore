@@ -24,3 +24,6 @@ Thumbs.db
 # Env / secrets
 .env
 .env.*
+
+# Wrangler local state
+.wrangler/
