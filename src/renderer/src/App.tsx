@@ -719,6 +719,11 @@ export default function App() {
       searchRef.current?.focus()
       return
     }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+      e.preventDefault()
+      playRandomTrack()
+      return
+    }
     if (e.key === 'F11') {
       e.preventDefault()
       window.electronAPI.window.toggleFullscreen()
@@ -821,7 +826,7 @@ export default function App() {
                 <button
                   onClick={playRandomTrack}
                   disabled={!hasUnplayedTracks}
-                  title={hasUnplayedTracks ? 'Play a random track that hasn\'t played yet' : 'All tracks in this bank have played'}
+                  title={hasUnplayedTracks ? 'Play a random track that hasn\'t played yet (Ctrl/Cmd+R)' : 'All tracks in this bank have played'}
                   style={{
                     padding: '5px 12px',
                     background: '#1e293b',
@@ -832,7 +837,7 @@ export default function App() {
                     cursor: hasUnplayedTracks ? 'pointer' : 'default'
                   }}
                 >
-                  🔀 Random
+                  ▶ Random
                 </button>
                 <button
                   onClick={() => setIsReordering((v) => {
