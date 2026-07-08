@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useAudioEngine, CLIP_DECODE_MAX_SECONDS, type AudioBus } from './hooks/useAudioEngine'
 import { useConfig } from './hooks/useConfig'
+import { useLibraries } from './hooks/useLibraries'
 import { Toolbar } from './components/Toolbar'
 import type { TrackSearchHandle } from './components/TrackSearch'
 import { Sidebar } from './components/Sidebar'
@@ -12,7 +13,9 @@ import { Settings } from './components/Settings'
 import { FeedbackModal } from './components/FeedbackModal'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { ShortcutsModal } from './components/ShortcutsModal'
-import type { Bank, Track, Playlist, PlaylistTrack } from './types'
+import { LibraryManager } from './components/LibraryManager'
+import { AddFromLibraryModal } from './components/AddFromLibraryModal'
+import type { Bank, Track, Playlist, PlaylistTrack, LibraryTrack } from './types'
 import { normalizeHotkeyEvent } from './types'
 
 function makeId() {
@@ -55,11 +58,14 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 export default function App() {
   const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters } = useConfig()
   const audio = useAudioEngine()
+  const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const [nowPlayingTrack, setNowPlayingTrack] = useState<Track | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [libraryManagerOpen, setLibraryManagerOpen] = useState(false)
+  const [addFromLibraryTarget, setAddFromLibraryTarget] = useState<'bank' | 'playlist' | null>(null)
   const [playedIds, setPlayedIds] = useState<Set<string>>(new Set())
   const [isReordering, setIsReordering] = useState(false)
   const [missingFileIds, setMissingFileIds] = useState<Set<string>>(new Set())
@@ -160,8 +166,7 @@ export default function App() {
     }
   }
 
-  async function addTracks() {
-    const paths = await window.electronAPI.openAudioFiles()
+  async function addTracksByPaths(paths: string[]) {
     if (!paths.length || !config.selectedBankId) return
 
     const newTracks: Track[] = await Promise.all(
@@ -187,6 +192,60 @@ export default function App() {
       ...c,
       banks: c.banks.map((b) =>
         b.id === c.selectedBankId ? { ...b, tracks: [...b.tracks, ...newTracks] } : b
+      )
+    }))
+    warmClips(newTracks)
+  }
+
+  async function addTracks() {
+    const paths = await window.electronAPI.openAudioFiles()
+    await addTracksByPaths(paths)
+  }
+
+  function addLibraryTracksToBank(libTracks: LibraryTrack[]) {
+    if (!config.selectedBankId) return
+    const newTracks: Track[] = libTracks.map((t) => {
+      const id = makeId()
+      if (shouldDecode(t)) audio.loadBuffer(id, t.filePath).catch(() => {})
+      return {
+        id,
+        filePath: t.filePath,
+        artist: t.artist,
+        title: t.title,
+        duration: t.duration,
+        inPoint: 0,
+        outPoint: t.duration
+      }
+    })
+    updateConfig((c) => ({
+      ...c,
+      banks: c.banks.map((b) =>
+        b.id === c.selectedBankId ? { ...b, tracks: [...b.tracks, ...newTracks] } : b
+      )
+    }))
+    warmClips(newTracks)
+  }
+
+  function addLibraryTracksToPlaylist(libTracks: LibraryTrack[]) {
+    if (!config.selectedPlaylistId) return
+    const newTracks: PlaylistTrack[] = libTracks.map((t) => {
+      const id = makeId()
+      if (shouldDecode(t)) audio.loadBuffer(id, t.filePath).catch(() => {})
+      return {
+        id,
+        itemId: id,
+        filePath: t.filePath,
+        artist: t.artist,
+        title: t.title,
+        duration: t.duration,
+        inPoint: 0,
+        outPoint: t.duration
+      }
+    })
+    updateConfig((c) => ({
+      ...c,
+      playlists: (c.playlists ?? []).map((p) =>
+        p.id === c.selectedPlaylistId ? { ...p, tracks: [...p.tracks, ...newTracks] } : p
       )
     }))
     warmClips(newTracks)
@@ -780,6 +839,7 @@ export default function App() {
         showPlaylistPanel={showPlaylistPanel}
         isFullscreen={isFullscreen}
         banks={config.banks}
+        libraries={libraries.libraries}
         searchRef={searchRef}
         onVolumeChange={handleVolumeChange}
         onStopAll={stopAll}
@@ -793,7 +853,9 @@ export default function App() {
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenShortcuts={() => setShortcutsOpen(true)}
         onOpenFeedback={() => setFeedbackOpen(true)}
+        onOpenLibraries={() => setLibraryManagerOpen(true)}
         onSelectSearchResult={jumpToSearchResult}
+        onAddLibraryTrack={(t) => addLibraryTracksToBank([t])}
       />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -873,6 +935,19 @@ export default function App() {
                 >
                   + Add Tracks
                 </button>
+                <button
+                  onClick={() => setAddFromLibraryTarget('bank')}
+                  style={{
+                    padding: '5px 12px',
+                    background: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: 4,
+                    color: '#94a3b8',
+                    fontSize: 12
+                  }}
+                >
+                  🗀 From Library
+                </button>
               </div>
             </div>
           )}
@@ -894,6 +969,8 @@ export default function App() {
               onPlayTrack={playTrack}
               onEditTrack={setEditingTrack}
               onAddTracks={addTracks}
+              onAddFromLibrary={() => setAddFromLibraryTarget('bank')}
+              onDropFiles={addTracksByPaths}
               onReorder={reorderTracks}
               onAddToPlaylist={addTrackToPlaylist}
             />
@@ -930,6 +1007,7 @@ export default function App() {
             onReorderPlaylists={reorderPlaylists}
             onToggleAddMode={toggleAddToPlaylistMode}
             onAddTracksFromFile={addTracksToPlaylist}
+            onAddFromLibrary={() => setAddFromLibraryTarget('playlist')}
             onRemoveTrack={removePlaylistTrack}
             onReorderTracks={reorderPlaylistTracks}
             selectedTrackIndex={selectedTrackIndex}
@@ -993,6 +1071,28 @@ export default function App() {
         open={shortcutsOpen}
         banks={config.banks}
         onClose={() => setShortcutsOpen(false)}
+      />
+
+      <LibraryManager
+        open={libraryManagerOpen}
+        libraries={libraries.libraries}
+        scanProgress={libraries.scanProgress}
+        onAddFolder={libraries.addFolder}
+        onRescan={libraries.rescan}
+        onRename={libraries.rename}
+        onRemove={libraries.remove}
+        onClose={() => setLibraryManagerOpen(false)}
+      />
+
+      <AddFromLibraryModal
+        open={addFromLibraryTarget !== null}
+        libraries={libraries.libraries}
+        targetLabel={addFromLibraryTarget === 'playlist' ? (selectedPlaylist?.name ?? 'Playlist') : (selectedBank?.name ?? 'Bank')}
+        onAdd={(tracks) => {
+          if (addFromLibraryTarget === 'playlist') addLibraryTracksToPlaylist(tracks)
+          else addLibraryTracksToBank(tracks)
+        }}
+        onClose={() => setAddFromLibraryTarget(null)}
       />
     </>
   )

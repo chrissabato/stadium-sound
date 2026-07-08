@@ -6,28 +6,29 @@ import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
 import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters } from './settingsStore'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
-
-async function getMetadata(filePath: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mm: any = await import('music-metadata')
-  try {
-    const meta = await mm.parseFile(filePath)
-    const artist = meta.common.artist || ''
-    const title =
-      meta.common.title ||
-      filePath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ||
-      filePath
-    const duration = meta.format.duration ?? 0
-    return { artist, title, duration }
-  } catch {
-    const name =
-      filePath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') || filePath
-    return { artist: '', title: name, duration: 0 }
-  }
-}
+import { AUDIO_EXTENSIONS, getAudioMetadata, scanFolder } from './libraryScanner'
+import { loadLibraries, createLibrary, replaceLibraryTracks, renameLibrary, removeLibrary } from './libraryStore'
 
 function getWin(): BrowserWindow | null {
   return BrowserWindow.getAllWindows()[0] ?? null
+}
+
+// Scans run in the background so the renderer gets an immediate response
+// (the new/existing library entry) and then live progress — a full library
+// can have hundreds of files, and blocking the IPC call until every one is
+// tag-read would leave the UI with no way to show a progress bar.
+function runLibraryScan(id: string, folderPath: string): void {
+  const win = getWin()
+  scanFolder(folderPath, (scanned, total) => {
+    win?.webContents.send('library:scanProgress', { id, scanned, total })
+  })
+    .then((tracks) => {
+      const all = replaceLibraryTracks(id, tracks)
+      win?.webContents.send('library:scanComplete', { id, libraries: all })
+    })
+    .catch(() => {
+      win?.webContents.send('library:scanComplete', { id, libraries: loadLibraries() })
+    })
 }
 
 function refreshMenu(recentFiles: string[]): void {
@@ -41,7 +42,7 @@ export function registerIpcHandlers(): void {
       title: 'Select Audio Files',
       defaultPath,
       filters: [
-        { name: 'Audio Files', extensions: ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'] },
+        { name: 'Audio Files', extensions: AUDIO_EXTENSIONS },
         { name: 'All Files', extensions: ['*'] }
       ],
       properties: ['openFile', 'multiSelections']
@@ -55,7 +56,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('meta:getTrackMetadata', async (_event, filePath: string) => {
-    return getMetadata(filePath)
+    return getAudioMetadata(filePath)
   })
 
   // Returns the initial config + file path to the renderer on startup
@@ -203,4 +204,29 @@ export function registerIpcHandlers(): void {
     const content = readFileSync(filePaths[0], 'latin1')
     return parseSspSet(content)
   })
+
+  ipcMain.handle('library:list', () => loadLibraries())
+
+  ipcMain.handle('library:addFolder', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Add Media Library Folder',
+      properties: ['openDirectory']
+    })
+    if (canceled || !filePaths[0]) return null
+    const folderPath = filePaths[0]
+    const { library, all } = createLibrary(folderPath)
+    runLibraryScan(library.id, folderPath)
+    return all
+  })
+
+  ipcMain.handle('library:rescan', (_event, id: string) => {
+    const libraries = loadLibraries()
+    const library = libraries.find((l) => l.id === id)
+    if (library) runLibraryScan(id, library.folderPath)
+    return libraries
+  })
+
+  ipcMain.handle('library:rename', (_event, id: string, name: string) => renameLibrary(id, name))
+
+  ipcMain.handle('library:remove', (_event, id: string) => removeLibrary(id))
 }

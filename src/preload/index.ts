@@ -1,12 +1,19 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ElectronAPI } from '../types/electron'
-import type { AppConfig } from '../renderer/src/types'
+import type { AppConfig, MediaLibrary } from '../renderer/src/types'
 
 const api: ElectronAPI = {
   openAudioFiles: (defaultPath?: string) => ipcRenderer.invoke('dialog:openAudioFiles', defaultPath),
   readAudioFile: (filePath: string) => ipcRenderer.invoke('fs:readAudioFile', filePath),
   getTrackMetadata: (filePath: string) => ipcRenderer.invoke('meta:getTrackMetadata', filePath),
   checkFiles: (paths: string[]) => ipcRenderer.invoke('fs:checkFiles', paths),
+  // `file` is a real DOM File object handed in from the renderer (e.g. from
+  // an OS drag-and-drop event) — typed `unknown` here because this file is
+  // also compiled under tsconfig.node.json, which has no DOM lib and can't
+  // resolve the `File` type. webUtils.getPathForFile still works at runtime
+  // since Electron's contextBridge is able to marshal File objects across
+  // the isolated-world boundary.
+  getPathForFile: (file: unknown) => webUtils.getPathForFile(file as never),
   eventSet: {
     getInitialState: () => ipcRenderer.invoke('eventSet:getInitialState'),
     open: () => ipcRenderer.invoke('eventSet:open'),
@@ -19,6 +26,25 @@ const api: ElectronAPI = {
   },
   ssp: {
     import: () => ipcRenderer.invoke('ssp:import')
+  },
+  library: {
+    list: () => ipcRenderer.invoke('library:list'),
+    addFolder: () => ipcRenderer.invoke('library:addFolder'),
+    rescan: (id: string) => ipcRenderer.invoke('library:rescan', id),
+    rename: (id: string, name: string) => ipcRenderer.invoke('library:rename', id, name),
+    remove: (id: string) => ipcRenderer.invoke('library:remove', id),
+    onScanProgress: (callback) => {
+      const handler = (_: Electron.IpcRendererEvent, progress: { id: string; scanned: number; total: number }) =>
+        callback(progress)
+      ipcRenderer.on('library:scanProgress', handler)
+      return () => ipcRenderer.removeListener('library:scanProgress', handler)
+    },
+    onScanComplete: (callback) => {
+      const handler = (_: Electron.IpcRendererEvent, result: { id: string; libraries: MediaLibrary[] }) =>
+        callback(result)
+      ipcRenderer.on('library:scanComplete', handler)
+      return () => ipcRenderer.removeListener('library:scanComplete', handler)
+    }
   },
   settings: {
     setAudioDevices: (outputDeviceId: string, monitorDeviceId: string) =>

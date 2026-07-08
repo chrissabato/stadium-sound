@@ -19,6 +19,8 @@ export interface Track {
   colorLabel?: string
 }
 
+export const AUDIO_EXTENSIONS = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac']
+
 // dataTransfer type used to carry a track id when dragging a track cell out of
 // the grid (reorder mode) so a drop target (e.g. a sidebar bank row) can tell
 // a track drag apart from other native drag operations (like bank reordering).
@@ -89,6 +91,22 @@ export interface AudioDevicePrefs {
 export const DEFAULT_AUDIO_DEVICE_PREFS: AudioDevicePrefs = {
   outputDeviceId: '',
   monitorDeviceId: ''
+}
+
+// A library is an indexed folder of media, independent of any event set —
+// it persists across shows so recurring audio (stingers, walkups, etc.) can
+// be browsed and copied into a bank/playlist without re-picking files from
+// disk each time.
+export interface LibraryTrack extends TrackMetadata {
+  filePath: string
+}
+
+export interface MediaLibrary {
+  id: string
+  name: string
+  folderPath: string
+  tracks: LibraryTrack[]
+  lastScannedAt: number | null
 }
 
 export function formatTime(seconds: number): string {

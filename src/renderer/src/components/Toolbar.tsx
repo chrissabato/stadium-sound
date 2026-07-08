@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import logoUrl from '../assets/logo.svg'
 import { TrackSearch, type TrackSearchHandle } from './TrackSearch'
-import type { Bank, Track } from '../types'
+import type { Bank, LibraryTrack, MediaLibrary, Track } from '../types'
 
 interface Props {
   currentFilePath: string | null
@@ -10,6 +10,7 @@ interface Props {
   showPlaylistPanel: boolean
   isFullscreen: boolean
   banks: Bank[]
+  libraries: MediaLibrary[]
   searchRef?: React.Ref<TrackSearchHandle>
   onVolumeChange: (v: number) => void
   onStopAll: () => void
@@ -19,10 +20,13 @@ interface Props {
   onOpenSettings: () => void
   onOpenShortcuts: () => void
   onOpenFeedback: () => void
+  onOpenLibraries: () => void
   onSelectSearchResult: (bankId: string, track: Track) => void
+  onAddLibraryTrack: (track: LibraryTrack) => void
 }
 
-export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, isFullscreen, banks, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onOpenShortcuts, onOpenFeedback, onSelectSearchResult }: Props) {
+export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, isFullscreen, banks, libraries, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onOpenShortcuts, onOpenFeedback, onOpenLibraries, onSelectSearchResult, onAddLibraryTrack }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false)
   const fileName = currentFilePath
     ? currentFilePath.split(/[\\/]/).pop() ?? 'Event Set'
     : 'Untitled Event Set'
@@ -47,7 +51,7 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlay
         </div>
       </div>
 
-      <TrackSearch ref={searchRef} banks={banks} onSelectResult={onSelectSearchResult} />
+      <TrackSearch ref={searchRef} banks={banks} libraries={libraries} onSelectResult={onSelectSearchResult} onAddLibraryTrack={onAddLibraryTrack} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
         <span style={{ color: '#94a3b8', fontSize: 12 }}>Volume</span>
@@ -113,70 +117,121 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlay
         ■ Stop All
       </button>
 
-      <button
-        onClick={onOpenShortcuts}
-        title="Keyboard shortcuts"
-        style={{
-          padding: '6px 10px',
-          background: '#1e293b',
-          color: '#94a3b8',
-          border: '1px solid #334155',
-          borderRadius: 4,
-          fontSize: 13,
-          fontWeight: 600,
-          lineHeight: 1
-        }}
-      >
-        ⌨
-      </button>
-
-      <button
-        onClick={onOpenFeedback}
-        title="Send feedback"
-        style={{
-          padding: '6px 10px',
-          background: '#1e293b',
-          color: '#94a3b8',
-          border: '1px solid #334155',
-          borderRadius: 4,
-          fontSize: 15,
-          lineHeight: 1
-        }}
-      >
-        💬
-      </button>
-
-      <button
-        onClick={onToggleFullscreen}
-        title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-        style={{
-          padding: '6px 10px',
-          background: isFullscreen ? '#1e3a5f' : '#1e293b',
-          color: isFullscreen ? '#93c5fd' : '#94a3b8',
-          border: `1px solid ${isFullscreen ? '#3b82f6' : '#334155'}`,
-          borderRadius: 4,
-          fontSize: 15,
-          lineHeight: 1
-        }}
-      >
-        ⛶
-      </button>
-
-      <button
-        onClick={onOpenSettings}
-        title="Settings"
-        style={{
-          padding: '6px 10px',
-          background: '#1e293b',
-          color: '#94a3b8',
-          border: '1px solid #334155',
-          borderRadius: 4,
-          fontSize: 16,
-          lineHeight: 1
-        }}
-      >
-        ⚙
-      </button>
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          title="More"
+          style={{
+            padding: '6px 10px',
+            background: menuOpen ? '#1e3a5f' : '#1e293b',
+            color: menuOpen ? '#93c5fd' : '#94a3b8',
+            border: `1px solid ${menuOpen ? '#3b82f6' : '#334155'}`,
+            borderRadius: 4,
+            fontSize: 16,
+            lineHeight: 1
+          }}
+        >
+          ⋯
+        </button>
+        {menuOpen && (
+          <>
+            <div
+              onClick={() => setMenuOpen(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+            />
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: 4,
+              zIndex: 11,
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: 4,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: 180,
+              overflow: 'hidden'
+            }}>
+              <button
+                onClick={() => { onOpenLibraries(); setMenuOpen(false) }}
+                style={{
+                  padding: '8px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  textAlign: 'left',
+                  color: '#e2e8f0',
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                🗀 Media Libraries
+              </button>
+              <button
+                onClick={() => { onToggleFullscreen(); setMenuOpen(false) }}
+                style={{
+                  padding: '8px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderTop: '1px solid #334155',
+                  textAlign: 'left',
+                  color: '#e2e8f0',
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                ⛶ {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              </button>
+              <button
+                onClick={() => { onOpenShortcuts(); setMenuOpen(false) }}
+                style={{
+                  padding: '8px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderTop: '1px solid #334155',
+                  textAlign: 'left',
+                  color: '#e2e8f0',
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                ⌨ Keyboard Shortcuts
+              </button>
+              <button
+                onClick={() => { onOpenFeedback(); setMenuOpen(false) }}
+                style={{
+                  padding: '8px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderTop: '1px solid #334155',
+                  textAlign: 'left',
+                  color: '#e2e8f0',
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                💬 Send Feedback
+              </button>
+              <button
+                onClick={() => { onOpenSettings(); setMenuOpen(false) }}
+                style={{
+                  padding: '8px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderTop: '1px solid #334155',
+                  textAlign: 'left',
+                  color: '#e2e8f0',
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                ⚙ Settings
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

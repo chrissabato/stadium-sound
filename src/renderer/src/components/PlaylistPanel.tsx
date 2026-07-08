@@ -17,6 +17,7 @@ interface Props {
   onReorderPlaylists: (newPlaylists: Playlist[]) => void
   onToggleAddMode: () => void
   onAddTracksFromFile: () => void
+  onAddFromLibrary: () => void
   onRemoveTrack: (itemId: string) => void
   onReorderTracks: (newTracks: PlaylistTrack[]) => void
   onSelectRow: (index: number) => void
@@ -41,6 +42,7 @@ export function PlaylistPanel({
   onReorderPlaylists,
   onToggleAddMode,
   onAddTracksFromFile,
+  onAddFromLibrary,
   onRemoveTrack,
   onReorderTracks,
   onSelectRow,
@@ -294,6 +296,7 @@ export function PlaylistPanel({
           isTrackPlaying={isTrackPlaying}
           onToggleAddMode={onToggleAddMode}
           onAddTracksFromFile={onAddTracksFromFile}
+          onAddFromLibrary={onAddFromLibrary}
           onRemoveTrack={onRemoveTrack}
           onReorderTracks={onReorderTracks}
           onSelectRow={onSelectRow}

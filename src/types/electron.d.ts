@@ -1,4 +1,4 @@
-import type { AppConfig, AudioDevicePrefs, TrackMetadata } from '../renderer/src/types'
+import type { AppConfig, AudioDevicePrefs, TrackMetadata, MediaLibrary } from '../renderer/src/types'
 
 export interface EventSetState {
   config: AppConfig | null
@@ -26,6 +26,7 @@ export interface ElectronAPI {
   readAudioFile: (filePath: string) => Promise<ArrayBuffer>
   getTrackMetadata: (filePath: string) => Promise<TrackMetadata>
   checkFiles: (paths: string[]) => Promise<boolean[]>
+  getPathForFile: (file: unknown) => string
   eventSet: {
     getInitialState: () => Promise<EventSetState>
     open: () => Promise<EventSetOpenResult | null>
@@ -37,6 +38,15 @@ export interface ElectronAPI {
   }
   ssp: {
     import: () => Promise<Array<{ name: string; tracks: Array<{ label: string; filePath: string; duration: string; name: string }> }> | null>
+  }
+  library: {
+    list: () => Promise<MediaLibrary[]>
+    addFolder: () => Promise<MediaLibrary[] | null>
+    rescan: (id: string) => Promise<MediaLibrary[]>
+    rename: (id: string, name: string) => Promise<MediaLibrary[]>
+    remove: (id: string) => Promise<MediaLibrary[]>
+    onScanProgress: (callback: (progress: { id: string; scanned: number; total: number }) => void) => () => void
+    onScanComplete: (callback: (result: { id: string; libraries: MediaLibrary[] }) => void) => () => void
   }
   settings: {
     setAudioDevices: (outputDeviceId: string, monitorDeviceId: string) => Promise<void>

@@ -1,24 +1,24 @@
 import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import type { Bank, Track } from '../types'
+import type { Bank, LibraryTrack, MediaLibrary, Track } from '../types'
 
 interface Props {
   banks: Bank[]
+  libraries: MediaLibrary[]
   onSelectResult: (bankId: string, track: Track) => void
+  onAddLibraryTrack: (track: LibraryTrack) => void
 }
 
 export interface TrackSearchHandle {
   focus: () => void
 }
 
-interface Match {
-  track: Track
-  bankId: string
-  bankName: string
-}
+type Match =
+  | { kind: 'bank'; key: string; track: Track; bankId: string; bankName: string }
+  | { kind: 'library'; key: string; track: LibraryTrack; libraryName: string }
 
 const MAX_RESULTS = 8
 
-export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSearch({ banks, onSelectResult }, ref) {
+export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSearch({ banks, libraries, onSelectResult, onAddLibraryTrack }, ref) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -32,9 +32,14 @@ export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSe
     const q = query.trim().toLowerCase()
     if (!q) return []
 
-    const all: Match[] = banks.flatMap((b) =>
-      b.tracks.map((track) => ({ track, bankId: b.id, bankName: b.name }))
+    const bankMatches: Match[] = banks.flatMap((b) =>
+      b.tracks.map((track): Match => ({ kind: 'bank', key: `bank:${track.id}`, track, bankId: b.id, bankName: b.name }))
     )
+    const libraryMatches: Match[] = libraries.flatMap((lib) =>
+      lib.tracks.map((track): Match => ({ kind: 'library', key: `library:${lib.id}:${track.filePath}`, track, libraryName: lib.name }))
+    )
+
+    const all = [...bankMatches, ...libraryMatches]
 
     const scored = all
       .map((m) => {
@@ -48,10 +53,14 @@ export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSe
 
     scored.sort((a, b) => a.rank - b.rank)
     return scored.slice(0, MAX_RESULTS).map((x) => x.match)
-  }, [banks, query])
+  }, [banks, libraries, query])
 
   function selectMatch(m: Match) {
-    onSelectResult(m.bankId, m.track)
+    if (m.kind === 'bank') {
+      onSelectResult(m.bankId, m.track)
+    } else {
+      onAddLibraryTrack(m.track)
+    }
     setQuery('')
     setIsOpen(false)
     inputRef.current?.blur()
@@ -131,9 +140,10 @@ export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSe
             ) : (
               matches.map((m, i) => (
                 <div
-                  key={m.track.id}
+                  key={m.key}
                   onMouseDown={(e) => { e.preventDefault(); selectMatch(m) }}
                   onMouseEnter={() => setActiveIndex(i)}
+                  title={m.kind === 'library' ? 'Add to current bank' : undefined}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -154,7 +164,7 @@ export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSe
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}>
-                      {m.track.title || '(untitled)'}
+                      {m.kind === 'library' ? '+ ' : ''}{m.track.title || '(untitled)'}
                     </div>
                     {m.track.artist && (
                       <div style={{
@@ -170,9 +180,9 @@ export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSe
                   </div>
                   <div style={{
                     fontSize: 10,
-                    color: '#64748b',
+                    color: m.kind === 'library' ? '#fdba74' : '#64748b',
                     background: '#0f172a',
-                    border: '1px solid #334155',
+                    border: `1px solid ${m.kind === 'library' ? '#c2410c' : '#334155'}`,
                     borderRadius: 3,
                     padding: '2px 6px',
                     flexShrink: 0,
@@ -181,7 +191,7 @@ export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSe
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}>
-                    {m.bankName}
+                    {m.kind === 'library' ? m.libraryName : m.bankName}
                   </div>
                 </div>
               ))

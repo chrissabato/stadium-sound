@@ -12,6 +12,7 @@ interface Props {
   isTrackPlaying: boolean
   onToggleAddMode: () => void
   onAddTracksFromFile: () => void
+  onAddFromLibrary: () => void
   onRemoveTrack: (itemId: string) => void
   onReorderTracks: (newTracks: PlaylistTrack[]) => void
   onSelectRow: (index: number) => void
@@ -31,6 +32,7 @@ export function PlaylistTrackList({
   isTrackPlaying,
   onToggleAddMode,
   onAddTracksFromFile,
+  onAddFromLibrary,
   onRemoveTrack,
   onReorderTracks,
   onSelectRow,
@@ -192,6 +194,21 @@ export function PlaylistTrackList({
                   }}
                 >
                   Add from File
+                </button>
+                <button
+                  onClick={() => { onAddFromLibrary(); setMenuOpen(false) }}
+                  style={{
+                    padding: '8px 10px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderTop: '1px solid #334155',
+                    textAlign: 'left',
+                    color: '#e2e8f0',
+                    fontSize: 12,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add from Library
                 </button>
               </div>
             </>
