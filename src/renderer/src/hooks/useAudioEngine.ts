@@ -352,6 +352,9 @@ export function useAudioEngine(): AudioEngine {
 
   function stopBus(bus: AudioBus, immediate: boolean) {
     const state = busState(bus)
+    // #14 probe: the fade timer's later setPlayingState(null) severs the
+    // stack, so capture the true stop initiator here.
+    console.warn(`[audio] stopBus(${bus}, immediate=${immediate}) playing=${state.playingId}\n` + new Error().stack)
     cancelFadeTimer(bus)
 
     const { fadeOut } = fadeSettingsRef.current
