@@ -65,10 +65,14 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
     const durationMs = trackDuration * 1000
 
     function tick() {
-      const p = Math.min((Date.now() - playStartWallTime!) / durationMs, 1)
-      if (overlayRef.current) {
-        overlayRef.current.style.background =
-          `linear-gradient(to right, rgba(0,0,0,0.22) ${p * 100}%, transparent ${p * 100}%)`
+      try {
+        const p = Math.min((Date.now() - playStartWallTime!) / durationMs, 1)
+        if (overlayRef.current) {
+          overlayRef.current.style.background =
+            `linear-gradient(to right, rgba(0,0,0,0.22) ${p * 100}%, transparent ${p * 100}%)`
+        }
+      } catch (err) {
+        console.error('TrackCell progress tick failed, will retry next frame', err)
       }
       rafRef.current = requestAnimationFrame(tick)
     }

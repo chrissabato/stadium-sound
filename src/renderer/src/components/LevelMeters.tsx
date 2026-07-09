@@ -61,34 +61,41 @@ export function LevelMeters({ getAnalysers }: Props) {
 
   useEffect(() => {
     function tick() {
-      const analysers = getAnalysers()
-      const prev = smoothedRef.current
-      let left = prev.left
-      let right = prev.right
+      // A thrown error here must never abort the loop permanently — this
+      // effect's deps are stable for the app's lifetime, so there is no
+      // remount to implicitly restart it (unlike the per-track rAF loops).
+      try {
+        const analysers = getAnalysers()
+        const prev = smoothedRef.current
+        let left = prev.left
+        let right = prev.right
 
-      if (analysers) {
-        if (!bufferRef.current || bufferRef.current.length !== analysers.left.fftSize) {
-          bufferRef.current = new Uint8Array(analysers.left.fftSize)
+        if (analysers) {
+          if (!bufferRef.current || bufferRef.current.length !== analysers.left.fftSize) {
+            bufferRef.current = new Uint8Array(analysers.left.fftSize)
+          }
+          const buffer = bufferRef.current
+          const rawLeft = levelFromAnalyser(analysers.left, buffer)
+          const rawRight = levelFromAnalyser(analysers.right, buffer)
+          left = rawLeft > prev.left ? rawLeft : prev.left * RELEASE
+          right = rawRight > prev.right ? rawRight : prev.right * RELEASE
+        } else {
+          left = prev.left * RELEASE
+          right = prev.right * RELEASE
         }
-        const buffer = bufferRef.current
-        const rawLeft = levelFromAnalyser(analysers.left, buffer)
-        const rawRight = levelFromAnalyser(analysers.right, buffer)
-        left = rawLeft > prev.left ? rawLeft : prev.left * RELEASE
-        right = rawRight > prev.right ? rawRight : prev.right * RELEASE
-      } else {
-        left = prev.left * RELEASE
-        right = prev.right * RELEASE
-      }
 
-      // Snap the long decay tail to true silence instead of animating forever
-      // on imperceptibly small values.
-      if (left < 0.002) left = 0
-      if (right < 0.002) right = 0
+        // Snap the long decay tail to true silence instead of animating forever
+        // on imperceptibly small values.
+        if (left < 0.002) left = 0
+        if (right < 0.002) right = 0
 
-      if (left !== prev.left || right !== prev.right) {
-        const next = { left, right }
-        smoothedRef.current = next
-        setLevels(next)
+        if (left !== prev.left || right !== prev.right) {
+          const next = { left, right }
+          smoothedRef.current = next
+          setLevels(next)
+        }
+      } catch (err) {
+        console.error('LevelMeters tick failed, will retry next frame', err)
       }
       rafRef.current = requestAnimationFrame(tick)
     }

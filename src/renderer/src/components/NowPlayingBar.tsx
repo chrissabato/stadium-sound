@@ -24,9 +24,14 @@ export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, 
     }
 
     function tick() {
-      if (!audioCtx || startTime === null) return
-      const e = audioCtx.currentTime - startTime
-      setElapsed(Math.min(e, outPoint - inPoint))
+      try {
+        if (audioCtx && startTime !== null) {
+          const e = audioCtx.currentTime - startTime
+          setElapsed(Math.min(e, outPoint - inPoint))
+        }
+      } catch (err) {
+        console.error('NowPlayingBar tick failed, will retry next frame', err)
+      }
       rafRef.current = requestAnimationFrame(tick)
     }
 
