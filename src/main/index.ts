@@ -96,11 +96,13 @@ function createWindow(): void {
   if (isMaximized) win.maximize()
 
   // Diagnostic for issue #14 — the custom menu has no "Toggle DevTools" entry,
-  // so forward tagged renderer console output straight to this terminal
-  // (npm run dev) instead of requiring DevTools to read it. Remove once #14
-  // is confirmed fixed.
+  // so forward renderer console output straight to this terminal (npm run
+  // dev) instead of requiring DevTools to read it. Forward every warning and
+  // error, not just [audio]-tagged lines: the rAF tick try/catch logs
+  // ("LevelMeters tick failed...") carry no tag and would otherwise be
+  // invisible. Remove once #14 is confirmed fixed.
   win.webContents.on('console-message', (_event, level, message) => {
-    if (message.includes('[audio]')) {
+    if (level >= 2 || message.includes('[audio]')) {
       console.log(`[renderer:${level}]`, message)
     }
   })
