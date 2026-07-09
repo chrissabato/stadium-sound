@@ -528,6 +528,9 @@ export function useAudioEngine(): AudioEngine {
     state.activeHandle = handle
     state.activeTrackGain = trackGain
     setPlayingState(bus, id, filePath, ctx)
+    console.warn(
+      `[audio] play id=${id} bus=${bus} path=${buffer ? 'buffer' : 'streaming'} ctx=${ctx.state} t=${ctx.currentTime.toFixed(2)} masterGain=${!!state.masterGain} analysers=${!!state.analyserL}`
+    )
   }, [])
 
   const setMasterVolume = useCallback((vol: number) => {
@@ -568,6 +571,7 @@ export function useAudioEngine(): AudioEngine {
   // instead of guessed at. Remove once #14 is confirmed fixed.
   const lastWatchdogTimeRef = useRef<{ main: number | null; monitor: number | null }>({ main: null, monitor: null })
   const stallLoggedRef = useRef<{ main: boolean; monitor: boolean }>({ main: false, monitor: false })
+  const watchdogBufferRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
   useEffect(() => {
     const interval = setInterval(() => {
       for (const bus of ['main', 'monitor'] as AudioBus[]) {
@@ -595,6 +599,27 @@ export function useAudioEngine(): AudioEngine {
           stallLoggedRef.current[bus] = false
         }
         lastWatchdogTimeRef.current[bus] = now
+
+        // Second failure mode (reported on #14): clock advances and audio is
+        // audible, but the analysers read pure silence — i.e. the audible
+        // sound is no longer flowing through this bus's masterGain/analyser
+        // graph. Emit one status line per check while playing so the exact
+        // moment routing breaks lands in the terminal.
+        if (state.analyserL) {
+          if (!watchdogBufferRef.current) watchdogBufferRef.current = new Uint8Array(state.analyserL.fftSize)
+          state.analyserL.getByteTimeDomainData(watchdogBufferRef.current)
+          let peak = 0
+          for (let i = 0; i < watchdogBufferRef.current.length; i++) {
+            const dev = Math.abs(watchdogBufferRef.current[i] - 128)
+            if (dev > peak) peak = dev
+          }
+          console.warn(
+            `[audio][pulse] ${bus} playing=${state.playingId} ctx=${state.ctx.state} t=${now.toFixed(2)} analyserPeak=${peak}` +
+            (peak === 0 ? ' <-- SILENT GRAPH while playing' : '')
+          )
+        } else {
+          console.error(`[audio][pulse] ${bus} playing=${state.playingId} but analysers are NULL`)
+        }
       }
     }, 2000)
     return () => clearInterval(interval)
