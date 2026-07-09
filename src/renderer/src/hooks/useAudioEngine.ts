@@ -219,8 +219,15 @@ export function useAudioEngine(): AudioEngine {
       // the analysers keep returning stale data — no exception, so the
       // status indicators just silently stop advancing forever.
       state.ctx.addEventListener('statechange', () => {
+        // Log every transition — issue #14's freeze may coincide with the
+        // context silently leaving 'running', and a silent auto-resume would
+        // hide exactly the evidence needed to confirm that.
+        console.warn(`[audio] ${bus} ctx statechange ->`, state.ctx?.state)
         if (state.ctx && state.ctx.state !== 'closed' && state.ctx.state !== 'running') {
-          state.ctx.resume().catch(() => {})
+          state.ctx.resume().then(
+            () => console.warn(`[audio] ${bus} ctx auto-resumed, state now`, state.ctx?.state),
+            (err) => console.error(`[audio] ${bus} ctx resume() FAILED`, err)
+          )
         }
       })
     }
