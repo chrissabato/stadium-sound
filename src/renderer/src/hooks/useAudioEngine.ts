@@ -120,6 +120,10 @@ function bufferBytes(buffer: AudioBuffer): number {
   return buffer.length * buffer.numberOfChannels * 4
 }
 
+// #14 probe: counts engine hook mounts so a spurious remount (which closes
+// the AudioContext and detaches playing media elements) shows in the log.
+let engineMountCount = 0
+
 export function useAudioEngine(): AudioEngine {
   const mainRef = useRef<BusState>(newBusState())
   const monitorRef = useRef<BusState>(newBusState())
@@ -151,6 +155,11 @@ export function useAudioEngine(): AudioEngine {
 
   function setPlayingState(bus: AudioBus, id: string | null, filePath: string | null = null, ctx?: AudioContext) {
     const state = busState(bus)
+    // #14 probe: at freeze time the engine's playing state gets cleared while
+    // audio keeps playing outside the graph — this stack names whoever did it.
+    if (id === null && state.playingId !== null) {
+      console.warn(`[audio] STOP ${bus} (was ${state.playingId})\n` + new Error().stack)
+    }
     state.playingId = id
     state.playingFilePath = filePath
     const setter = bus === 'main' ? setMainPlayback : setMonitorPlayback
@@ -626,7 +635,13 @@ export function useAudioEngine(): AudioEngine {
   }, [])
 
   useEffect(() => {
+    engineMountCount++
+    console.warn(`[audio] engine mounted (#${engineMountCount})`)
     return () => {
+      console.warn(
+        `[audio] engine UNMOUNTING (#${engineMountCount}) mainPlaying=${mainRef.current.playingId} mainCtx=${mainRef.current.ctx?.state ?? 'null'}\n` +
+        new Error().stack
+      )
       cancelFadeTimer('main')
       cancelFadeTimer('monitor')
       mainRef.current.activeHandle?.stop()
