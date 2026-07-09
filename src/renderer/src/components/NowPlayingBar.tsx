@@ -15,6 +15,7 @@ interface Props {
 export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, outPoint, onStop }: Props) {
   const [elapsed, setElapsed] = useState(0)
   const rafRef = useRef<number | null>(null)
+  const lastProbeRef = useRef(0)
 
   useEffect(() => {
     if (!isPlaying || !audioCtx || startTime === null) {
@@ -28,9 +29,18 @@ export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, 
         if (audioCtx && startTime !== null) {
           const e = audioCtx.currentTime - startTime
           setElapsed(Math.min(e, outPoint - inPoint))
+
+          // #14 probe: report what this component actually computes.
+          const now = Date.now()
+          if (now - lastProbeRef.current >= 2000) {
+            lastProbeRef.current = now
+            console.warn(
+              `[audio][npbar] e=${e.toFixed(2)} in=${inPoint} out=${outPoint} ctxState=${audioCtx.state}`
+            )
+          }
         }
       } catch (err) {
-        console.error('NowPlayingBar tick failed, will retry next frame', err)
+        console.error('[audio] NowPlayingBar tick failed, will retry next frame', err)
       }
       rafRef.current = requestAnimationFrame(tick)
     }

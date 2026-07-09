@@ -58,6 +58,7 @@ export function LevelMeters({ getAnalysers }: Props) {
   const rafRef = useRef<number | null>(null)
   const smoothedRef = useRef({ left: 0, right: 0 })
   const bufferRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
+  const lastProbeRef = useRef(0)
 
   useEffect(() => {
     function tick() {
@@ -94,8 +95,16 @@ export function LevelMeters({ getAnalysers }: Props) {
           smoothedRef.current = next
           setLevels(next)
         }
+
+        // #14 probe: report what this component actually sees, so the
+        // terminal can compare it against the engine watchdog's [pulse].
+        const now = Date.now()
+        if (now - lastProbeRef.current >= 2000) {
+          lastProbeRef.current = now
+          console.warn(`[audio][meters] analysers=${!!analysers} level=${left.toFixed(3)}`)
+        }
       } catch (err) {
-        console.error('LevelMeters tick failed, will retry next frame', err)
+        console.error('[audio] LevelMeters tick failed, will retry next frame', err)
       }
       rafRef.current = requestAnimationFrame(tick)
     }
