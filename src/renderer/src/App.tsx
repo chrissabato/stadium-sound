@@ -1051,7 +1051,13 @@ export default function App() {
         }}
         onChange={(s) => {
           updateConfig((c) => ({ ...c, fadeIn: s.fadeIn, fadeOut: s.fadeOut, crossFade: s.crossFade }))
-          setAudioDevices({ outputDeviceId: s.outputDeviceId, monitorDeviceId: s.monitorDeviceId })
+          // Fade sliders fire this on every drag tick (dozens/sec) but never
+          // touch device ids — only push a device change (which does a
+          // synchronous settings write + IPC round-trip) when one actually
+          // changed, instead of flooding the main process on every pixel.
+          if (s.outputDeviceId !== audioDevices.outputDeviceId || s.monitorDeviceId !== audioDevices.monitorDeviceId) {
+            setAudioDevices({ outputDeviceId: s.outputDeviceId, monitorDeviceId: s.monitorDeviceId })
+          }
         }}
         showTrackTooltips={showTrackTooltips}
         onShowTrackTooltipsChange={setShowTrackTooltips}

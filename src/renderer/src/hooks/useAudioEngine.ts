@@ -51,6 +51,7 @@ interface BusState {
   activeHandle: PlaybackHandle | null
   activeTrackGain: GainNode | null
   fadingHandle: PlaybackHandle | null
+  fadingTrackGain: GainNode | null
   fadeOutTimer: ReturnType<typeof setTimeout> | null
   playingId: string | null
   playingFilePath: string | null
@@ -65,6 +66,7 @@ function newBusState(): BusState {
     activeHandle: null,
     activeTrackGain: null,
     fadingHandle: null,
+    fadingTrackGain: null,
     fadeOutTimer: null,
     playingId: null,
     playingFilePath: null
@@ -209,6 +211,18 @@ export function useAudioEngine(): AudioEngine {
 
       const deviceId = bus === 'main' ? outputDeviceIdRef.current : monitorDeviceIdRef.current
       if (deviceId) applySinkId(state.ctx, deviceId)
+
+      // The only other resume() call site is a one-shot check in playTrack, at
+      // the moment a new track starts — it can't recover a context that drops
+      // to 'suspended'/'interrupted' mid-playback (e.g. a device hiccup) with
+      // no further plays on this bus. Without this, currentTime freezes and
+      // the analysers keep returning stale data — no exception, so the
+      // status indicators just silently stop advancing forever.
+      state.ctx.addEventListener('statechange', () => {
+        if (state.ctx && state.ctx.state !== 'closed' && state.ctx.state !== 'running') {
+          state.ctx.resume().catch(() => {})
+        }
+      })
     }
     return state.ctx
   }
@@ -221,6 +235,11 @@ export function useAudioEngine(): AudioEngine {
     }
     state.fadingHandle?.stop()
     state.fadingHandle = null
+    // Every fade/cross-fade retires its old track's GainNode here — without
+    // this it stays connected to masterGain forever, so a long show with
+    // many fades slowly accumulates dead nodes in the live graph.
+    try { state.fadingTrackGain?.disconnect() } catch { /* already disconnected */ }
+    state.fadingTrackGain = null
   }
 
   // Re-inserting on use keeps the Map in LRU order (oldest entry first).
@@ -330,17 +349,21 @@ export function useAudioEngine(): AudioEngine {
       gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
       gain.gain.linearRampToValueAtTime(0, ctx.currentTime + fadeOut)
       state.fadingHandle = handle
+      state.fadingTrackGain = gain
       state.activeHandle = null
       state.activeTrackGain = null
       state.fadeOutTimer = setTimeout(() => {
         state.fadingHandle?.stop()
         state.fadingHandle = null
+        try { state.fadingTrackGain?.disconnect() } catch { /* already disconnected */ }
+        state.fadingTrackGain = null
         state.fadeOutTimer = null
         setPlayingState(bus, null)
       }, fadeOut * 1000 + 50)
       // playingId stays set — UI reflects "still stopping"
     } else {
       state.activeHandle?.stop()
+      try { state.activeTrackGain?.disconnect() } catch { /* already disconnected */ }
       state.activeHandle = null
       state.activeTrackGain = null
       setPlayingState(bus, null)
@@ -396,9 +419,12 @@ export function useAudioEngine(): AudioEngine {
       oldGain.gain.setValueAtTime(oldGain.gain.value, ctx.currentTime)
       oldGain.gain.linearRampToValueAtTime(0, ctx.currentTime + crossFade)
       state.fadingHandle = oldHandle
+      state.fadingTrackGain = oldGain
       state.fadeOutTimer = setTimeout(() => {
         state.fadingHandle?.stop()
         state.fadingHandle = null
+        try { state.fadingTrackGain?.disconnect() } catch { /* already disconnected */ }
+        state.fadingTrackGain = null
         state.fadeOutTimer = null
       }, crossFade * 1000 + 50)
 
@@ -406,6 +432,7 @@ export function useAudioEngine(): AudioEngine {
       trackGain.gain.linearRampToValueAtTime(1, ctx.currentTime + crossFade)
     } else {
       state.activeHandle?.stop()
+      try { state.activeTrackGain?.disconnect() } catch { /* already disconnected */ }
 
       if (fadeIn > 0) {
         trackGain.gain.setValueAtTime(0, ctx.currentTime)
@@ -475,8 +502,20 @@ export function useAudioEngine(): AudioEngine {
         }
       }
       el.onended = () => { handle.stop(); finish() }
-      el.onerror = () => { handle.stop(); finish() }
-      el.play().catch(() => { /* load failures land in onerror */ })
+      el.onerror = () => {
+        // Previously swallowed silently — a mid-playback media error left
+        // status displays with nothing to explain why. Now surfaced so a
+        // freeze report can be matched to an actual decode/network failure.
+        console.error('[audio] media element error', {
+          filePath, bus, code: el.error?.code, message: el.error?.message,
+          networkState: el.networkState, readyState: el.readyState
+        })
+        handle.stop()
+        finish()
+      }
+      el.addEventListener('stalled', () => console.warn('[audio] media element stalled', { filePath, bus }))
+      el.addEventListener('waiting', () => console.warn('[audio] media element waiting (buffering)', { filePath, bus }))
+      el.play().catch((err) => console.error('[audio] el.play() rejected', { filePath, bus, err }))
     }
 
     state.activeHandle = handle
@@ -515,6 +554,45 @@ export function useAudioEngine(): AudioEngine {
     return state.analyserL && state.analyserR ? { left: state.analyserL, right: state.analyserR } : null
   }, [])
 
+  // Diagnostic watchdog for issue #14 (status indicators freeze while audio
+  // keeps playing): every 2s, check whether ctx.currentTime is actually
+  // advancing for a bus that's supposedly playing. If it's stuck, dump
+  // everything relevant once so a report can be matched to a real cause
+  // instead of guessed at. Remove once #14 is confirmed fixed.
+  const lastWatchdogTimeRef = useRef<{ main: number | null; monitor: number | null }>({ main: null, monitor: null })
+  const stallLoggedRef = useRef<{ main: boolean; monitor: boolean }>({ main: false, monitor: false })
+  useEffect(() => {
+    const interval = setInterval(() => {
+      for (const bus of ['main', 'monitor'] as AudioBus[]) {
+        const state = busState(bus)
+        if (!state.ctx || !state.playingId) {
+          lastWatchdogTimeRef.current[bus] = null
+          stallLoggedRef.current[bus] = false
+          continue
+        }
+        const now = state.ctx.currentTime
+        const prev = lastWatchdogTimeRef.current[bus]
+        if (prev !== null && now === prev && !stallLoggedRef.current[bus]) {
+          stallLoggedRef.current[bus] = true
+          console.error(`[audio][WATCHDOG] ${bus} bus: ctx.currentTime frozen at ${now} while playingId=${state.playingId} is still set`, {
+            ctxState: state.ctx.state,
+            playingFilePath: state.playingFilePath,
+            hasFadingHandle: !!state.fadingHandle,
+            fadeOutTimerPending: !!state.fadeOutTimer,
+            analyserLContextState: state.analyserL ? (state.analyserL.context as AudioContext).state : null,
+            masterGainValue: state.masterGain?.gain.value ?? null,
+            baseLatency: state.ctx.baseLatency,
+            outputLatency: (state.ctx as unknown as { outputLatency?: number }).outputLatency
+          })
+        } else if (now !== prev) {
+          stallLoggedRef.current[bus] = false
+        }
+        lastWatchdogTimeRef.current[bus] = now
+      }
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [])
+
   useEffect(() => {
     return () => {
       cancelFadeTimer('main')
@@ -524,9 +602,13 @@ export function useAudioEngine(): AudioEngine {
       monitorRef.current.activeHandle?.stop()
       monitorRef.current.activeHandle = null
       mainRef.current.ctx?.close()
-      mainRef.current.ctx = null
       monitorRef.current.ctx?.close()
-      monitorRef.current.ctx = null
+      // Reset the whole bus, not just ctx — otherwise masterGain/analyserL/R
+      // keep pointing at nodes belonging to the now-closed context, and
+      // getBusAnalysers() would keep handing out "live-looking" analysers
+      // that silently never produce new data again.
+      mainRef.current = newBusState()
+      monitorRef.current = newBusState()
     }
   }, [])
 
