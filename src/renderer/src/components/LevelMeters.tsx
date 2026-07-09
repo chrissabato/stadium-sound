@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef } from 'react'
 import type { BusAnalysers } from '../hooks/useAudioEngine'
 
 interface Props {
@@ -31,36 +31,26 @@ function barColor(level: number): string {
   return '#22c55e'
 }
 
-function Bar({ level }: { level: number }) {
-  return (
-    <div style={{
-      flex: 1,
-      background: '#0f172a',
-      border: '1px solid #334155',
-      borderRadius: 2,
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'flex-end',
-      overflow: 'hidden'
-    }}>
-      <div style={{
-        width: '100%',
-        height: `${level * 100}%`,
-        background: barColor(level),
-        transition: 'height 0.05s linear'
-      }} />
-    </div>
-  )
-}
-
+// The fills are driven directly from the rAF loop (like TrackCell's progress
+// overlay) rather than through React state + CSS transitions: the loop
+// already runs every frame and applies its own attack/release smoothing, so
+// a transition adds nothing — and per-frame-restarted transitions are
+// exactly what froze on some machines (#14) while plain style writes kept
+// working.
 export function LevelMeters({ getAnalysers }: Props) {
-  const [levels, setLevels] = useState({ left: 0, right: 0 })
   const rafRef = useRef<number | null>(null)
   const smoothedRef = useRef({ left: 0, right: 0 })
   const bufferRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
-  const lastProbeRef = useRef(0)
+  const leftFillRef = useRef<HTMLDivElement>(null)
+  const rightFillRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    function paint(fill: HTMLDivElement | null, level: number) {
+      if (!fill) return
+      fill.style.height = `${level * 100}%`
+      fill.style.background = barColor(level)
+    }
+
     function tick() {
       // A thrown error here must never abort the loop permanently — this
       // effect's deps are stable for the app's lifetime, so there is no
@@ -91,17 +81,9 @@ export function LevelMeters({ getAnalysers }: Props) {
         if (right < 0.002) right = 0
 
         if (left !== prev.left || right !== prev.right) {
-          const next = { left, right }
-          smoothedRef.current = next
-          setLevels(next)
-        }
-
-        // #14 probe: report what this component actually sees, so the
-        // terminal can compare it against the engine watchdog's [pulse].
-        const now = Date.now()
-        if (now - lastProbeRef.current >= 2000) {
-          lastProbeRef.current = now
-          console.warn(`[audio][meters] analysers=${!!analysers} level=${left.toFixed(3)}`)
+          smoothedRef.current = { left, right }
+          paint(leftFillRef.current, left)
+          paint(rightFillRef.current, right)
         }
       } catch (err) {
         console.error('[audio] LevelMeters tick failed, will retry next frame', err)
@@ -111,6 +93,17 @@ export function LevelMeters({ getAnalysers }: Props) {
     rafRef.current = requestAnimationFrame(tick)
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [getAnalysers])
+
+  const barStyle: React.CSSProperties = {
+    flex: 1,
+    background: '#0f172a',
+    border: '1px solid #334155',
+    borderRadius: 2,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
+    overflow: 'hidden'
+  }
 
   return (
     <div style={{
@@ -125,8 +118,12 @@ export function LevelMeters({ getAnalysers }: Props) {
       gap: 6
     }}>
       <div style={{ display: 'flex', gap: 4, flex: 1, width: '100%' }}>
-        <Bar level={levels.left} />
-        <Bar level={levels.right} />
+        <div style={barStyle}>
+          <div ref={leftFillRef} style={{ width: '100%', height: '0%', background: '#22c55e' }} />
+        </div>
+        <div style={barStyle}>
+          <div ref={rightFillRef} style={{ width: '100%', height: '0%', background: '#22c55e' }} />
+        </div>
       </div>
       <div style={{ fontSize: 9, color: '#475569', letterSpacing: '0.1em' }}>L&nbsp;&nbsp;R</div>
     </div>

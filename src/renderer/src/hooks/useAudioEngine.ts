@@ -120,10 +120,6 @@ function bufferBytes(buffer: AudioBuffer): number {
   return buffer.length * buffer.numberOfChannels * 4
 }
 
-// #14 probe: counts engine hook mounts so a spurious remount (which closes
-// the AudioContext and detaches playing media elements) shows in the log.
-let engineMountCount = 0
-
 export function useAudioEngine(): AudioEngine {
   const mainRef = useRef<BusState>(newBusState())
   const monitorRef = useRef<BusState>(newBusState())
@@ -155,11 +151,6 @@ export function useAudioEngine(): AudioEngine {
 
   function setPlayingState(bus: AudioBus, id: string | null, filePath: string | null = null, ctx?: AudioContext) {
     const state = busState(bus)
-    // #14 probe: at freeze time the engine's playing state gets cleared while
-    // audio keeps playing outside the graph — this stack names whoever did it.
-    if (id === null && state.playingId !== null) {
-      console.warn(`[audio] STOP ${bus} (was ${state.playingId})\n` + new Error().stack)
-    }
     state.playingId = id
     state.playingFilePath = filePath
     const setter = bus === 'main' ? setMainPlayback : setMonitorPlayback
@@ -228,15 +219,9 @@ export function useAudioEngine(): AudioEngine {
       // the analysers keep returning stale data — no exception, so the
       // status indicators just silently stop advancing forever.
       state.ctx.addEventListener('statechange', () => {
-        // Log every transition — issue #14's freeze may coincide with the
-        // context silently leaving 'running', and a silent auto-resume would
-        // hide exactly the evidence needed to confirm that.
-        console.warn(`[audio] ${bus} ctx statechange ->`, state.ctx?.state)
         if (state.ctx && state.ctx.state !== 'closed' && state.ctx.state !== 'running') {
-          state.ctx.resume().then(
-            () => console.warn(`[audio] ${bus} ctx auto-resumed, state now`, state.ctx?.state),
-            (err) => console.error(`[audio] ${bus} ctx resume() FAILED`, err)
-          )
+          console.warn(`[audio] ${bus} ctx left running (${state.ctx.state}), auto-resuming`)
+          state.ctx.resume().catch((err) => console.error(`[audio] ${bus} ctx resume() failed`, err))
         }
       })
     }
@@ -352,9 +337,6 @@ export function useAudioEngine(): AudioEngine {
 
   function stopBus(bus: AudioBus, immediate: boolean) {
     const state = busState(bus)
-    // #14 probe: the fade timer's later setPlayingState(null) severs the
-    // stack, so capture the true stop initiator here.
-    console.warn(`[audio] stopBus(${bus}, immediate=${immediate}) playing=${state.playingId}\n` + new Error().stack)
     cancelFadeTimer(bus)
 
     const { fadeOut } = fadeSettingsRef.current
@@ -532,17 +514,12 @@ export function useAudioEngine(): AudioEngine {
         handle.stop()
         finish()
       }
-      el.addEventListener('stalled', () => console.warn('[audio] media element stalled', { filePath, bus }))
-      el.addEventListener('waiting', () => console.warn('[audio] media element waiting (buffering)', { filePath, bus }))
       el.play().catch((err) => console.error('[audio] el.play() rejected', { filePath, bus, err }))
     }
 
     state.activeHandle = handle
     state.activeTrackGain = trackGain
     setPlayingState(bus, id, filePath, ctx)
-    console.warn(
-      `[audio] play id=${id} bus=${bus} path=${buffer ? 'buffer' : 'streaming'} ctx=${ctx.state} t=${ctx.currentTime.toFixed(2)} masterGain=${!!state.masterGain} analysers=${!!state.analyserL}`
-    )
   }, [])
 
   const setMasterVolume = useCallback((vol: number) => {
@@ -576,75 +553,8 @@ export function useAudioEngine(): AudioEngine {
     return state.analyserL && state.analyserR ? { left: state.analyserL, right: state.analyserR } : null
   }, [])
 
-  // Diagnostic watchdog for issue #14 (status indicators freeze while audio
-  // keeps playing): every 2s, check whether ctx.currentTime is actually
-  // advancing for a bus that's supposedly playing. If it's stuck, dump
-  // everything relevant once so a report can be matched to a real cause
-  // instead of guessed at. Remove once #14 is confirmed fixed.
-  const lastWatchdogTimeRef = useRef<{ main: number | null; monitor: number | null }>({ main: null, monitor: null })
-  const stallLoggedRef = useRef<{ main: boolean; monitor: boolean }>({ main: false, monitor: false })
-  const watchdogBufferRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
   useEffect(() => {
-    const interval = setInterval(() => {
-      for (const bus of ['main', 'monitor'] as AudioBus[]) {
-        const state = busState(bus)
-        if (!state.ctx || !state.playingId) {
-          lastWatchdogTimeRef.current[bus] = null
-          stallLoggedRef.current[bus] = false
-          continue
-        }
-        const now = state.ctx.currentTime
-        const prev = lastWatchdogTimeRef.current[bus]
-        if (prev !== null && now === prev && !stallLoggedRef.current[bus]) {
-          stallLoggedRef.current[bus] = true
-          console.error(`[audio][WATCHDOG] ${bus} bus: ctx.currentTime frozen at ${now} while playingId=${state.playingId} is still set`, {
-            ctxState: state.ctx.state,
-            playingFilePath: state.playingFilePath,
-            hasFadingHandle: !!state.fadingHandle,
-            fadeOutTimerPending: !!state.fadeOutTimer,
-            analyserLContextState: state.analyserL ? (state.analyserL.context as AudioContext).state : null,
-            masterGainValue: state.masterGain?.gain.value ?? null,
-            baseLatency: state.ctx.baseLatency,
-            outputLatency: (state.ctx as unknown as { outputLatency?: number }).outputLatency
-          })
-        } else if (now !== prev) {
-          stallLoggedRef.current[bus] = false
-        }
-        lastWatchdogTimeRef.current[bus] = now
-
-        // Second failure mode (reported on #14): clock advances and audio is
-        // audible, but the analysers read pure silence — i.e. the audible
-        // sound is no longer flowing through this bus's masterGain/analyser
-        // graph. Emit one status line per check while playing so the exact
-        // moment routing breaks lands in the terminal.
-        if (state.analyserL) {
-          if (!watchdogBufferRef.current) watchdogBufferRef.current = new Uint8Array(state.analyserL.fftSize)
-          state.analyserL.getByteTimeDomainData(watchdogBufferRef.current)
-          let peak = 0
-          for (let i = 0; i < watchdogBufferRef.current.length; i++) {
-            const dev = Math.abs(watchdogBufferRef.current[i] - 128)
-            if (dev > peak) peak = dev
-          }
-          console.warn(
-            `[audio][pulse] ${bus} playing=${state.playingId} ctx=${state.ctx.state} t=${now.toFixed(2)} analyserPeak=${peak}` +
-            (peak === 0 ? ' <-- SILENT GRAPH while playing' : '')
-          )
-        } else {
-          console.error(`[audio][pulse] ${bus} playing=${state.playingId} but analysers are NULL`)
-        }
-      }
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    engineMountCount++
-    console.warn(`[audio] engine mounted (#${engineMountCount})`)
     return () => {
-      console.warn(
-        `[audio] engine UNMOUNTING (#${engineMountCount}) mainPlaying=${mainRef.current.playingId} mainCtx=${mainRef.current.ctx?.state ?? 'null'}\n` +
-        new Error().stack
-      )
       cancelFadeTimer('main')
       cancelFadeTimer('monitor')
       mainRef.current.activeHandle?.stop()
