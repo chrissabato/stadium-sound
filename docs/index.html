@@ -3,13 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stadium Sound — Live Event Audio Playback</title>
-  <meta name="description" content="Professional audio playback for venue operators. Manage banks of tracks and trigger them instantly, one click, zero latency.">
+  <title>Stadium Sound — Free Soundboard App for Sports &amp; Live Events</title>
+  <meta name="description" content="Free soundboard software for stadium and arena PA operators. Organize walk-on music, hype tracks, and sound effects into banks and trigger them instantly, one click, zero latency.">
+  <link rel="canonical" href="https://stadiumsound.chrissabato.com/">
+  <meta name="theme-color" content="#07101f">
+
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Stadium Sound">
-  <meta property="og:title" content="Stadium Sound — Live Event Audio Playback">
-  <meta property="og:description" content="Professional audio playback for venue operators. Manage banks of tracks and trigger them instantly, one click, zero latency.">
+  <meta property="og:title" content="Stadium Sound — Free Soundboard App for Sports &amp; Live Events">
+  <meta property="og:description" content="Free soundboard software for stadium and arena PA operators. Organize walk-on music, hype tracks, and sound effects into banks and trigger them instantly, one click, zero latency.">
   <meta property="og:url" content="https://stadiumsound.chrissabato.com/">
   <meta property="og:image" content="https://stadiumsound.chrissabato.com/stadium-sound-screen.jpg">
   <meta property="og:image:width" content="1720">
@@ -17,9 +23,28 @@
   <meta property="og:image:alt" content="Stadium Sound app showing the In Game bank with rows of tracks and one playing">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Stadium Sound — Live Event Audio Playback">
-  <meta name="twitter:description" content="Professional audio playback for venue operators. Manage banks of tracks and trigger them instantly, one click, zero latency.">
+  <meta name="twitter:title" content="Stadium Sound — Free Soundboard App for Sports &amp; Live Events">
+  <meta name="twitter:description" content="Free soundboard software for stadium and arena PA operators. Organize walk-on music, hype tracks, and sound effects into banks and trigger them instantly, one click, zero latency.">
   <meta name="twitter:image" content="https://stadiumsound.chrissabato.com/stadium-sound-screen.jpg">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Stadium Sound",
+    "url": "https://stadiumsound.chrissabato.com/",
+    "image": "https://stadiumsound.chrissabato.com/stadium-sound-screen.jpg",
+    "description": "Free soundboard software for stadium and arena PA operators. Organize walk-on music, hype tracks, and sound effects into banks and trigger them instantly, one click, zero latency.",
+    "applicationCategory": "MultimediaApplication",
+    "operatingSystem": "Windows, macOS",
+    "softwareVersion": "0.2.8",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -81,6 +106,18 @@
       font-size: 15px;
       font-weight: 700;
       letter-spacing: 0.02em;
+    }
+
+    .beta-badge {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--orange);
+      border: 1px solid var(--orange);
+      border-radius: 3px;
+      padding: 2px 6px;
+      margin-left: 2px;
     }
 
     .nav-right { display: flex; align-items: center; gap: 24px; }
@@ -411,6 +448,7 @@
   <a href="/" class="nav-brand">
     <img src="logo.svg" alt="Stadium Sound" style="width:28px;height:28px;flex-shrink:0;">
     <span class="nav-brand-name">Stadium Sound</span>
+    <span class="beta-badge">Beta</span>
   </a>
   <div class="nav-right">
     <details class="dl-dd nav-dl">
@@ -443,7 +481,7 @@
     <div>
       <span class="hero-eyebrow">Live Event Audio</span>
       <h1>Stadium<br>Sound</h1>
-      <p class="hero-sub">Professional audio playback for venue operators. Organize tracks into banks, trigger them instantly, and control the room.</p>
+      <p class="hero-sub">A free soundboard app for stadium and arena PA operators. Organize walk-on music and sound effects into banks, trigger them instantly, and control the room.</p>
       <div class="cta-row">
         <details class="dl-dd">
           <summary class="btn btn-win">
@@ -487,7 +525,7 @@
 
     <!-- APP SCREENSHOT -->
     <div class="mockup">
-      <img src="stadium-sound-screen.jpg" alt="Stadium Sound app showing the In Game bank with rows of tracks and one playing" width="1720" height="858">
+      <img src="stadium-sound-screen.jpg" alt="Stadium Sound app showing the In Game bank with rows of tracks and one playing" width="1720" height="858" fetchpriority="high">
     </div>
   </div>
 </section>
@@ -545,6 +583,7 @@
     <span class="footer-version">v0.2.8 · Jul 10, 2026</span>
   </div>
   <div class="footer-links">
+    <a href="https://chrissabato.com" target="_blank" rel="noopener">Chris Sabato ↗</a>
     <a href="https://github.com/chrissabato/stadium-sound" target="_blank" rel="noopener">GitHub ↗</a>
   </div>
 </footer>
