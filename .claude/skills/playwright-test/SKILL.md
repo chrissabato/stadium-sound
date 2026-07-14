@@ -14,9 +14,10 @@ file, which the app autosaves back to.
 
 ## Setup (once per session)
 
+`playwright-core` is a devDependency — `npm install` covers it.
+
 ```
 npm run build
-node -e "require('playwright-core')" 2>nul || npm i --no-save playwright-core
 ```
 
 Rebuild after any source change — tests run the built output, not the
