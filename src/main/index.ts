@@ -141,10 +141,18 @@ function createWindow(): void {
 registerIpcHandlers()
 
 app.whenReady().then(() => {
+  // Matches the appId in electron-builder.yml so Windows attributes update
+  // toasts to the installed "Stadium Sound" shortcut. app.name itself must
+  // stay "audio-player" — renaming it would move the userData directory and
+  // orphan existing users' settings.
+  app.setAppUserModelId('com.venue.audioplayer')
   registerMediaProtocol()
   createWindow()
   if (app.isPackaged) {
-    autoUpdater.checkForUpdatesAndNotify()
+    autoUpdater.checkForUpdatesAndNotify({
+      title: 'Stadium Sound update ready',
+      body: 'Stadium Sound {version} has been downloaded and will be installed when you quit.'
+    })
   }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
