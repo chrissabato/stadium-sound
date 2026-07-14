@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
 import { extname, join } from 'path'
-import { createReadStream } from 'fs'
+import { copyFileSync, createReadStream, existsSync, renameSync } from 'fs'
 import { stat } from 'fs/promises'
 import { Readable } from 'stream'
 import { autoUpdater } from 'electron-updater'
@@ -138,13 +138,39 @@ function createWindow(): void {
   }
 }
 
+// Releases through v0.2.11 ran under the package name "audio-player", so
+// existing installs keep their settings in %APPDATA%/audio-player. The app
+// identity is now "Stadium Sound"; adopt the old data the first time this
+// version runs. Must happen before app ready, while Electron has not yet
+// created anything under the new userData path.
+// STADIUMSOUND_MIGRATE_TEST=1 lets the (unpackaged) test harness exercise this.
+function migrateLegacyUserData(): void {
+  if (!app.isPackaged && process.env.STADIUMSOUND_MIGRATE_TEST !== '1') return
+  const oldDir = join(app.getPath('appData'), 'audio-player')
+  const newDir = app.getPath('userData')
+  const oldSettings = join(oldDir, 'settings.json')
+  const newSettings = join(newDir, 'settings.json')
+  if (existsSync(newSettings) || !existsSync(oldSettings)) return
+  try {
+    if (existsSync(newDir)) {
+      // Something (e.g. a dev run) already created the new dir without ever
+      // writing settings; salvage the settings file, leave the old caches.
+      copyFileSync(oldSettings, newSettings)
+    } else {
+      renameSync(oldDir, newDir)
+    }
+  } catch {
+    // Worst case the app starts with first-run defaults and the old
+    // directory is left untouched.
+  }
+}
+migrateLegacyUserData()
+
 registerIpcHandlers()
 
 app.whenReady().then(() => {
   // Matches the appId in electron-builder.yml so Windows attributes update
-  // toasts to the installed "Stadium Sound" shortcut. app.name itself must
-  // stay "audio-player" — renaming it would move the userData directory and
-  // orphan existing users' settings.
+  // toasts to the installed "Stadium Sound" shortcut.
   app.setAppUserModelId('com.venue.audioplayer')
   registerMediaProtocol()
   createWindow()

@@ -1,5 +1,5 @@
 // Electron entry wrapper for tests. Redirects userData BEFORE app ready so the
-// app never reads/writes the real %APPDATA%\audio-player (or %APPDATA%\Electron,
+// app never reads/writes the real %APPDATA%\Stadium Sound (or %APPDATA%\Electron,
 // which is what Electron falls back to when out/main/index.js is launched
 // directly — its settings.json can point at a real event set that the app
 // would autosave back to).
