@@ -36,6 +36,12 @@ function refreshMenu(recentFiles: string[]): void {
   if (win) buildMenu(win, recentFiles)
 }
 
+function showOpenError(filePath: string, err: unknown, intro?: string): void {
+  const detail = err instanceof Error ? err.message : String(err)
+  const lines = [intro, filePath, detail].filter(Boolean)
+  dialog.showErrorBox('Could Not Open Event Set', lines.join('\n\n'))
+}
+
 export function registerIpcHandlers(): void {
   ipcMain.handle('dialog:openAudioFiles', async (_event, defaultPath?: string) => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -73,8 +79,9 @@ export function registerIpcHandlers(): void {
       try {
         const config = loadEventSet(settings.lastFile)
         return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters }
-      } catch {
-        // File exists but is unreadable — remove from recents and start blank
+      } catch (err) {
+        // File exists but is unreadable — tell the user, remove from recents, start blank
+        showOpenError(settings.lastFile, err, 'Your last event set could not be reopened.')
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
         return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters }
       }
@@ -111,7 +118,13 @@ export function registerIpcHandlers(): void {
     })
     if (canceled || !filePaths[0]) return null
     const filePath = filePaths[0]
-    const config = loadEventSet(filePath)
+    let config: unknown
+    try {
+      config = loadEventSet(filePath)
+    } catch (err) {
+      showOpenError(filePath, err)
+      return null
+    }
     const recentFiles = addRecentFile(filePath)
     refreshMenu(recentFiles)
     return { config, filePath, recentFiles }
@@ -141,7 +154,8 @@ export function registerIpcHandlers(): void {
       const recentFiles = addRecentFile(filePath)
       refreshMenu(recentFiles)
       return { config, filePath, recentFiles }
-    } catch {
+    } catch (err) {
+      showOpenError(filePath, err)
       return null
     }
   })
