@@ -1027,6 +1027,38 @@ export default function App() {
             </div>
           )}
 
+          {selectedBank && isAddToPlaylistMode && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              padding: '6px 16px',
+              background: '#1e3a5f',
+              borderBottom: '1px solid #3b82f6',
+              flexShrink: 0
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#93c5fd' }}>
+                Adding to “{selectedPlaylist?.name ?? 'playlist'}” — click a button to add it
+              </span>
+              <button
+                onClick={() => setIsAddToPlaylistMode(false)}
+                style={{
+                  padding: '4px 12px',
+                  background: '#3b82f6',
+                  border: '1px solid #3b82f6',
+                  borderRadius: 4,
+                  color: '#f8fafc',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                ✓ Done
+              </button>
+            </div>
+          )}
+
           {selectedBank ? (
             <TrackGrid
               tracks={selectedBank.tracks}

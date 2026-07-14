@@ -96,7 +96,23 @@ export function PlaylistTrackList({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 11, color: '#64748b' }}>{playlist.tracks.length} tracks</span>
           {isAddToPlaylistMode && (
-            <span style={{ fontSize: 10, fontWeight: 600, color: '#93c5fd' }}>● Adding via buttons</span>
+            <button
+              onClick={onToggleAddMode}
+              title="Stop adding via buttons"
+              style={{
+                padding: '2px 8px',
+                background: '#1e3a5f',
+                border: '1px solid #3b82f6',
+                borderRadius: 4,
+                color: '#93c5fd',
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              ● Adding via buttons — Done ✕
+            </button>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
