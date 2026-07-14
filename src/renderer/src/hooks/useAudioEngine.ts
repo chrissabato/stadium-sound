@@ -49,6 +49,8 @@ interface BusState {
   masterGain: GainNode | null
   analyserL: AnalyserNode | null
   analyserR: AnalyserNode | null
+  loudnessL: AnalyserNode | null
+  loudnessR: AnalyserNode | null
   activeHandle: PlaybackHandle | null
   activeTrackGain: GainNode | null
   fadingHandle: PlaybackHandle | null
@@ -64,6 +66,8 @@ function newBusState(): BusState {
     masterGain: null,
     analyserL: null,
     analyserR: null,
+    loudnessL: null,
+    loudnessR: null,
     activeHandle: null,
     activeTrackGain: null,
     fadingHandle: null,
@@ -77,6 +81,9 @@ function newBusState(): BusState {
 export interface BusAnalysers {
   left: AnalyserNode
   right: AnalyserNode
+  // K-weighted (ITU-R BS.1770) taps for the LUFS readout
+  loudnessLeft: AnalyserNode
+  loudnessRight: AnalyserNode
 }
 
 interface PlaybackSnapshot {
@@ -209,6 +216,31 @@ export function useAudioEngine(): AudioEngine {
       state.analyserR.smoothingTimeConstant = 0.4
       splitter.connect(state.analyserL, 0)
       splitter.connect(state.analyserR, 1)
+
+      // Second parallel tap for the LUFS readout: K-weighting per ITU-R
+      // BS.1770 — a high-shelf "head" pre-filter then the RLB high-pass —
+      // using the spec's exact biquad coefficients, valid because every bus
+      // context is created at 48kHz. Analysis-only, never in the output path.
+      const kShelf = state.ctx.createIIRFilter(
+        [1.53512485958697, -2.69169618940638, 1.19839281085285],
+        [1, -1.69065929318241, 0.73248077421585]
+      )
+      const kHighpass = state.ctx.createIIRFilter(
+        [1.0, -2.0, 1.0],
+        [1, -1.99004745483398, 0.99007225036621]
+      )
+      state.masterGain.connect(kShelf)
+      kShelf.connect(kHighpass)
+      const kSplitter = state.ctx.createChannelSplitter(2)
+      kHighpass.connect(kSplitter)
+      // Large fftSize (85ms at 48kHz) so heavily overlapping per-frame reads
+      // approximate a continuous mean-square for the 400ms momentary window.
+      state.loudnessL = state.ctx.createAnalyser()
+      state.loudnessL.fftSize = 4096
+      state.loudnessR = state.ctx.createAnalyser()
+      state.loudnessR.fftSize = 4096
+      kSplitter.connect(state.loudnessL, 0)
+      kSplitter.connect(state.loudnessR, 1)
 
       const deviceId = bus === 'main' ? outputDeviceIdRef.current : monitorDeviceIdRef.current
       if (deviceId) applySinkId(state.ctx, deviceId)
@@ -555,7 +587,9 @@ export function useAudioEngine(): AudioEngine {
 
   const getBusAnalysers = useCallback((bus: AudioBus): BusAnalysers | null => {
     const state = busState(bus)
-    return state.analyserL && state.analyserR ? { left: state.analyserL, right: state.analyserR } : null
+    return state.analyserL && state.analyserR && state.loudnessL && state.loudnessR
+      ? { left: state.analyserL, right: state.analyserR, loudnessLeft: state.loudnessL, loudnessRight: state.loudnessR }
+      : null
   }, [])
 
   useEffect(() => {

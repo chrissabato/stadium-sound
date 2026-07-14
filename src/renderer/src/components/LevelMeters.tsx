@@ -31,6 +31,22 @@ function barColor(level: number): string {
   return '#22c55e'
 }
 
+// Momentary loudness per ITU-R BS.1770: mean square of the K-weighted signal
+// over a 400ms window, summed across channels (G = 1 for L/R), in LUFS.
+// Readings below the -70 LUFS absolute gate display as silence.
+const MOMENTARY_WINDOW_MS = 400
+const LUFS_GATE = -70
+// Refreshing the text every frame would just flicker; ~6 updates/sec reads
+// like a real loudness meter.
+const LUFS_TEXT_INTERVAL_MS = 150
+
+function meanSquare(analyser: AnalyserNode, buffer: Float32Array<ArrayBuffer>): number {
+  analyser.getFloatTimeDomainData(buffer)
+  let sum = 0
+  for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i]
+  return sum / buffer.length
+}
+
 // The fills are driven directly from the rAF loop (like TrackCell's progress
 // overlay) rather than through React state + CSS transitions: the loop
 // already runs every frame and applies its own attack/release smoothing, so
@@ -43,6 +59,10 @@ export function LevelMeters({ getAnalysers }: Props) {
   const bufferRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
   const leftFillRef = useRef<HTMLDivElement>(null)
   const rightFillRef = useRef<HTMLDivElement>(null)
+  const lufsBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null)
+  const lufsSamplesRef = useRef<{ t: number; z: number }[]>([])
+  const lufsTextRef = useRef<HTMLDivElement>(null)
+  const lufsLastUpdateRef = useRef(0)
 
   useEffect(() => {
     function paint(fill: HTMLDivElement | null, level: number) {
@@ -85,6 +105,33 @@ export function LevelMeters({ getAnalysers }: Props) {
           paint(leftFillRef.current, left)
           paint(rightFillRef.current, right)
         }
+
+        // LUFS readout — same direct-DOM-write pattern as the bars above.
+        const now = performance.now()
+        const samples = lufsSamplesRef.current
+        if (analysers) {
+          const size = analysers.loudnessLeft.fftSize
+          if (!lufsBufferRef.current || lufsBufferRef.current.length !== size) {
+            lufsBufferRef.current = new Float32Array(size)
+          }
+          const zl = meanSquare(analysers.loudnessLeft, lufsBufferRef.current)
+          const zr = meanSquare(analysers.loudnessRight, lufsBufferRef.current)
+          samples.push({ t: now, z: zl + zr })
+        }
+        while (samples.length > 0 && samples[0].t < now - MOMENTARY_WINDOW_MS) samples.shift()
+
+        if (now - lufsLastUpdateRef.current >= LUFS_TEXT_INTERVAL_MS && lufsTextRef.current) {
+          lufsLastUpdateRef.current = now
+          let text = '—'
+          if (samples.length > 0) {
+            const mean = samples.reduce((acc, s) => acc + s.z, 0) / samples.length
+            if (mean > 0) {
+              const lufs = -0.691 + 10 * Math.log10(mean)
+              if (lufs > LUFS_GATE) text = lufs.toFixed(1)
+            }
+          }
+          if (lufsTextRef.current.textContent !== text) lufsTextRef.current.textContent = text
+        }
       } catch (err) {
         console.error('[audio] LevelMeters tick failed, will retry next frame', err)
       }
@@ -126,6 +173,16 @@ export function LevelMeters({ getAnalysers }: Props) {
         </div>
       </div>
       <div style={{ fontSize: 9, color: '#475569', letterSpacing: '0.1em' }}>L&nbsp;&nbsp;R</div>
+      <div style={{ textAlign: 'center', lineHeight: 1.25 }}>
+        <div
+          ref={lufsTextRef}
+          title="Momentary loudness (400ms), ITU-R BS.1770"
+          style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}
+        >
+          —
+        </div>
+        <div style={{ fontSize: 8, color: '#475569', letterSpacing: '0.08em' }}>LUFS</div>
+      </div>
     </div>
   )
 }
