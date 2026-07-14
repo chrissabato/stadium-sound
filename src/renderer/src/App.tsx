@@ -15,6 +15,7 @@ import { PlaylistPanel } from './components/PlaylistPanel'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { LibraryManager } from './components/LibraryManager'
 import { AddFromLibraryModal } from './components/AddFromLibraryModal'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import type { Bank, Track, Playlist, PlaylistTrack, LibraryTrack } from './types'
 import { normalizeHotkeyEvent } from './types'
 
@@ -23,6 +24,15 @@ function makeId() {
 }
 
 const EMPTY_PLAYED_IDS = new Set<string>()
+
+// The event set autosaves on every change, so a deletion is committed to disk
+// the moment it happens — destructive actions go through a ConfirmDialog first.
+type ConfirmRequest = {
+  title: string
+  message: string
+  confirmLabel: string
+  action: () => void
+}
 
 // Only short played ranges are worth decoding to PCM — full songs stream from
 // disk. Unknown duration (failed metadata read) is treated as long, i.e.
@@ -76,6 +86,7 @@ export default function App() {
   const [selectedTrackIndex, setSelectedTrackIndex] = useState(-1)
   const [highlightedTrackId, setHighlightedTrackId] = useState<string | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null)
   const suppressPlaylistAdvanceRef = useRef(false)
   const searchRef = useRef<TrackSearchHandle>(null)
 
@@ -595,6 +606,70 @@ export default function App() {
     }))
   }
 
+  function trackLabel(t: { artist: string; title: string; filePath: string }): string {
+    return t.title ? (t.artist ? `${t.artist} — ${t.title}` : t.title) : t.filePath
+  }
+
+  const AUTOSAVE_WARNING = 'The event set saves automatically, so this can\'t be undone.'
+
+  function requestDeleteBank(id: string) {
+    const bank = config.banks.find((b) => b.id === id)
+    if (!bank) return
+    // An empty bank loses nothing but its name — no confirmation needed.
+    if (bank.tracks.length === 0) { deleteBank(id); return }
+    setConfirmRequest({
+      title: 'Delete Bank',
+      message: `Delete "${bank.name}" and its ${bank.tracks.length} track${bank.tracks.length === 1 ? '' : 's'}? ${AUTOSAVE_WARNING}`,
+      confirmLabel: 'Delete Bank',
+      action: () => deleteBank(id)
+    })
+  }
+
+  function requestRemoveTrack(id: string) {
+    const track = config.banks.flatMap((b) => b.tracks).find((t) => t.id === id)
+    if (!track) return
+    setConfirmRequest({
+      title: 'Delete Track',
+      message: `Delete "${trackLabel(track)}" from this bank? ${AUTOSAVE_WARNING}`,
+      confirmLabel: 'Delete Track',
+      action: () => removeTrack(id)
+    })
+  }
+
+  function requestDeletePlaylist(id: string) {
+    const playlist = (config.playlists ?? []).find((p) => p.id === id)
+    if (!playlist) return
+    if (playlist.tracks.length === 0) { deletePlaylist(id); return }
+    setConfirmRequest({
+      title: 'Delete Playlist',
+      message: `Delete "${playlist.name}" and its ${playlist.tracks.length} track${playlist.tracks.length === 1 ? '' : 's'}? ${AUTOSAVE_WARNING}`,
+      confirmLabel: 'Delete Playlist',
+      action: () => deletePlaylist(id)
+    })
+  }
+
+  function requestRemovePlaylistTrack(itemId: string) {
+    const track = selectedPlaylist?.tracks.find((t) => t.itemId === itemId)
+    if (!track || !selectedPlaylist) return
+    setConfirmRequest({
+      title: 'Remove Track',
+      message: `Remove "${trackLabel(track)}" from "${selectedPlaylist.name}"? ${AUTOSAVE_WARNING}`,
+      confirmLabel: 'Remove',
+      action: () => removePlaylistTrack(itemId)
+    })
+  }
+
+  function requestRemoveLibrary(id: string) {
+    const lib = libraries.libraries.find((l) => l.id === id)
+    if (!lib) return
+    setConfirmRequest({
+      title: 'Remove Library',
+      message: `Remove the library "${lib.name}"? Your audio files stay on disk, and tracks already added to banks or playlists are unaffected.`,
+      confirmLabel: 'Remove Library',
+      action: () => libraries.remove(id)
+    })
+  }
+
   function toggleAddToPlaylistMode() {
     setIsAddToPlaylistMode((v) => {
       const next = !v
@@ -743,7 +818,7 @@ export default function App() {
       return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
     }
 
-    if (e.repeat || isTypingTarget(e.target) || editingTrack || settingsOpen) return
+    if (e.repeat || isTypingTarget(e.target) || editingTrack || settingsOpen || confirmRequest) return
 
     if (shortcutsOpen) {
       if (e.key === 'Escape') { e.preventDefault(); setShortcutsOpen(false) }
@@ -868,7 +943,7 @@ export default function App() {
           onSelectBank={selectBank}
           onAddBank={addBank}
           onRenameBank={renameBank}
-          onDeleteBank={deleteBank}
+          onDeleteBank={requestDeleteBank}
           onReorderBanks={reorderBanks}
           onDropTrackOnBank={moveTrackToBank}
         />
@@ -968,7 +1043,7 @@ export default function App() {
               highlightedTrackId={highlightedTrackId}
               onPlayTrack={playTrack}
               onEditTrack={setEditingTrack}
-              onDeleteTrack={(track) => removeTrack(track.id)}
+              onDeleteTrack={(track) => requestRemoveTrack(track.id)}
               onAddTracks={addTracks}
               onAddFromLibrary={() => setAddFromLibraryTarget('bank')}
               onDropFiles={addTracksByPaths}
@@ -1004,12 +1079,12 @@ export default function App() {
             onSelectPlaylist={selectPlaylist}
             onAddPlaylist={addPlaylist}
             onRenamePlaylist={renamePlaylist}
-            onDeletePlaylist={deletePlaylist}
+            onDeletePlaylist={requestDeletePlaylist}
             onReorderPlaylists={reorderPlaylists}
             onToggleAddMode={toggleAddToPlaylistMode}
             onAddTracksFromFile={addTracksToPlaylist}
             onAddFromLibrary={() => setAddFromLibraryTarget('playlist')}
-            onRemoveTrack={removePlaylistTrack}
+            onRemoveTrack={requestRemovePlaylistTrack}
             onReorderTracks={reorderPlaylistTracks}
             selectedTrackIndex={selectedTrackIndex}
             onSelectRow={selectPlaylistTrack}
@@ -1034,7 +1109,7 @@ export default function App() {
       <TrackEditor
         track={editingTrack}
         onSave={saveEditedTrack}
-        onRemove={removeTrack}
+        onRemove={requestRemoveTrack}
         onClose={() => setEditingTrack(null)}
         loadBuffer={loadEditorBuffer}
         getBuffer={audio.getBuffer}
@@ -1087,7 +1162,7 @@ export default function App() {
         onAddFolder={libraries.addFolder}
         onRescan={libraries.rescan}
         onRename={libraries.rename}
-        onRemove={libraries.remove}
+        onRemove={requestRemoveLibrary}
         onClose={() => setLibraryManagerOpen(false)}
       />
 
@@ -1101,6 +1176,16 @@ export default function App() {
         }}
         onClose={() => setAddFromLibraryTarget(null)}
       />
+
+      {confirmRequest && (
+        <ConfirmDialog
+          title={confirmRequest.title}
+          message={confirmRequest.message}
+          confirmLabel={confirmRequest.confirmLabel}
+          onConfirm={() => { setConfirmRequest(null); confirmRequest.action() }}
+          onCancel={() => setConfirmRequest(null)}
+        />
+      )}
     </>
   )
 }
