@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { TRACK_DRAG_MIME, type Bank } from '../types'
+import { ContextMenu } from './ContextMenu'
 
 interface Props {
   banks: Bank[]
@@ -20,7 +21,7 @@ export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReorder
   const [editName, setEditName] = useState('')
   const [newBankName, setNewBankName] = useState('')
   const [addingBank, setAddingBank] = useState(false)
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; bank: Bank } | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const dragCounter = useRef(0)
@@ -143,8 +144,11 @@ export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReorder
             onDrop={(e) => handleDrop(e, i)}
             onDragEnd={handleDragEnd}
             onClick={() => onSelectBank(bank.id)}
-            onMouseEnter={() => setHoveredId(bank.id)}
-            onMouseLeave={() => setHoveredId(null)}
+            onContextMenu={(e) => {
+              if (isReordering || editingId === bank.id) return
+              e.preventDefault()
+              setContextMenu({ x: e.clientX, y: e.clientY, bank })
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -194,41 +198,6 @@ export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReorder
                 )}
                 {isReordering ? (
                   <span style={{ fontSize: 13, color: '#93c5fd', userSelect: 'none', flexShrink: 0 }}>⠿</span>
-                ) : hoveredId === bank.id ? (
-                  <>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); startEdit(bank) }}
-                      title="Rename"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: bank.id === selectedBankId ? 'rgba(255,255,255,0.7)' : '#64748b',
-                        fontSize: 12,
-                        lineHeight: 1,
-                        padding: '0 2px',
-                        flexShrink: 0,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ✎
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onDeleteBank(bank.id) }}
-                      title="Delete"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: bank.id === selectedBankId ? 'rgba(255,255,255,0.7)' : '#64748b',
-                        fontSize: 14,
-                        lineHeight: 1,
-                        padding: '0 2px',
-                        flexShrink: 0,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ×
-                    </button>
-                  </>
                 ) : (() => {
                   const missingCount = bank.tracks.filter((t) => missingFileIds.has(t.id)).length
                   return missingCount > 0 ? (
@@ -246,6 +215,18 @@ export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReorder
           </div>
         ))}
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={[
+            { label: '✎ Rename Bank', onClick: () => startEdit(contextMenu.bank) },
+            { label: '× Delete Bank', danger: true, onClick: () => onDeleteBank(contextMenu.bank.id) }
+          ]}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
 
       {addingBank && (
         <div style={{ padding: 8, borderTop: '1px solid #1e293b' }}>

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { Track } from '../types'
 import { formatTime } from '../types'
+import { ContextMenu } from './ContextMenu'
 
 interface Props {
   track: Track
@@ -16,9 +17,10 @@ interface Props {
   isHighlighted: boolean
   onClick: () => void
   onEdit: () => void
+  onDelete: () => void
 }
 
-export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, onClick, onEdit }: Props) {
+export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, onClick, onEdit, onDelete }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
@@ -28,27 +30,6 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
   const colorBarOffset = track.colorLabel ? 5 : 0
   const [tooltip, setTooltip] = useState<{ x: number; y: number; above: boolean } | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
-
-  useEffect(() => {
-    if (!contextMenu) return
-    function close() { setContextMenu(null) }
-    function closeOnEscape(e: KeyboardEvent) { if (e.key === 'Escape') setContextMenu(null) }
-    window.addEventListener('keydown', closeOnEscape)
-    // Right-clicking fires a trailing 'click' event right after 'contextmenu' on
-    // this interaction — registering the outside-click listener synchronously
-    // would catch that trailing click and close the menu instantly. Deferring
-    // to the next tick lets that click pass before we start listening.
-    const timer = setTimeout(() => {
-      window.addEventListener('click', close)
-      window.addEventListener('contextmenu', close)
-    }, 0)
-    return () => {
-      clearTimeout(timer)
-      window.removeEventListener('click', close)
-      window.removeEventListener('contextmenu', close)
-      window.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [contextMenu])
 
   useEffect(() => {
     if (isHighlighted) cellRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -349,41 +330,15 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
       )}
 
       {contextMenu && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: 'fixed',
-            left: contextMenu.x,
-            top: contextMenu.y,
-            background: '#0f172a',
-            border: '1px solid #334155',
-            borderRadius: 4,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-            padding: 4,
-            zIndex: 200,
-            minWidth: 140
-          }}
-        >
-          <button
-            onClick={() => { setContextMenu(null); onEdit() }}
-            style={{
-              display: 'block',
-              width: '100%',
-              textAlign: 'left',
-              background: 'none',
-              border: 'none',
-              borderRadius: 3,
-              color: '#e2e8f0',
-              fontSize: 13,
-              padding: '6px 10px',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#1e293b' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
-          >
-            ✎ Edit Track
-          </button>
-        </div>
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={[
+            { label: '✎ Edit Track', onClick: onEdit },
+            { label: '× Delete Track', danger: true, onClick: onDelete }
+          ]}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   )

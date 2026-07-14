@@ -17,6 +17,7 @@ interface Props {
   highlightedTrackId: string | null
   onPlayTrack: (track: Track) => void
   onEditTrack: (track: Track) => void
+  onDeleteTrack: (track: Track) => void
   onAddTracks: () => void
   onAddFromLibrary: () => void
   onDropFiles: (paths: string[]) => void
@@ -29,7 +30,7 @@ function isAudioFile(file: File): boolean {
   return !!ext && AUDIO_EXTENSIONS.includes(ext)
 }
 
-export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, showTrackTooltips, highlightedTrackId, onPlayTrack, onEditTrack, onAddTracks, onAddFromLibrary, onDropFiles, onReorder, onAddToPlaylist }: Props) {
+export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, showTrackTooltips, highlightedTrackId, onPlayTrack, onEditTrack, onDeleteTrack, onAddTracks, onAddFromLibrary, onDropFiles, onReorder, onAddToPlaylist }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const [isFileDragOver, setIsFileDragOver] = useState(false)
@@ -229,6 +230,7 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
               isHighlighted={highlightedTrackId === track.id}
               onClick={isReordering ? () => {} : isAddToPlaylistMode ? () => onAddToPlaylist(track) : () => onPlayTrack(track)}
               onEdit={(isReordering || isAddToPlaylistMode) ? () => {} : () => onEditTrack(track)}
+              onDelete={(isReordering || isAddToPlaylistMode) ? () => {} : () => onDeleteTrack(track)}
             />
           </div>
         ))}

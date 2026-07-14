@@ -968,6 +968,7 @@ export default function App() {
               highlightedTrackId={highlightedTrackId}
               onPlayTrack={playTrack}
               onEditTrack={setEditingTrack}
+              onDeleteTrack={(track) => removeTrack(track.id)}
               onAddTracks={addTracks}
               onAddFromLibrary={() => setAddFromLibraryTarget('bank')}
               onDropFiles={addTracksByPaths}
