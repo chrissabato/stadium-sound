@@ -164,7 +164,7 @@ export function LevelMeters({ getAnalysers }: Props) {
       padding: '12px 8px 8px',
       gap: 6
     }}>
-      <div style={{ display: 'flex', gap: 4, flex: 1, width: '100%' }}>
+      <div title="RMS level, -50 to 0 dB" style={{ display: 'flex', gap: 4, flex: 1, width: '100%' }}>
         <div style={barStyle}>
           <div ref={leftFillRef} style={{ width: '100%', height: '0%', background: '#22c55e' }} />
         </div>
@@ -172,7 +172,10 @@ export function LevelMeters({ getAnalysers }: Props) {
           <div ref={rightFillRef} style={{ width: '100%', height: '0%', background: '#22c55e' }} />
         </div>
       </div>
-      <div style={{ fontSize: 9, color: '#475569', letterSpacing: '0.1em' }}>L&nbsp;&nbsp;R</div>
+      <div style={{ textAlign: 'center', lineHeight: 1.25 }}>
+        <div style={{ fontSize: 9, color: '#475569', letterSpacing: '0.1em' }}>L&nbsp;&nbsp;R</div>
+        <div style={{ fontSize: 8, color: '#475569', letterSpacing: '0.08em' }}>dB</div>
+      </div>
       <div style={{ textAlign: 'center', lineHeight: 1.25 }}>
         <div
           ref={lufsTextRef}
