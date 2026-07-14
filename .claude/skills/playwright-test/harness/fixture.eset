@@ -1,0 +1,45 @@
+{
+  "banks": [
+    {
+      "id": "bankA",
+      "name": "Test Bank A",
+      "tracks": [
+        {
+          "id": "trk1",
+          "filePath": "C:\\nonexistent\\goal-horn.mp3",
+          "artist": "Test Artist",
+          "title": "Goal Horn",
+          "duration": 12,
+          "inPoint": 0,
+          "outPoint": 12
+        },
+        {
+          "id": "trk2",
+          "filePath": "C:\\nonexistent\\charge.mp3",
+          "artist": "Test Artist",
+          "title": "Charge",
+          "duration": 8,
+          "inPoint": 0,
+          "outPoint": 8
+        }
+      ]
+    },
+    {
+      "id": "bankB",
+      "name": "Test Bank B",
+      "tracks": []
+    },
+    {
+      "id": "bankC",
+      "name": "Test Bank C",
+      "tracks": []
+    }
+  ],
+  "selectedBankId": "bankA",
+  "playlists": [],
+  "selectedPlaylistId": "",
+  "masterVolume": 1,
+  "fadeIn": 0,
+  "fadeOut": 0,
+  "crossFade": 0
+}
