@@ -4,6 +4,7 @@ interface PlayOptions {
   inPoint: number
   outPoint: number
   filePath: string
+  volume?: number
 }
 
 export interface FadeSettings {
@@ -378,7 +379,7 @@ export function useAudioEngine(): AudioEngine {
 
   const playTrack = useCallback((
     id: string,
-    { inPoint, outPoint, filePath }: PlayOptions,
+    { inPoint, outPoint, filePath, volume }: PlayOptions,
     playOpts?: { force?: boolean; bus?: AudioBus }
   ) => {
     const bus: AudioBus = playOpts?.bus ?? (isMonitorModeRef.current ? 'monitor' : 'main')
@@ -410,6 +411,10 @@ export function useAudioEngine(): AudioEngine {
     const trackGain = ctx.createGain()
     trackGain.connect(state.masterGain!)
 
+    // Per-track level is the fade envelope's ceiling: fades ramp to it
+    // instead of to 1, so a track set to 60% fades in/cross-fades up to 60%.
+    const level = volume ?? 1
+
     // Gain envelope + retiring the previous track works the same way for both
     // playback paths since fades live on the per-track gain nodes.
     if (crossFade > 0 && state.activeHandle && state.activeTrackGain) {
@@ -430,16 +435,16 @@ export function useAudioEngine(): AudioEngine {
       }, crossFade * 1000 + 50)
 
       trackGain.gain.setValueAtTime(0, ctx.currentTime)
-      trackGain.gain.linearRampToValueAtTime(1, ctx.currentTime + crossFade)
+      trackGain.gain.linearRampToValueAtTime(level, ctx.currentTime + crossFade)
     } else {
       state.activeHandle?.stop()
       try { state.activeTrackGain?.disconnect() } catch { /* already disconnected */ }
 
       if (fadeIn > 0) {
         trackGain.gain.setValueAtTime(0, ctx.currentTime)
-        trackGain.gain.linearRampToValueAtTime(1, ctx.currentTime + fadeIn)
+        trackGain.gain.linearRampToValueAtTime(level, ctx.currentTime + fadeIn)
       } else {
-        trackGain.gain.setValueAtTime(1, ctx.currentTime)
+        trackGain.gain.setValueAtTime(level, ctx.currentTime)
       }
     }
 

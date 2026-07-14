@@ -272,7 +272,7 @@ export default function App() {
     }
     audio.playTrack(
       track.id,
-      { inPoint: track.inPoint, outPoint: track.outPoint || track.duration, filePath: track.filePath },
+      { inPoint: track.inPoint, outPoint: track.outPoint || track.duration, filePath: track.filePath, volume: track.volume },
       { force: true, bus }
     )
     // NowPlayingBar and the "played" tint both reflect main-bus/PA activity —

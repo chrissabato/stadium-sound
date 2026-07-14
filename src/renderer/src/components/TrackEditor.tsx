@@ -37,8 +37,10 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
   const [hotkey, setHotkey] = useState<string | undefined>(undefined)
   const [capturingHotkey, setCapturingHotkey] = useState(false)
   const [colorLabel, setColorLabel] = useState<string | undefined>(undefined)
+  const [volume, setVolume] = useState(1)
   const [previewing, setPreviewing] = useState(false)
   const previewNodeRef = React.useRef<AudioBufferSourceNode | null>(null)
+  const previewGainRef = React.useRef<GainNode | null>(null)
   const previewCtxRef = React.useRef<AudioContext | null>(null)
   const previewStartCtxTimeRef = React.useRef<number>(0)
   const previewStartInPointRef = React.useRef<number>(0)
@@ -59,6 +61,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     setHotkey(track.hotkey)
     setCapturingHotkey(false)
     setColorLabel(track.colorLabel)
+    setVolume(track.volume ?? 1)
 
     const existing = getBuffer(track.filePath)
     if (existing) {
@@ -117,7 +120,13 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     const ctx = new AudioContext({ latencyHint: 'interactive' })
     const source = ctx.createBufferSource()
     source.buffer = audioBuffer
-    source.connect(ctx.destination)
+    // Preview through the track's level so the slider can be auditioned;
+    // the level slider live-updates this node while previewing.
+    const gainNode = ctx.createGain()
+    gainNode.gain.value = volume
+    source.connect(gainNode)
+    gainNode.connect(ctx.destination)
+    previewGainRef.current = gainNode
     const dur = outPoint - inPoint
     previewStartCtxTimeRef.current = ctx.currentTime
     previewStartInPointRef.current = inPoint
@@ -136,6 +145,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     try { previewNodeRef.current?.stop() } catch { /* */ }
     previewNodeRef.current = null
     previewCtxRef.current = null
+    previewGainRef.current = null
     setPreviewing(false)
   }
 
@@ -168,7 +178,8 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
       playerFirstName: playerFirstName || undefined,
       playerLastName: playerLastName || undefined,
       hotkey,
-      colorLabel
+      colorLabel,
+      volume: volume < 1 ? volume : undefined
     })
     stopPreview()
     onClose()
@@ -401,6 +412,40 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
                 }}
               />
             ))}
+          </div>
+        </div>
+
+        {/* Audio level */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, color: '#64748b' }}>Audio Level (this track only, on top of the master volume)</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value)
+                setVolume(v)
+                if (previewGainRef.current) previewGainRef.current.gain.value = v
+              }}
+              style={{ width: 220, accentColor: '#f97316' }}
+            />
+            <span style={{ color: '#94a3b8', fontSize: 12, minWidth: 36 }}>
+              {Math.round(volume * 100)}%
+            </span>
+            {volume < 1 && (
+              <button
+                onClick={() => {
+                  setVolume(1)
+                  if (previewGainRef.current) previewGainRef.current.gain.value = 1
+                }}
+                style={{ padding: '4px 10px', background: 'none', border: '1px solid #334155', borderRadius: 4, color: '#94a3b8', fontSize: 11, cursor: 'pointer' }}
+              >
+                Reset to 100%
+              </button>
+            )}
           </div>
         </div>
 
