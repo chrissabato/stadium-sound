@@ -31,10 +31,10 @@ function barColor(level: number): string {
   return '#22c55e'
 }
 
-// Momentary loudness per ITU-R BS.1770: mean square of the K-weighted signal
-// over a 400ms window, summed across channels (G = 1 for L/R), in LUFS.
+// Short-term loudness per ITU-R BS.1770: mean square of the K-weighted signal
+// over a 3s window, summed across channels (G = 1 for L/R), in LUFS.
 // Readings below the -70 LUFS absolute gate display as silence.
-const MOMENTARY_WINDOW_MS = 400
+const SHORT_TERM_WINDOW_MS = 3000
 const LUFS_GATE = -70
 // Refreshing the text every frame would just flicker; ~6 updates/sec reads
 // like a real loudness meter.
@@ -118,7 +118,7 @@ export function LevelMeters({ getAnalysers }: Props) {
           const zr = meanSquare(analysers.loudnessRight, lufsBufferRef.current)
           samples.push({ t: now, z: zl + zr })
         }
-        while (samples.length > 0 && samples[0].t < now - MOMENTARY_WINDOW_MS) samples.shift()
+        while (samples.length > 0 && samples[0].t < now - SHORT_TERM_WINDOW_MS) samples.shift()
 
         if (now - lufsLastUpdateRef.current >= LUFS_TEXT_INTERVAL_MS && lufsTextRef.current) {
           lufsLastUpdateRef.current = now
@@ -127,7 +127,7 @@ export function LevelMeters({ getAnalysers }: Props) {
             const mean = samples.reduce((acc, s) => acc + s.z, 0) / samples.length
             if (mean > 0) {
               const lufs = -0.691 + 10 * Math.log10(mean)
-              if (lufs > LUFS_GATE) text = lufs.toFixed(1)
+              if (lufs > LUFS_GATE) text = String(Math.round(lufs))
             }
           }
           if (lufsTextRef.current.textContent !== text) lufsTextRef.current.textContent = text
@@ -176,7 +176,7 @@ export function LevelMeters({ getAnalysers }: Props) {
       <div style={{ textAlign: 'center', lineHeight: 1.25 }}>
         <div
           ref={lufsTextRef}
-          title="Momentary loudness (400ms), ITU-R BS.1770"
+          title="Short-term loudness (3s), ITU-R BS.1770"
           style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}
         >
           —
