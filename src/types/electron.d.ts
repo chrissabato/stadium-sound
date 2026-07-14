@@ -21,6 +21,15 @@ export interface EventSetSaveAsResult {
   recentFiles: string[]
 }
 
+// Update lifecycle as shown in Settings. 'available' means found on the feed
+// (download starts immediately); only 'downloaded' means a restart installs
+// it. 'dev' = running unpackaged, where the updater can't operate.
+export interface UpdateStatus {
+  state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error' | 'dev'
+  version?: string
+  percent?: number
+}
+
 export interface ElectronAPI {
   openAudioFiles: (defaultPath?: string) => Promise<string[]>
   readAudioFile: (filePath: string) => Promise<ArrayBuffer>
@@ -58,7 +67,9 @@ export interface ElectronAPI {
     getVersion: () => Promise<string>
     getPlatform: () => Promise<NodeJS.Platform>
     checkForUpdate: () => Promise<void>
-    onUpdateStatus: (callback: (status: 'checking' | 'available' | 'not-available' | 'error') => void) => () => void
+    installUpdate: () => Promise<void>
+    getUpdateStatus: () => Promise<UpdateStatus>
+    onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void
     onFlushBeforeQuit: (callback: () => void) => () => void
     flushBeforeQuitDone: () => void
   }

@@ -171,26 +171,51 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('app:getPlatform', () => process.platform)
 
+  // Remembered so Settings can show where the updater actually is when it
+  // (re)opens — its status listener only exists while the dialog is open, so
+  // without this a download finishing in the background was simply invisible.
+  let lastUpdateStatus: { state: string; version?: string; percent?: number } = { state: 'idle' }
+  function sendUpdateStatus(status: typeof lastUpdateStatus) {
+    lastUpdateStatus = status
+    getWin()?.webContents.send('app:updateStatus', status)
+  }
+
+  ipcMain.handle('app:getUpdateStatus', () => lastUpdateStatus)
+
   ipcMain.handle('app:checkForUpdate', () => {
-    const win = getWin()
     if (!app.isPackaged) {
-      win?.webContents.send('app:updateStatus', 'not-available')
+      sendUpdateStatus({ state: 'dev' })
       return
     }
-    win?.webContents.send('app:updateStatus', 'checking')
-    autoUpdater.checkForUpdatesAndNotify().catch(() => {
-      win?.webContents.send('app:updateStatus', 'error')
+    sendUpdateStatus({ state: 'checking' })
+    // Plain checkForUpdates(), not checkForUpdatesAndNotify(): Settings is
+    // already displaying progress for this manual check, so the extra OS
+    // notification was just a second, differently-worded voice.
+    autoUpdater.checkForUpdates().catch(() => {
+      sendUpdateStatus({ state: 'error' })
     })
   })
 
-  autoUpdater.on('update-available', () => {
-    getWin()?.webContents.send('app:updateStatus', 'available')
+  ipcMain.handle('app:installUpdate', () => {
+    // Goes through the window's close interception first, so the renderer
+    // still flushes its debounced event-set autosave before the app swaps.
+    autoUpdater.quitAndInstall()
+  })
+
+  autoUpdater.on('update-available', (info) => {
+    sendUpdateStatus({ state: 'available', version: info.version })
   })
   autoUpdater.on('update-not-available', () => {
-    getWin()?.webContents.send('app:updateStatus', 'not-available')
+    sendUpdateStatus({ state: 'not-available' })
+  })
+  autoUpdater.on('download-progress', (progress) => {
+    sendUpdateStatus({ state: 'downloading', percent: progress.percent })
+  })
+  autoUpdater.on('update-downloaded', (info) => {
+    sendUpdateStatus({ state: 'downloaded', version: info.version })
   })
   autoUpdater.on('error', () => {
-    getWin()?.webContents.send('app:updateStatus', 'error')
+    sendUpdateStatus({ state: 'error' })
   })
 
   ipcMain.handle('ssp:import', async () => {

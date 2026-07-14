@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import type { ElectronAPI } from '../types/electron'
+import type { ElectronAPI, UpdateStatus } from '../types/electron'
 import type { AppConfig, MediaLibrary } from '../renderer/src/types'
 
 const api: ElectronAPI = {
@@ -60,8 +60,10 @@ const api: ElectronAPI = {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
     getPlatform: () => ipcRenderer.invoke('app:getPlatform'),
     checkForUpdate: () => ipcRenderer.invoke('app:checkForUpdate'),
+    installUpdate: () => ipcRenderer.invoke('app:installUpdate'),
+    getUpdateStatus: () => ipcRenderer.invoke('app:getUpdateStatus'),
     onUpdateStatus: (callback) => {
-      const handler = (_: Electron.IpcRendererEvent, status: string) => callback(status as never)
+      const handler = (_: Electron.IpcRendererEvent, status: UpdateStatus) => callback(status)
       ipcRenderer.on('app:updateStatus', handler)
       return () => ipcRenderer.removeListener('app:updateStatus', handler)
     },

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import type { UpdateStatus } from '../../../types/electron'
 
 interface FadeConfig {
   fadeIn: number
@@ -81,7 +82,7 @@ function FadeRow({
 export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
-  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'not-available' | 'error'>('idle')
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
 
   useEffect(() => {
     if (!open) return
@@ -92,7 +93,10 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
       .then((devices) => setAudioDevices(devices.filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications')))
       .catch(() => {})
     window.electronAPI.app.getVersion().then(setVersion).catch(() => {})
-    const unsub = window.electronAPI.app.onUpdateStatus((status) => setUpdateStatus(status))
+    // The updater keeps working while this dialog is closed (startup check,
+    // background download) — pick up where it actually is, then follow along.
+    window.electronAPI.app.getUpdateStatus().then(setUpdateStatus).catch(() => {})
+    const unsub = window.electronAPI.app.onUpdateStatus(setUpdateStatus)
     return unsub
   }, [open])
 
@@ -309,34 +313,68 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-              <button
-                onClick={() => {
-                  setUpdateStatus('checking')
-                  window.electronAPI.app.checkForUpdate()
-                }}
-                disabled={updateStatus === 'checking'}
-                style={{
-                  padding: '6px 16px',
-                  background: '#1e3a5f',
-                  border: '1px solid #334155',
-                  borderRadius: 4,
-                  color: updateStatus === 'checking' ? '#64748b' : '#93c5fd',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: updateStatus === 'checking' ? 'default' : 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                {updateStatus === 'checking' ? 'Checking…' : 'Check for Updates'}
-              </button>
-              {updateStatus === 'not-available' && (
+              {updateStatus.state === 'downloaded' ? (
+                <button
+                  onClick={() => window.electronAPI.app.installUpdate()}
+                  style={{
+                    padding: '6px 16px',
+                    background: '#16a34a',
+                    border: '1px solid #22c55e',
+                    borderRadius: 4,
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }}
+                >
+                  Restart &amp; Install{updateStatus.version ? ` v${updateStatus.version}` : ''}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setUpdateStatus({ state: 'checking' })
+                    window.electronAPI.app.checkForUpdate()
+                  }}
+                  disabled={updateStatus.state === 'checking' || updateStatus.state === 'downloading'}
+                  style={{
+                    padding: '6px 16px',
+                    background: '#1e3a5f',
+                    border: '1px solid #334155',
+                    borderRadius: 4,
+                    color: updateStatus.state === 'checking' || updateStatus.state === 'downloading' ? '#64748b' : '#93c5fd',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: updateStatus.state === 'checking' || updateStatus.state === 'downloading' ? 'default' : 'pointer',
+                    flexShrink: 0
+                  }}
+                >
+                  {updateStatus.state === 'checking' ? 'Checking…' : 'Check for Updates'}
+                </button>
+              )}
+              {updateStatus.state === 'not-available' && (
                 <span style={{ fontSize: 11, color: '#4ade80' }}>You're up to date</span>
               )}
-              {updateStatus === 'available' && (
-                <span style={{ fontSize: 11, color: '#fbbf24' }}>Update available — restart to install</span>
+              {updateStatus.state === 'available' && (
+                <span style={{ fontSize: 11, color: '#fbbf24' }}>
+                  {updateStatus.version ? `v${updateStatus.version} found` : 'Update found'} — downloading…
+                </span>
               )}
-              {updateStatus === 'error' && (
+              {updateStatus.state === 'downloading' && (
+                <span style={{ fontSize: 11, color: '#fbbf24', fontVariantNumeric: 'tabular-nums' }}>
+                  Downloading… {Math.round(updateStatus.percent ?? 0)}%
+                </span>
+              )}
+              {updateStatus.state === 'downloaded' && (
+                <span style={{ fontSize: 11, color: '#4ade80' }}>
+                  {updateStatus.version ? `v${updateStatus.version} downloaded` : 'Update downloaded'} — ready to install
+                </span>
+              )}
+              {updateStatus.state === 'error' && (
                 <span style={{ fontSize: 11, color: '#f87171' }}>Couldn't check for updates</span>
+              )}
+              {updateStatus.state === 'dev' && (
+                <span style={{ fontSize: 11, color: '#64748b' }}>Updates only work in the installed app</span>
               )}
             </div>
           </div>
