@@ -122,6 +122,12 @@ export default function App() {
     audio.setOutputDevices(audioDevices.outputDeviceId, audioDevices.monitorDeviceId)
   }, [audioDevices.outputDeviceId, audioDevices.monitorDeviceId])
 
+  // Keep audio engine in sync with the persisted master volume — without this
+  // the engine plays at full volume after a restart until the slider is moved.
+  useEffect(() => {
+    audio.setMasterVolume(config.masterVolume ?? 1)
+  }, [config.masterVolume])
+
   const selectedBank = config.banks.find((b) => b.id === config.selectedBankId) ?? null
   const selectedPlaylist = (config.playlists ?? []).find((p) => p.id === config.selectedPlaylistId) ?? null
   const hasUnplayedTracks = !!selectedBank?.tracks.some((t) => !playedIds.has(t.id) && !missingFileIds.has(t.id))
