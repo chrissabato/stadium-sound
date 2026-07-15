@@ -23,6 +23,8 @@ interface Props {
 export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, onClick, onEdit, onDelete }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
+  // The editor only persists volume when it's below 1 (full = undefined).
+  const hasCustomVolume = track.volume !== undefined && track.volume < 1
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
   const overlayRef = useRef<HTMLDivElement>(null)
   const cellRef = useRef<HTMLDivElement>(null)
@@ -295,6 +297,14 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
                 animation: 'track-loading-spin 0.7s linear infinite'
               }}
             />
+          )}
+          {hasCustomVolume && (
+            <span
+              title={`Custom volume: ${Math.round(track.volume! * 100)}%`}
+              style={{ fontSize: 10, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#475569', fontVariantNumeric: 'tabular-nums' }}
+            >
+              {Math.round(track.volume! * 100)}%
+            </span>
           )}
           {hasCustomPoints && (
             <span style={{ fontSize: 10, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#475569' }}>✂</span>
