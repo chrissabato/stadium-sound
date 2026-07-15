@@ -821,7 +821,13 @@ export default function App() {
   latestKeyHandlerRef.current = function onKeyDown(e: KeyboardEvent) {
     function isTypingTarget(target: EventTarget | null): boolean {
       if (!(target instanceof HTMLElement)) return false
-      return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+      if (target.tagName === 'TEXTAREA' || target.isContentEditable) return true
+      if (target.tagName !== 'INPUT') return false
+      // Click-style inputs (the volume slider, checkboxes…) keep focus after
+      // use but never take typed text — shortcuts must keep working there.
+      // Unknown types stay "typing" so a future text-like input fails safe.
+      const NON_TYPING_TYPES = ['range', 'checkbox', 'radio', 'button', 'submit', 'reset', 'color', 'file']
+      return !NON_TYPING_TYPES.includes((target as HTMLInputElement).type)
     }
 
     if (e.repeat || isTypingTarget(e.target) || editingTrack || settingsOpen || confirmRequest) return
