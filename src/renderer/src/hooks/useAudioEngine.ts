@@ -86,6 +86,49 @@ export interface BusAnalysers {
   loudnessRight: AnalyserNode
 }
 
+// Builds the parallel analysis tap used by the level meters + LUFS readout,
+// hanging off `source`: a splitter feeding per-channel RMS analysers, plus a
+// K-weighting chain (ITU-R BS.1770 high-shelf "head" pre-filter then the RLB
+// high-pass, the spec's exact biquad coefficients) into loudness analysers.
+// Analysis-only — nothing here connects toward the destination, so it can
+// never alter the audible output. The IIR coefficients are only valid at
+// 48kHz: every caller must create its AudioContext with sampleRate: 48000.
+export function createAnalyserChain(ctx: AudioContext, source: AudioNode): BusAnalysers {
+  const splitter = ctx.createChannelSplitter(2)
+  source.connect(splitter)
+  const left = ctx.createAnalyser()
+  left.fftSize = 256
+  left.smoothingTimeConstant = 0.4
+  const right = ctx.createAnalyser()
+  right.fftSize = 256
+  right.smoothingTimeConstant = 0.4
+  splitter.connect(left, 0)
+  splitter.connect(right, 1)
+
+  const kShelf = ctx.createIIRFilter(
+    [1.53512485958697, -2.69169618940638, 1.19839281085285],
+    [1, -1.69065929318241, 0.73248077421585]
+  )
+  const kHighpass = ctx.createIIRFilter(
+    [1.0, -2.0, 1.0],
+    [1, -1.99004745483398, 0.99007225036621]
+  )
+  source.connect(kShelf)
+  kShelf.connect(kHighpass)
+  const kSplitter = ctx.createChannelSplitter(2)
+  kHighpass.connect(kSplitter)
+  // Large fftSize (85ms at 48kHz) so heavily overlapping per-frame reads
+  // approximate a continuous mean-square for the 400ms momentary window.
+  const loudnessLeft = ctx.createAnalyser()
+  loudnessLeft.fftSize = 4096
+  const loudnessRight = ctx.createAnalyser()
+  loudnessRight.fftSize = 4096
+  kSplitter.connect(loudnessLeft, 0)
+  kSplitter.connect(loudnessRight, 1)
+
+  return { left, right, loudnessLeft, loudnessRight }
+}
+
 interface PlaybackSnapshot {
   id: string | null
   ctxTime: number | null
@@ -203,44 +246,13 @@ export function useAudioEngine(): AudioEngine {
       state.masterGain.gain.value = masterVolumeRef.current
       state.masterGain.connect(state.ctx.destination)
 
-      // Level-meter tap: a parallel splitter+analyser pair off the master gain,
-      // never inline with the destination path, so meters can be read (or the
-      // splitter simply left unused) without any risk of altering the output.
-      const splitter = state.ctx.createChannelSplitter(2)
-      state.masterGain.connect(splitter)
-      state.analyserL = state.ctx.createAnalyser()
-      state.analyserL.fftSize = 256
-      state.analyserL.smoothingTimeConstant = 0.4
-      state.analyserR = state.ctx.createAnalyser()
-      state.analyserR.fftSize = 256
-      state.analyserR.smoothingTimeConstant = 0.4
-      splitter.connect(state.analyserL, 0)
-      splitter.connect(state.analyserR, 1)
-
-      // Second parallel tap for the LUFS readout: K-weighting per ITU-R
-      // BS.1770 — a high-shelf "head" pre-filter then the RLB high-pass —
-      // using the spec's exact biquad coefficients, valid because every bus
-      // context is created at 48kHz. Analysis-only, never in the output path.
-      const kShelf = state.ctx.createIIRFilter(
-        [1.53512485958697, -2.69169618940638, 1.19839281085285],
-        [1, -1.69065929318241, 0.73248077421585]
-      )
-      const kHighpass = state.ctx.createIIRFilter(
-        [1.0, -2.0, 1.0],
-        [1, -1.99004745483398, 0.99007225036621]
-      )
-      state.masterGain.connect(kShelf)
-      kShelf.connect(kHighpass)
-      const kSplitter = state.ctx.createChannelSplitter(2)
-      kHighpass.connect(kSplitter)
-      // Large fftSize (85ms at 48kHz) so heavily overlapping per-frame reads
-      // approximate a continuous mean-square for the 400ms momentary window.
-      state.loudnessL = state.ctx.createAnalyser()
-      state.loudnessL.fftSize = 4096
-      state.loudnessR = state.ctx.createAnalyser()
-      state.loudnessR.fftSize = 4096
-      kSplitter.connect(state.loudnessL, 0)
-      kSplitter.connect(state.loudnessR, 1)
+      // Meter/LUFS tap off the master gain — valid because the bus context
+      // above is created at 48kHz.
+      const analysers = createAnalyserChain(state.ctx, state.masterGain)
+      state.analyserL = analysers.left
+      state.analyserR = analysers.right
+      state.loudnessL = analysers.loudnessLeft
+      state.loudnessR = analysers.loudnessRight
 
       const deviceId = bus === 'main' ? outputDeviceIdRef.current : monitorDeviceIdRef.current
       if (deviceId) applySinkId(state.ctx, deviceId)

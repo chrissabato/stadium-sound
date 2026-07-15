@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import type { Track } from '../types'
 import { formatTime, parseTime, normalizeHotkeyEvent, TRACK_COLORS } from '../types'
 import { WaveformCanvas } from './WaveformCanvas'
+import { createAnalyserChain, type BusAnalysers } from '../hooks/useAudioEngine'
+import { LevelMeters } from './LevelMeters'
 
 interface Props {
   track: Track | null
@@ -44,6 +46,9 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
   const previewCtxRef = React.useRef<AudioContext | null>(null)
   const previewStartCtxTimeRef = React.useRef<number>(0)
   const previewStartInPointRef = React.useRef<number>(0)
+  const previewAnalysersRef = React.useRef<BusAnalysers | null>(null)
+  // Stable identity — LevelMeters' rAF effect depends on this callback.
+  const getPreviewAnalysers = useCallback(() => previewAnalysersRef.current, [])
 
   useEffect(() => {
     // Release the decoded buffer on close — a full song's PCM held in state
@@ -117,7 +122,8 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
   function preview() {
     if (!audioBuffer) return
     stopPreview()
-    const ctx = new AudioContext({ latencyHint: 'interactive' })
+    // 48kHz keeps the K-weighting coefficients in createAnalyserChain valid.
+    const ctx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 })
     const source = ctx.createBufferSource()
     source.buffer = audioBuffer
     // Preview through the track's level so the slider can be auditioned;
@@ -127,6 +133,8 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     source.connect(gainNode)
     gainNode.connect(ctx.destination)
     previewGainRef.current = gainNode
+    // Meter the post-track-gain signal so the meters/LUFS follow the slider.
+    previewAnalysersRef.current = createAnalyserChain(ctx, gainNode)
     const dur = outPoint - inPoint
     previewStartCtxTimeRef.current = ctx.currentTime
     previewStartInPointRef.current = inPoint
@@ -138,6 +146,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
       setPreviewing(false)
       ctx.close()
       previewCtxRef.current = null
+      previewAnalysersRef.current = null
     }
   }
 
@@ -146,6 +155,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     previewNodeRef.current = null
     previewCtxRef.current = null
     previewGainRef.current = null
+    previewAnalysersRef.current = null
     setPreviewing(false)
   }
 
@@ -449,9 +459,10 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
           </div>
         </div>
 
-        {/* Waveform */}
+        {/* Waveform + preview meters */}
         {audioBuffer ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <WaveformCanvas
               audioBuffer={audioBuffer}
               inPoint={inPoint}
@@ -532,6 +543,8 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
                 Reset
               </button>
             </div>
+          </div>
+          <LevelMeters getAnalysers={getPreviewAnalysers} />
           </div>
         ) : (
           <div style={{ height: 100, background: '#0f172a', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13 }}>
