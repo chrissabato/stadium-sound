@@ -372,23 +372,44 @@
     .dl-link-left { display: flex; align-items: center; gap: 10px; }
     .dl-link-arrow { color: var(--sub); font-size: 14px; }
 
-    .dl-note {
-      margin-top: 14px;
-      font-size: 12px;
-      color: var(--faint);
+    .dl-warnings {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .dl-warn {
+      display: flex;
+      gap: 10px;
+      padding: 12px 14px;
+      background: rgba(232,90,36,0.08);
+      border: 1px solid rgba(232,90,36,0.35);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text);
       line-height: 1.55;
     }
 
-    .dl-note a { color: var(--sub); }
+    .dl-warn-glyph {
+      flex-shrink: 0;
+      color: var(--orange);
+      font-size: 14px;
+      line-height: 1.55;
+    }
 
-    .dl-note code {
+    .dl-warn strong { color: #fff; }
+
+    .dl-warn a { color: var(--text); }
+
+    .dl-warn code {
       display: inline-block;
       margin-top: 6px;
       font-family: monospace;
       font-size: 11px;
-      color: var(--sub);
+      color: var(--text);
       background: var(--card);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border2);
       padding: 3px 8px;
       border-radius: 3px;
       user-select: all;
@@ -530,11 +551,22 @@
         </details>
         <span class="cta-note">v0.4.0 · Free &amp; open source</span>
       </div>
-      <p class="dl-note">
-        The macOS app is not yet code-signed, so macOS will report it as <strong>“damaged”</strong> after download — it isn't.
-        To fix: drag the app to Applications, then run this in Terminal and open it normally:<br>
-        <code>xattr -cr "/Applications/Stadium Sound.app"</code>
-      </p>
+      <div class="dl-warnings">
+        <div class="dl-warn">
+          <span class="dl-warn-glyph">⚠</span>
+          <span>
+            <strong>macOS:</strong> the app isn't code-signed, so macOS will report it as <strong>“damaged”</strong> after download — it isn't.
+            To fix: drag the app to Applications, then run this in Terminal and open it normally:<br>
+            <code>xattr -cr "/Applications/Stadium Sound.app"</code>
+          </span>
+        </div>
+        <div class="dl-warn">
+          <span class="dl-warn-glyph">⚠</span>
+          <span>
+            <strong>Windows:</strong> the app isn't code-signed either, so SmartScreen will show a <strong>“Windows protected your PC”</strong> prompt. Click <strong>More info → Run anyway</strong> to install.
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- APP SCREENSHOT -->
