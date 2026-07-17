@@ -381,6 +381,19 @@
 
     .dl-note a { color: var(--sub); }
 
+    .dl-note code {
+      display: inline-block;
+      margin-top: 6px;
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--sub);
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 3px;
+      user-select: all;
+    }
+
     /* ── FOOTER ── */
     footer {
       border-top: 1px solid var(--border);
@@ -518,8 +531,9 @@
         <span class="cta-note">v0.4.0 · Free &amp; open source</span>
       </div>
       <p class="dl-note">
-        macOS app is not yet code-signed. To open: right-click the app → <strong>Open</strong> → click Open in the dialog.
-        <a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac"> Learn more ↗</a>
+        The macOS app is not yet code-signed, so macOS will report it as <strong>“damaged”</strong> after download — it isn't.
+        To fix: drag the app to Applications, then run this in Terminal and open it normally:<br>
+        <code>xattr -cr "/Applications/Stadium Sound.app"</code>
       </p>
     </div>
 
