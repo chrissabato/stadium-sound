@@ -415,6 +415,24 @@
       user-select: all;
     }
 
+    .dl-donate {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--sub);
+    }
+
+    .dl-donate a {
+      color: var(--orange);
+      font-weight: 700;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(232,90,36,0.4);
+      transition: border-color 0.15s;
+    }
+    .dl-donate a:hover { border-color: var(--orange); }
+
     /* ── FOOTER ── */
     footer {
       border-top: 1px solid var(--border);
@@ -567,6 +585,9 @@
           </span>
         </div>
       </div>
+      <p class="dl-donate">
+        Want these warnings gone? <a href="https://square.link/u/ON2YcHMG" target="_blank" rel="noopener">Donate toward a developer certificate ↗</a>
+      </p>
     </div>
 
     <!-- APP SCREENSHOT -->
