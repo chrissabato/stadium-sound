@@ -3,7 +3,8 @@ import { autoUpdater } from 'electron-updater'
 import { readFile, access } from 'fs/promises'
 import { readFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
-import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters } from './settingsStore'
+import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl } from './settingsStore'
+import { getNetworkControlStatus, startNetworkControl, stopNetworkControl, updateRemoteState } from './networkControl'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
 import { AUDIO_EXTENSIONS, getAudioMetadata, scanFolder } from './libraryScanner'
@@ -75,18 +76,19 @@ export function registerIpcHandlers(): void {
     const showTrackTooltips = settings.showTrackTooltips
     const showPlayedIndicator = settings.showPlayedIndicator
     const showMeters = settings.showMeters
+    const networkControl = { enabled: settings.networkControlEnabled, oscPort: settings.oscPort, remotePort: settings.remotePort }
     if (settings.lastFile && eventSetExists(settings.lastFile)) {
       try {
         const config = loadEventSet(settings.lastFile)
-        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters }
+        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl }
       } catch (err) {
         // File exists but is unreadable — tell the user, remove from recents, start blank
         showOpenError(settings.lastFile, err, 'Your last event set could not be reopened.')
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
-        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters }
+        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl }
       }
     }
-    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters }
+    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl }
   })
 
   // Machine-level audio device preference — saved independently of the event
@@ -109,6 +111,13 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('settings:setShowMeters', (_event, enabled: boolean) => {
     saveShowMeters(enabled)
   })
+
+  ipcMain.handle('settings:setNetworkControl', async (_event, prefs: { enabled: boolean; oscPort: number; remotePort: number }) => {
+    saveNetworkControl(prefs.enabled, prefs.oscPort, prefs.remotePort)
+    return prefs.enabled ? startNetworkControl(prefs.oscPort, prefs.remotePort) : stopNetworkControl().then(getNetworkControlStatus)
+  })
+  ipcMain.handle('network:getStatus', () => getNetworkControlStatus())
+  ipcMain.on('network:state', (_event, state) => updateRemoteState(state))
 
   ipcMain.handle('eventSet:open', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog({

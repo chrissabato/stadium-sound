@@ -1,0 +1,18 @@
+{
+  "$schema": "../node_modules/@companion-module/base/assets/manifest.schema.json",
+  "type": "connection",
+  "id": "stadium-sound",
+  "name": "Stadium Sound",
+  "shortname": "Stadium Sound",
+  "description": "Control Stadium Sound playback over OSC",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": "git+https://github.com/chrissabato/stadium-sound.git",
+  "bugs": "https://github.com/chrissabato/stadium-sound/issues",
+  "maintainers": [{ "name": "Stadium Sound contributors", "email": "support@stadiumsound.app" }],
+  "runtime": { "type": "node22", "api": "nodejs-ipc", "apiVersion": "0.0.0", "entrypoint": "../src/main.js" },
+  "legacyIds": [],
+  "manufacturer": "Stadium Sound",
+  "products": ["Stadium Sound"],
+  "keywords": ["audio", "sports", "soundboard", "osc"]
+}

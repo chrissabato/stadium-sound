@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { AppConfig, AudioDevicePrefs, Bank, Track } from '../types'
 import { DEFAULT_CONFIG, DEFAULT_AUDIO_DEVICE_PREFS } from '../types'
+import type { NetworkControlPrefs, NetworkControlStatus } from '../../../types/electron'
 
 function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -24,6 +25,9 @@ export interface ConfigState {
   setShowPlayedIndicator: (enabled: boolean) => void
   showMeters: boolean
   setShowMeters: (enabled: boolean) => void
+  networkControl: NetworkControlPrefs
+  networkStatus: NetworkControlStatus | null
+  setNetworkControl: (prefs: NetworkControlPrefs) => Promise<void>
 }
 
 function fileLabel(filePath: string | null): string {
@@ -44,6 +48,8 @@ export function useConfig(): ConfigState {
   const [showTrackTooltips, setShowTrackTooltipsState] = useState(true)
   const [showPlayedIndicator, setShowPlayedIndicatorState] = useState(true)
   const [showMeters, setShowMetersState] = useState(true)
+  const [networkControl, setNetworkControlState] = useState<NetworkControlPrefs>({ enabled: false, oscPort: 9000, remotePort: 9001 })
+  const [networkStatus, setNetworkStatus] = useState<NetworkControlStatus | null>(null)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -70,6 +76,8 @@ export function useConfig(): ConfigState {
       setShowTrackTooltipsState(state.showTrackTooltips)
       setShowPlayedIndicatorState(state.showPlayedIndicator)
       setShowMetersState(state.showMeters)
+      setNetworkControlState(state.networkControl)
+      window.electronAPI.network.getStatus().then(setNetworkStatus).catch(() => {})
       setLoaded(true)
     })
   }, [])
@@ -92,6 +100,11 @@ export function useConfig(): ConfigState {
   const setShowMeters = useCallback((enabled: boolean) => {
     setShowMetersState(enabled)
     window.electronAPI.settings.setShowMeters(enabled)
+  }, [])
+
+  const setNetworkControl = useCallback(async (prefs: NetworkControlPrefs) => {
+    setNetworkControlState(prefs)
+    setNetworkStatus(await window.electronAPI.settings.setNetworkControl(prefs))
   }, [])
 
   const scheduleAutoSave = useCallback((updated: AppConfig) => {
@@ -199,5 +212,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl }
 }

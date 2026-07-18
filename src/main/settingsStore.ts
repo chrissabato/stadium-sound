@@ -19,6 +19,9 @@ interface AppSettings {
   showTrackTooltips: boolean
   showPlayedIndicator: boolean
   showMeters: boolean
+  networkControlEnabled: boolean
+  oscPort: number
+  remotePort: number
 }
 
 function settingsPath(): string {
@@ -43,7 +46,10 @@ export function loadSettings(): AppSettings {
       monitorDeviceId: typeof parsed.monitorDeviceId === 'string' ? parsed.monitorDeviceId : '',
       showTrackTooltips: typeof parsed.showTrackTooltips === 'boolean' ? parsed.showTrackTooltips : true,
       showPlayedIndicator: typeof parsed.showPlayedIndicator === 'boolean' ? parsed.showPlayedIndicator : true,
-      showMeters: typeof parsed.showMeters === 'boolean' ? parsed.showMeters : true
+      showMeters: typeof parsed.showMeters === 'boolean' ? parsed.showMeters : true,
+      networkControlEnabled: typeof parsed.networkControlEnabled === 'boolean' ? parsed.networkControlEnabled : false,
+      oscPort: validPort(parsed.oscPort, 9000),
+      remotePort: validPort(parsed.remotePort, 9001)
     }
   } catch {
     return {
@@ -55,9 +61,18 @@ export function loadSettings(): AppSettings {
       monitorDeviceId: '',
       showTrackTooltips: true,
       showPlayedIndicator: true,
-      showMeters: true
+      showMeters: true,
+      networkControlEnabled: false,
+      oscPort: 9000,
+      remotePort: 9001
     }
   }
+}
+
+function validPort(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1024 && value <= 65535
+    ? value
+    : fallback
 }
 
 export function saveWindowBounds(bounds: WindowBounds, isMaximized: boolean): void {
@@ -91,6 +106,16 @@ export function saveShowPlayedIndicator(showPlayedIndicator: boolean): void {
 export function saveShowMeters(showMeters: boolean): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, showMeters }, null, 2), 'utf-8')
+}
+
+export function saveNetworkControl(networkControlEnabled: boolean, oscPort: number, remotePort: number): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({
+    ...s,
+    networkControlEnabled,
+    oscPort: validPort(oscPort, 9000),
+    remotePort: validPort(remotePort, 9001)
+  }, null, 2), 'utf-8')
 }
 
 function saveSettings(s: AppSettings): void {

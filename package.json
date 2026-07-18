@@ -18,11 +18,13 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "electron-updater": "^6.8.9",
-    "music-metadata": "^10.5.0"
+    "music-metadata": "^10.5.0",
+    "ws": "^8.21.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.3",
     "electron": "^33.0.0",
     "electron-builder": "^25.1.8",

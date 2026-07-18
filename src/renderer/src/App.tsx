@@ -66,7 +66,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -900,6 +900,39 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  // OSC, Companion, and the web remote all enter through the same command
+  // stream. Re-subscribe as show state changes so commands always resolve
+  // against the currently loaded banks and playback state.
+  useEffect(() => window.electronAPI.network.onCommand((command) => {
+    if (command.type === 'stop') stopAll()
+    else if (command.type === 'fade') stopWithFade()
+    else if (command.type === 'random') playRandomTrack()
+    else if (command.type === 'volume') handleVolumeChange(Math.max(0, Math.min(1, command.value)))
+    else if (command.type === 'selectBank') {
+      const bank = typeof command.bank === 'number'
+        ? config.banks[Math.max(0, Math.floor(command.bank) - 1)]
+        : config.banks.find((candidate) => candidate.id === command.bank || candidate.name === command.bank)
+      if (bank) selectBank(bank.id)
+    } else if (command.type === 'play') {
+      const track = config.banks.flatMap((bank) => bank.tracks).find((candidate) => candidate.id === command.trackId)
+      if (track) playTrackForce(track)
+    }
+  }), [config, audio.playingTrackId, audio.monitorPlayingTrackId, playedIds, missingFileIds])
+
+  useEffect(() => {
+    if (!loaded || !networkControl.enabled) return
+    window.electronAPI.network.publishState({
+      banks: config.banks.map((bank) => ({
+        id: bank.id,
+        name: bank.name,
+        tracks: bank.tracks.map(({ id, title, artist, colorLabel }) => ({ id, title, artist, colorLabel }))
+      })),
+      selectedBankId: config.selectedBankId,
+      playingTrackId: audio.playingTrackId,
+      masterVolume: config.masterVolume
+    })
+  }, [loaded, networkControl.enabled, config.banks, config.selectedBankId, config.masterVolume, audio.playingTrackId])
+
   // Only the (fast) config read gates first paint — audio is never a startup
   // blocker: songs stream on demand and short clips warm in the background.
   if (!loaded) {
@@ -1185,6 +1218,9 @@ export default function App() {
         onShowPlayedIndicatorChange={setShowPlayedIndicator}
         showMeters={showMeters}
         onShowMetersChange={setShowMeters}
+        networkControl={networkControl}
+        networkStatus={networkStatus}
+        onNetworkControlChange={setNetworkControl}
         onClose={() => setSettingsOpen(false)}
       />
 
