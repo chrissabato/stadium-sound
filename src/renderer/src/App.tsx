@@ -274,6 +274,31 @@ export default function App() {
   // bus defaults to 'main' so playlist call sites (which never pass it) are
   // always unaffected by whether Monitor mode is currently armed.
   function playTrackForce(track: Track, bus: AudioBus = 'main') {
+    // Re-check this track's file on every press — the same check Verify Tracks
+    // runs — without delaying the play attempt. A vanished file flips the cell
+    // to the missing styling right away instead of failing silently; a
+    // restored one sheds a stale missing mark.
+    window.electronAPI.checkFiles([track.filePath]).then(([exists]) => {
+      if (!exists) {
+        setMissingFileIds((prev) => prev.has(track.id) ? prev : new Set(prev).add(track.id))
+        // A track whose file is gone never actually played, and the played
+        // tint wins over the missing styling in TrackCell — undo the
+        // optimistic played mark below so the missing state is visible.
+        setPlayedIds((prev) => {
+          if (!prev.has(track.id)) return prev
+          const next = new Set(prev)
+          next.delete(track.id)
+          return next
+        })
+      } else {
+        setMissingFileIds((prev) => {
+          if (!prev.has(track.id)) return prev
+          const next = new Set(prev)
+          next.delete(track.id)
+          return next
+        })
+      }
+    }).catch(() => {})
     // Every track streams from disk instantly when it has no decoded buffer.
     // Only short clips get a background decode kicked off here, so their
     // *next* play uses the sample-accurate buffer path — decoding full songs
