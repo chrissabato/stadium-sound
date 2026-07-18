@@ -17,8 +17,10 @@ export interface NetworkControlPrefs {
   remotePort: number
 }
 
-export interface NetworkControlStatus extends NetworkControlPrefs {
+export interface NetworkControlStatus {
   running: boolean
+  oscPort: number
+  remotePort: number
   addresses: string[]
   error?: string
 }
@@ -87,6 +89,7 @@ export interface ElectronAPI {
     getStatus: () => Promise<NetworkControlStatus>
     publishState: (state: unknown) => void
     onCommand: (callback: (command: NetworkCommand) => void) => () => void
+    onStatus: (callback: (status: NetworkControlStatus) => void) => () => void
   }
   app: {
     getVersion: () => Promise<string>

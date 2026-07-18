@@ -12,6 +12,8 @@
     "package": "npm run build && electron-builder",
     "release": "npm run build && electron-builder --publish always",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/**/*.test.ts",
+    "check": "npm run typecheck && npm test && npm run build",
     "build:icon": "node scripts/build-icon.mjs"
   },
   "dependencies": {

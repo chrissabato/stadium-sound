@@ -64,6 +64,11 @@ const api: ElectronAPI = {
       const handler = (_: Electron.IpcRendererEvent, command: Parameters<typeof callback>[0]) => callback(command)
       ipcRenderer.on('network:command', handler)
       return () => ipcRenderer.removeListener('network:command', handler)
+    },
+    onStatus: (callback) => {
+      const handler = (_: Electron.IpcRendererEvent, status: Parameters<typeof callback>[0]) => callback(status)
+      ipcRenderer.on('network:status', handler)
+      return () => ipcRenderer.removeListener('network:status', handler)
     }
   },
   app: {

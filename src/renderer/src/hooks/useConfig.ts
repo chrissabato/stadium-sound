@@ -66,6 +66,7 @@ export function useConfig(): ConfigState {
 
   // Load on mount
   useEffect(() => {
+    const removeStatus = window.electronAPI.network.onStatus(setNetworkStatus)
     window.electronAPI.eventSet.getInitialState().then((state) => {
       if (state.config) {
         applyState(state.config as AppConfig, state.filePath)
@@ -80,6 +81,7 @@ export function useConfig(): ConfigState {
       window.electronAPI.network.getStatus().then(setNetworkStatus).catch(() => {})
       setLoaded(true)
     })
+    return removeStatus
   }, [])
 
   const setAudioDevices = useCallback((prefs: AudioDevicePrefs) => {

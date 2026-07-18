@@ -176,7 +176,7 @@ app.whenReady().then(() => {
   registerMediaProtocol()
   createWindow()
   const network = loadSettings()
-  if (network.networkControlEnabled) startNetworkControl(network.oscPort, network.remotePort)
+  if (network.networkControlEnabled) startNetworkControl(network.oscPort, network.remotePort, network.remoteToken)
   if (app.isPackaged) {
     autoUpdater.checkForUpdatesAndNotify({
       title: 'Stadium Sound update ready',

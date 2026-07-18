@@ -2,7 +2,10 @@
   "name": "companion-module-stadium-sound",
   "version": "0.1.0",
   "main": "src/main.js",
-  "scripts": { "package": "companion-module-build" },
+  "scripts": {
+    "package": "companion-module-build",
+    "check": "node --check src/main.js && node --check src/actions.js && node --check src/feedbacks.js && node --check src/osc.js && companion-module-build"
+  },
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/chrissabato/stadium-sound.git" },
   "engines": { "node": "^22.20", "yarn": "^4" },

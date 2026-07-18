@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import { randomBytes } from 'crypto'
 
 interface WindowBounds {
   x: number
@@ -22,6 +23,7 @@ interface AppSettings {
   networkControlEnabled: boolean
   oscPort: number
   remotePort: number
+  remoteToken: string
 }
 
 function settingsPath(): string {
@@ -37,7 +39,7 @@ export function loadSettings(): AppSettings {
       typeof wb.width === 'number' && typeof wb.height === 'number'
         ? wb as WindowBounds
         : null
-    return {
+    const settings: AppSettings = {
       lastFile: typeof parsed.lastFile === 'string' ? parsed.lastFile : null,
       recentFiles: Array.isArray(parsed.recentFiles) ? parsed.recentFiles : [],
       windowBounds,
@@ -49,10 +51,13 @@ export function loadSettings(): AppSettings {
       showMeters: typeof parsed.showMeters === 'boolean' ? parsed.showMeters : true,
       networkControlEnabled: typeof parsed.networkControlEnabled === 'boolean' ? parsed.networkControlEnabled : false,
       oscPort: validPort(parsed.oscPort, 9000),
-      remotePort: validPort(parsed.remotePort, 9001)
+      remotePort: validPort(parsed.remotePort, 9001),
+      remoteToken: validToken(parsed.remoteToken)
     }
+    if (parsed.remoteToken !== settings.remoteToken) writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
+    return settings
   } catch {
-    return {
+    const settings: AppSettings = {
       lastFile: null,
       recentFiles: [],
       windowBounds: null,
@@ -64,10 +69,16 @@ export function loadSettings(): AppSettings {
       showMeters: true,
       networkControlEnabled: false,
       oscPort: 9000,
-      remotePort: 9001
+      remotePort: 9001,
+      remoteToken: fallbackRemoteToken
     }
+    return settings
   }
 }
+
+function makeToken(): string { return randomBytes(18).toString('base64url') }
+const fallbackRemoteToken = makeToken()
+function validToken(value: unknown): string { return typeof value === 'string' && /^[A-Za-z0-9_-]{20,64}$/.test(value) ? value : fallbackRemoteToken }
 
 function validPort(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1024 && value <= 65535
