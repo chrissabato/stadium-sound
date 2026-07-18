@@ -90,19 +90,15 @@ export default function App() {
   const suppressPlaylistAdvanceRef = useRef(false)
   const searchRef = useRef<TrackSearchHandle>(null)
 
-  useEffect(() => {
-    return window.electronAPI.onMenuAction(async (action) => {
-      if (action === 'resetPlayed') {
-        setPlayedIds(new Set())
-      } else if (action === 'verifyTracks') {
-        const allTracks = config.banks.flatMap((b) => b.tracks)
-        const paths = allTracks.map((t) => t.filePath)
-        const results = await window.electronAPI.checkFiles(paths)
-        const missing = new Set(allTracks.filter((_, i) => !results[i]).map((t) => t.id))
-        setMissingFileIds(missing)
-      }
-    })
-  }, [config.banks])
+  const resetPlayed = () => setPlayedIds(new Set())
+
+  const verifyTracks = async () => {
+    const allTracks = config.banks.flatMap((b) => b.tracks)
+    const paths = allTracks.map((t) => t.filePath)
+    const results = await window.electronAPI.checkFiles(paths)
+    const missing = new Set(allTracks.filter((_, i) => !results[i]).map((t) => t.id))
+    setMissingFileIds(missing)
+  }
 
   useEffect(() => {
     return window.electronAPI.window.onFullscreenChange(setIsFullscreen)
@@ -963,6 +959,8 @@ export default function App() {
           return next
         })}
         onOpenSettings={() => setSettingsOpen(true)}
+        onResetPlayed={resetPlayed}
+        onVerifyTracks={verifyTracks}
         onOpenShortcuts={() => setShortcutsOpen(true)}
         onOpenFeedback={() => setFeedbackOpen(true)}
         onOpenLibraries={() => setLibraryManagerOpen(true)}

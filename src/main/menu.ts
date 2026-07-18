@@ -56,19 +56,6 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[]): void {
           click: () => app.quit()
         }
       ]
-    },
-    {
-      label: 'Playback',
-      submenu: [
-        {
-          label: 'Reset Played Indicators',
-          click: () => win.webContents.send('menu:action', 'resetPlayed')
-        },
-        {
-          label: 'Verify Tracks',
-          click: () => win.webContents.send('menu:action', 'verifyTracks')
-        }
-      ]
     }
   ]
 
