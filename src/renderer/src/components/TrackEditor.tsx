@@ -49,6 +49,14 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
   const previewAnalysersRef = React.useRef<BusAnalysers | null>(null)
   // Stable identity — LevelMeters' rAF effect depends on this callback.
   const getPreviewAnalysers = useCallback(() => previewAnalysersRef.current, [])
+  // Same pattern for the waveform playhead: previewCtxRef is nulled on
+  // stop/end, which hides the playhead. Clamping to the visible range is
+  // WaveformCanvas's job.
+  const getPlayheadTime = useCallback(() => {
+    const ctx = previewCtxRef.current
+    if (!ctx) return null
+    return previewStartInPointRef.current + (ctx.currentTime - previewStartCtxTimeRef.current)
+  }, [])
 
   useEffect(() => {
     // Release the decoded buffer on close — a full song's PCM held in state
@@ -470,6 +478,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
               duration={duration}
               onInPointChange={setInPoint}
               onOutPointChange={setOutPoint}
+              getPlayheadTime={getPlayheadTime}
             />
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
