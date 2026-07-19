@@ -36,6 +36,10 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
   const [isFileDragOver, setIsFileDragOver] = useState(false)
   const dragCounter = useRef(0)
   const fileDragCounter = useRef(0)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const touchPosRef = useRef({ x: 0, y: 0 })
+  const touchActiveRef = useRef(false)
+  const autoScrollRaf = useRef(0)
 
   // When a track is dropped on an external target (e.g. a sidebar bank row)
   // and relocates out of this bank, its cell is removed from the DOM before
@@ -83,6 +87,80 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
     setDragIndex(null)
     setDropIndex(null)
     dragCounter.current = 0
+  }
+
+  // Touch path: HTML5 drag-and-drop never fires for touch input in Chromium,
+  // so reorder mode gets its own touch handlers sharing dragIndex/dropIndex.
+  // Cells set touch-action: none while reordering because React registers
+  // touchmove as passive — preventDefault can't stop the scroll from there.
+
+  function updateTouchDropTarget() {
+    const { x, y } = touchPosRef.current
+    const cell = document.elementFromPoint(x, y)?.closest('[data-track-index]')
+    setDropIndex(cell ? Number((cell as HTMLElement).dataset.trackIndex) : null)
+  }
+
+  function autoScrollStep() {
+    const el = gridRef.current
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      const y = touchPosRef.current.y
+      const margin = 48
+      if (y < rect.top + margin) el.scrollTop -= 8
+      else if (y > rect.bottom - margin) el.scrollTop += 8
+      // Content shifts under a held finger while scrolling, so retarget here
+      // too, not just on touchmove.
+      updateTouchDropTarget()
+    }
+    autoScrollRaf.current = requestAnimationFrame(autoScrollStep)
+  }
+
+  function stopAutoScroll() {
+    cancelAnimationFrame(autoScrollRaf.current)
+    autoScrollRaf.current = 0
+  }
+
+  useEffect(() => stopAutoScroll, [])
+
+  function handleTouchStart(e: React.TouchEvent, i: number) {
+    if (!isReordering) return
+    const t = e.touches[0]
+    touchPosRef.current = { x: t.clientX, y: t.clientY }
+    touchActiveRef.current = false
+    setDragIndex(i)
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!isReordering || dragIndex === null) return
+    const t = e.touches[0]
+    if (!touchActiveRef.current) {
+      // Ignore the jitter of a plain tap before treating the touch as a drag.
+      const dx = t.clientX - touchPosRef.current.x
+      const dy = t.clientY - touchPosRef.current.y
+      if (Math.hypot(dx, dy) < 8) return
+      touchActiveRef.current = true
+      if (autoScrollRaf.current === 0) autoScrollRaf.current = requestAnimationFrame(autoScrollStep)
+    }
+    touchPosRef.current = { x: t.clientX, y: t.clientY }
+    updateTouchDropTarget()
+  }
+
+  function handleTouchEnd() {
+    touchActiveRef.current = false
+    stopAutoScroll()
+    if (dropIndex !== null) {
+      handleDrop(dropIndex)
+    } else {
+      setDragIndex(null)
+      setDropIndex(null)
+    }
+  }
+
+  function handleTouchCancel() {
+    touchActiveRef.current = false
+    stopAutoScroll()
+    setDragIndex(null)
+    setDropIndex(null)
   }
 
   function isFileDrag(e: React.DragEvent): boolean {
@@ -179,6 +257,7 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
 
   return (
     <div
+      ref={gridRef}
       onDragEnter={handleFileDragEnter}
       onDragLeave={handleFileDragLeave}
       onDragOver={(e) => { if (isFileDrag(e)) e.preventDefault() }}
@@ -200,6 +279,7 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
         {tracks.map((track, i) => (
           <div
             key={track.id}
+            data-track-index={i}
             draggable={isReordering}
             onDragStart={(e) => handleDragStart(e, i)}
             onDragEnter={() => handleDragEnter(i)}
@@ -207,12 +287,17 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => handleDrop(i)}
             onDragEnd={handleDragEnd}
+            onTouchStart={(e) => handleTouchStart(e, i)}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchCancel}
             style={{
               minWidth: 0,
               opacity: dragIndex === i ? 0.35 : 1,
               boxShadow: dropIndex === i && dragIndex !== i ? '0 0 0 2px #3b82f6' : 'none',
               borderRadius: 4,
               cursor: isReordering ? 'grab' : undefined,
+              touchAction: isReordering ? 'none' : undefined,
               transition: 'opacity 0.1s'
             }}
           >
