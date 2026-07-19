@@ -43,6 +43,9 @@ main().catch((e) => { console.error(e); process.exit(1) })
 ```
 
 `launch({ fixture: 'path/to/other.eset' })` swaps in a different fixture.
+`launch({ settings: { ... } })` merges keys into the seeded userData
+`settings.json` (e.g. `lastSeenChangelogVersion` to exercise the
+What's New auto-open).
 The default fixture has bank "Test Bank A" with tracks "Goal Horn" and
 "Charge" (nonexistent file paths — cells render with a "missing" badge,
 fine for UI flows; real audio files are only needed for playback tests),

@@ -8,7 +8,7 @@ const path = require('path')
 
 const REPO = path.resolve(__dirname, '..', '..', '..', '..')
 
-async function launch({ fixture } = {}) {
+async function launch({ fixture, settings } = {}) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'stadiumsound-test-'))
   const userDataDir = path.join(dir, 'userData')
   mkdirSync(userDataDir)
@@ -29,12 +29,23 @@ async function launch({ fixture } = {}) {
     monitorDeviceId: '',
     showTrackTooltips: true,
     showPlayedIndicator: true,
-    showMeters: true
+    showMeters: true,
+    ...settings
   }, null, 2))
+
+  // Launch a generated app dir (package.json + shim requiring the wrapper)
+  // instead of the bare wrapper script — with no adjacent package.json,
+  // app.getVersion() would report Electron's own version rather than the
+  // app's, unlike dev and packaged runs.
+  const appDir = path.join(dir, 'app')
+  mkdirSync(appDir)
+  const { version } = require(path.join(REPO, 'package.json'))
+  writeFileSync(path.join(appDir, 'package.json'), JSON.stringify({ name: 'stadium-sound-test', version, main: 'wrapper.js' }))
+  writeFileSync(path.join(appDir, 'wrapper.js'), `require(${JSON.stringify(path.join(__dirname, 'wrapper.js'))})\n`)
 
   const app = await _electron.launch({
     executablePath: path.join(REPO, 'node_modules', 'electron', 'dist', 'electron.exe'),
-    args: [path.join(__dirname, 'wrapper.js')],
+    args: [appDir],
     cwd: REPO,
     env: { ...process.env, STADIUMSOUND_TEST_USERDATA: userDataDir }
   })
