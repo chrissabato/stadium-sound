@@ -9,8 +9,10 @@ A release is a `Bump version to X.Y.Z` commit on `main` plus a `vX.Y.Z` tag.
 Pushing the tag triggers `.github/workflows/release.yml`, which does the rest:
 creates the GitHub release (auto-generated notes), builds and publishes the
 Windows and macOS installers, updates the version/date on the website
-(`docs/index.html`), and redeploys Pages. **Never run
-`electron-builder --publish` locally.**
+(`docs/index.html`), regenerates the website changelog page
+(`docs/changelog.html`, built from changelog.ts by
+`scripts/build-changelog-page.mjs` — never edit it by hand), and redeploys
+Pages. **Never run `electron-builder --publish` locally.**
 
 ## Preconditions — verify before touching anything
 
