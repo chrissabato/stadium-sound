@@ -7,6 +7,7 @@ interface Props {
   currentFilePath: string | null
   masterVolume: number
   isMonitorMode: boolean
+  monitorDisabled: boolean
   showPlaylistPanel: boolean
   isFullscreen: boolean
   banks: Bank[]
@@ -27,7 +28,7 @@ interface Props {
   onAddLibraryTrack: (track: LibraryTrack) => void
 }
 
-export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlaylistPanel, isFullscreen, banks, libraries, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onResetPlayed, onVerifyTracks, onOpenShortcuts, onOpenFeedback, onOpenLibraries, onSelectSearchResult, onAddLibraryTrack }: Props) {
+export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorDisabled, showPlaylistPanel, isFullscreen, banks, libraries, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onResetPlayed, onVerifyTracks, onOpenShortcuts, onOpenFeedback, onOpenLibraries, onSelectSearchResult, onAddLibraryTrack }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const fileName = currentFilePath
     ? currentFilePath.split(/[\\/]/).pop() ?? 'Event Set'
@@ -73,19 +74,41 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, showPlay
 
       <button
         onClick={onToggleMonitor}
-        title={isMonitorMode ? 'Monitor bus armed — clicking a track sends it to the monitor output. Click to disarm.' : 'Click to arm the monitor bus (send the next clicked track to monitor output)'}
+        disabled={monitorDisabled}
+        title={monitorDisabled
+          ? 'Monitor unavailable — the monitor output is the same device as the main output. Choose a different Monitor device in Settings.'
+          : isMonitorMode ? 'Monitor bus armed — clicking a track sends it to the monitor output. Click to disarm.' : 'Click to arm the monitor bus (send the next clicked track to monitor output)'}
         style={{
+          position: 'relative',
           padding: '6px 10px',
           background: isMonitorMode ? '#052e12' : '#1e293b',
-          color: isMonitorMode ? '#39ff14' : '#64748b',
+          color: monitorDisabled ? '#334155' : isMonitorMode ? '#39ff14' : '#64748b',
           border: `1px solid ${isMonitorMode ? '#39ff14' : '#334155'}`,
           borderRadius: 4,
           fontSize: 16,
           lineHeight: 1,
-          boxShadow: isMonitorMode ? '0 0 8px rgba(57,255,20,0.7)' : 'none'
+          boxShadow: isMonitorMode ? '0 0 8px rgba(57,255,20,0.7)' : 'none',
+          opacity: monitorDisabled ? 0.5 : 1,
+          cursor: monitorDisabled ? 'default' : 'pointer'
         }}
       >
         🎧
+        {monitorDisabled && (
+          <span style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ef4444',
+            fontSize: 22,
+            fontWeight: 700,
+            lineHeight: 1,
+            pointerEvents: 'none'
+          }}>
+            ✕
+          </span>
+        )}
       </button>
 
       <button
