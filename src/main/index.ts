@@ -121,8 +121,16 @@ function createWindow(): void {
 
   // Keeps the renderer's fullscreen button in sync when fullscreen is
   // entered/exited by some other means (OS shortcut, window controls).
-  win.on('enter-full-screen', () => win.webContents.send('window:fullscreenChanged', true))
-  win.on('leave-full-screen', () => win.webContents.send('window:fullscreenChanged', false))
+  // Also hides the menu bar in fullscreen — it only holds the File menu,
+  // which isn't needed during a show.
+  win.on('enter-full-screen', () => {
+    win.setMenuBarVisibility(false)
+    win.webContents.send('window:fullscreenChanged', true)
+  })
+  win.on('leave-full-screen', () => {
+    win.setMenuBarVisibility(true)
+    win.webContents.send('window:fullscreenChanged', false)
+  })
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
