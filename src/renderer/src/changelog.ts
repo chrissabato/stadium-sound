@@ -11,6 +11,15 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.4.4',
+    date: '2026-07-19',
+    items: [
+      'New What\'s New dialog (you\'re reading it) — see what changed in each release. It opens once after an update, and any time from Settings → About.',
+      'The Monitor button is now disabled with a clear ✕ when the monitor output is the same device as the main output — pick a different Monitor device in Settings to use it.',
+      'Adding tracks to an empty bank now uses the same + menu as the bank header: Select File or From Library.'
+    ]
+  },
+  {
     version: '0.4.3',
     date: '2026-07-19',
     items: [
