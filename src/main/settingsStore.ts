@@ -20,6 +20,9 @@ interface AppSettings {
   showPlayedIndicator: boolean
   showMeters: boolean
   uiZoom: number
+  // Which release's What's New the user has already seen — '' until first
+  // recorded, which doubles as "fresh install, don't pop the dialog".
+  lastSeenChangelogVersion: string
 }
 
 function settingsPath(): string {
@@ -48,7 +51,9 @@ export function loadSettings(): AppSettings {
       uiZoom:
         typeof parsed.uiZoom === 'number' && parsed.uiZoom >= 0.5 && parsed.uiZoom <= 3
           ? parsed.uiZoom
-          : 1
+          : 1,
+      lastSeenChangelogVersion:
+        typeof parsed.lastSeenChangelogVersion === 'string' ? parsed.lastSeenChangelogVersion : ''
     }
   } catch {
     return {
@@ -61,7 +66,8 @@ export function loadSettings(): AppSettings {
       showTrackTooltips: true,
       showPlayedIndicator: true,
       showMeters: true,
-      uiZoom: 1
+      uiZoom: 1,
+      lastSeenChangelogVersion: ''
     }
   }
 }
@@ -102,6 +108,11 @@ export function saveShowMeters(showMeters: boolean): void {
 export function saveUiZoom(uiZoom: number): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, uiZoom }, null, 2), 'utf-8')
+}
+
+export function saveLastSeenChangelogVersion(lastSeenChangelogVersion: string): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, lastSeenChangelogVersion }, null, 2), 'utf-8')
 }
 
 function saveSettings(s: AppSettings): void {

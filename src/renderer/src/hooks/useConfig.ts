@@ -26,6 +26,7 @@ export interface ConfigState {
   setShowMeters: (enabled: boolean) => void
   uiZoom: number
   setUiZoom: (zoom: number) => void
+  lastSeenChangelogVersion: string
 }
 
 function fileLabel(filePath: string | null): string {
@@ -47,6 +48,7 @@ export function useConfig(): ConfigState {
   const [showPlayedIndicator, setShowPlayedIndicatorState] = useState(true)
   const [showMeters, setShowMetersState] = useState(true)
   const [uiZoom, setUiZoomState] = useState(1)
+  const [lastSeenChangelogVersion, setLastSeenChangelogVersion] = useState('')
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -74,6 +76,7 @@ export function useConfig(): ConfigState {
       setShowPlayedIndicatorState(state.showPlayedIndicator)
       setShowMetersState(state.showMeters)
       setUiZoomState(state.uiZoom)
+      setLastSeenChangelogVersion(state.lastSeenChangelogVersion)
       setLoaded(true)
     })
   }, [])
@@ -208,5 +211,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, uiZoom, setUiZoom }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, uiZoom, setUiZoom, lastSeenChangelogVersion }
 }

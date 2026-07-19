@@ -56,7 +56,9 @@ const api: ElectronAPI = {
     setShowMeters: (enabled: boolean) =>
       ipcRenderer.invoke('settings:setShowMeters', enabled),
     setUiZoom: (zoom: number) =>
-      ipcRenderer.invoke('settings:setUiZoom', zoom)
+      ipcRenderer.invoke('settings:setUiZoom', zoom),
+    setLastSeenChangelogVersion: (version: string) =>
+      ipcRenderer.invoke('settings:setLastSeenChangelogVersion', version)
   },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),

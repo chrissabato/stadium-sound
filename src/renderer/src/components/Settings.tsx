@@ -21,6 +21,7 @@ interface Props {
   onShowMetersChange: (enabled: boolean) => void
   uiZoom: number
   onUiZoomChange: (zoom: number) => void
+  onShowChangelog: () => void
   onClose: () => void
 }
 
@@ -83,7 +84,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, uiZoom, onUiZoomChange, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, uiZoom, onUiZoomChange, onShowChangelog, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
@@ -347,6 +348,21 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
                 {version ? `Version ${version}` : '—'}
               </div>
+              <button
+                onClick={onShowChangelog}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  marginTop: 4,
+                  color: '#93c5fd',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                What's New
+              </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
               {updateStatus.state === 'downloaded' ? (

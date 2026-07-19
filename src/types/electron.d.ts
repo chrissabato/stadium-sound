@@ -9,6 +9,7 @@ export interface EventSetState {
   showPlayedIndicator: boolean
   showMeters: boolean
   uiZoom: number
+  lastSeenChangelogVersion: string
 }
 
 export interface EventSetOpenResult {
@@ -64,6 +65,7 @@ export interface ElectronAPI {
     setShowPlayedIndicator: (enabled: boolean) => Promise<void>
     setShowMeters: (enabled: boolean) => Promise<void>
     setUiZoom: (zoom: number) => Promise<void>
+    setLastSeenChangelogVersion: (version: string) => Promise<void>
   }
   app: {
     getVersion: () => Promise<string>

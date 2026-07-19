@@ -13,6 +13,8 @@ import { Settings } from './components/Settings'
 import { FeedbackModal } from './components/FeedbackModal'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { ShortcutsModal } from './components/ShortcutsModal'
+import { ChangelogModal } from './components/ChangelogModal'
+import { CHANGELOG } from './changelog'
 import { LibraryManager } from './components/LibraryManager'
 import { AddFromLibraryModal } from './components/AddFromLibraryModal'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -66,7 +68,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, uiZoom, setUiZoom } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, uiZoom, setUiZoom, lastSeenChangelogVersion } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -74,6 +76,8 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [changelogOpen, setChangelogOpen] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
   const [libraryManagerOpen, setLibraryManagerOpen] = useState(false)
   const [addFromLibraryTarget, setAddFromLibraryTarget] = useState<'bank' | 'playlist' | null>(null)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
@@ -104,6 +108,19 @@ export default function App() {
   useEffect(() => {
     return window.electronAPI.window.onFullscreenChange(setIsFullscreen)
   }, [])
+
+  // Pop What's New once after an update. A blank recorded version means a
+  // fresh install (or first run of the release that introduced this) — record
+  // silently so new users aren't greeted with a changelog.
+  useEffect(() => {
+    if (!loaded) return
+    window.electronAPI.app.getVersion().then((v) => {
+      setAppVersion(v)
+      if (lastSeenChangelogVersion === v) return
+      if (lastSeenChangelogVersion && CHANGELOG.some((r) => r.version === v)) setChangelogOpen(true)
+      window.electronAPI.settings.setLastSeenChangelogVersion(v)
+    }).catch(() => {})
+  }, [loaded])
 
   // Keep audio engine in sync with persisted fade settings
   useEffect(() => {
@@ -901,6 +918,10 @@ export default function App() {
       if (e.key === 'Escape') { e.preventDefault(); setShortcutsOpen(false) }
       return
     }
+    if (changelogOpen) {
+      if (e.key === 'Escape') { e.preventDefault(); setChangelogOpen(false) }
+      return
+    }
     if (e.key === '?') {
       e.preventDefault()
       setShortcutsOpen(true)
@@ -1299,6 +1320,7 @@ export default function App() {
         onShowMetersChange={setShowMeters}
         uiZoom={uiZoom}
         onUiZoomChange={setUiZoom}
+        onShowChangelog={() => setChangelogOpen(true)}
         onClose={() => setSettingsOpen(false)}
       />
 
@@ -1311,6 +1333,12 @@ export default function App() {
         open={shortcutsOpen}
         banks={config.banks}
         onClose={() => setShortcutsOpen(false)}
+      />
+
+      <ChangelogModal
+        open={changelogOpen}
+        currentVersion={appVersion}
+        onClose={() => setChangelogOpen(false)}
       />
 
       <LibraryManager

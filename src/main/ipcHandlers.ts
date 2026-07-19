@@ -3,7 +3,7 @@ import { autoUpdater } from 'electron-updater'
 import { readFile, access } from 'fs/promises'
 import { readFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
-import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveUiZoom } from './settingsStore'
+import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveUiZoom, saveLastSeenChangelogVersion } from './settingsStore'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
 import { AUDIO_EXTENSIONS, getAudioMetadata, scanFolder } from './libraryScanner'
@@ -76,18 +76,19 @@ export function registerIpcHandlers(): void {
     const showPlayedIndicator = settings.showPlayedIndicator
     const showMeters = settings.showMeters
     const uiZoom = settings.uiZoom
+    const lastSeenChangelogVersion = settings.lastSeenChangelogVersion
     if (settings.lastFile && eventSetExists(settings.lastFile)) {
       try {
         const config = loadEventSet(settings.lastFile)
-        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, uiZoom }
+        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, uiZoom, lastSeenChangelogVersion }
       } catch (err) {
         // File exists but is unreadable — tell the user, remove from recents, start blank
         showOpenError(settings.lastFile, err, 'Your last event set could not be reopened.')
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
-        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, uiZoom }
+        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, uiZoom, lastSeenChangelogVersion }
       }
     }
-    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, uiZoom }
+    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, uiZoom, lastSeenChangelogVersion }
   })
 
   // Machine-level audio device preference — saved independently of the event
@@ -109,6 +110,12 @@ export function registerIpcHandlers(): void {
   // Machine-level UI preference — same rationale as audio devices above.
   ipcMain.handle('settings:setShowMeters', (_event, enabled: boolean) => {
     saveShowMeters(enabled)
+  })
+
+  // Records which release's What's New the user has seen, so the dialog only
+  // auto-opens once per update.
+  ipcMain.handle('settings:setLastSeenChangelogVersion', (_event, version: string) => {
+    saveLastSeenChangelogVersion(version)
   })
 
   // Machine-level UI preference. Applied here (not just saved) so the change
