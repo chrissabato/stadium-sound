@@ -34,6 +34,7 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const [isFileDragOver, setIsFileDragOver] = useState(false)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
   const dragCounter = useRef(0)
   const fileDragCounter = useRef(0)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -222,33 +223,76 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
         }}
       >
         <div style={{ fontSize: 14 }}>No tracks in this bank</div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ position: 'relative' }}>
           <button
-            onClick={onAddTracks}
+            onClick={() => setAddMenuOpen((v) => !v)}
+            title="Add tracks"
             style={{
               padding: '8px 20px',
-              background: '#1e293b',
-              border: '1px solid #334155',
+              background: addMenuOpen ? '#1e3a5f' : '#1e293b',
+              border: `1px solid ${addMenuOpen ? '#3b82f6' : '#334155'}`,
               borderRadius: 4,
-              color: '#94a3b8',
-              fontSize: 13
+              color: addMenuOpen ? '#93c5fd' : '#94a3b8',
+              fontSize: 13,
+              cursor: 'pointer'
             }}
           >
-            + Add Tracks
+            +
           </button>
-          <button
-            onClick={onAddFromLibrary}
-            style={{
-              padding: '8px 20px',
-              background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: 4,
-              color: '#94a3b8',
-              fontSize: 13
-            }}
-          >
-            🗀 From Library
-          </button>
+          {addMenuOpen && (
+            <>
+              <div
+                onClick={() => setAddMenuOpen(false)}
+                style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+              />
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                marginTop: 4,
+                zIndex: 11,
+                background: '#1e293b',
+                border: '1px solid #334155',
+                borderRadius: 4,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 160,
+                overflow: 'hidden'
+              }}>
+                <button
+                  onClick={() => { onAddTracks(); setAddMenuOpen(false) }}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    textAlign: 'left',
+                    color: '#e2e8f0',
+                    fontSize: 12,
+                    cursor: 'pointer'
+                  }}
+                >
+                  🗋 Select File
+                </button>
+                <button
+                  onClick={() => { onAddFromLibrary(); setAddMenuOpen(false) }}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderTop: '1px solid #334155',
+                    textAlign: 'left',
+                    color: '#e2e8f0',
+                    fontSize: 12,
+                    cursor: 'pointer'
+                  }}
+                >
+                  🗀 From Library
+                </button>
+              </div>
+            </>
+          )}
         </div>
         <div style={{ fontSize: 11, color: '#334155' }}>or drop audio files here</div>
       </div>
