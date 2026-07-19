@@ -54,7 +54,9 @@ const api: ElectronAPI = {
     setShowPlayedIndicator: (enabled: boolean) =>
       ipcRenderer.invoke('settings:setShowPlayedIndicator', enabled),
     setShowMeters: (enabled: boolean) =>
-      ipcRenderer.invoke('settings:setShowMeters', enabled)
+      ipcRenderer.invoke('settings:setShowMeters', enabled),
+    setUiZoom: (zoom: number) =>
+      ipcRenderer.invoke('settings:setUiZoom', zoom)
   },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),

@@ -73,7 +73,7 @@ function registerMediaProtocol(): void {
 }
 
 function createWindow(): void {
-  const { windowBounds, isMaximized } = loadSettings()
+  const { windowBounds, isMaximized, uiZoom } = loadSettings()
 
   const win = new BrowserWindow({
     width: windowBounds?.width ?? 1280,
@@ -89,7 +89,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       sandbox: false,
-      backgroundThrottling: false
+      backgroundThrottling: false,
+      zoomFactor: uiZoom
     }
   })
 

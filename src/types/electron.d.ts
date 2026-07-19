@@ -8,6 +8,7 @@ export interface EventSetState {
   showTrackTooltips: boolean
   showPlayedIndicator: boolean
   showMeters: boolean
+  uiZoom: number
 }
 
 export interface EventSetOpenResult {
@@ -62,6 +63,7 @@ export interface ElectronAPI {
     setShowTrackTooltips: (enabled: boolean) => Promise<void>
     setShowPlayedIndicator: (enabled: boolean) => Promise<void>
     setShowMeters: (enabled: boolean) => Promise<void>
+    setUiZoom: (zoom: number) => Promise<void>
   }
   app: {
     getVersion: () => Promise<string>

@@ -24,6 +24,8 @@ export interface ConfigState {
   setShowPlayedIndicator: (enabled: boolean) => void
   showMeters: boolean
   setShowMeters: (enabled: boolean) => void
+  uiZoom: number
+  setUiZoom: (zoom: number) => void
 }
 
 function fileLabel(filePath: string | null): string {
@@ -44,6 +46,7 @@ export function useConfig(): ConfigState {
   const [showTrackTooltips, setShowTrackTooltipsState] = useState(true)
   const [showPlayedIndicator, setShowPlayedIndicatorState] = useState(true)
   const [showMeters, setShowMetersState] = useState(true)
+  const [uiZoom, setUiZoomState] = useState(1)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -70,6 +73,7 @@ export function useConfig(): ConfigState {
       setShowTrackTooltipsState(state.showTrackTooltips)
       setShowPlayedIndicatorState(state.showPlayedIndicator)
       setShowMetersState(state.showMeters)
+      setUiZoomState(state.uiZoom)
       setLoaded(true)
     })
   }, [])
@@ -92,6 +96,11 @@ export function useConfig(): ConfigState {
   const setShowMeters = useCallback((enabled: boolean) => {
     setShowMetersState(enabled)
     window.electronAPI.settings.setShowMeters(enabled)
+  }, [])
+
+  const setUiZoom = useCallback((zoom: number) => {
+    setUiZoomState(zoom)
+    window.electronAPI.settings.setUiZoom(zoom)
   }, [])
 
   const scheduleAutoSave = useCallback((updated: AppConfig) => {
@@ -199,5 +208,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, uiZoom, setUiZoom }
 }

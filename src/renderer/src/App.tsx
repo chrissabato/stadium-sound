@@ -66,7 +66,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, uiZoom, setUiZoom } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -1208,6 +1208,8 @@ export default function App() {
         onShowPlayedIndicatorChange={setShowPlayedIndicator}
         showMeters={showMeters}
         onShowMetersChange={setShowMeters}
+        uiZoom={uiZoom}
+        onUiZoomChange={setUiZoom}
         onClose={() => setSettingsOpen(false)}
       />
 
