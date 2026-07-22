@@ -31,8 +31,9 @@ function fmtDate(iso) {
 const releaseBlocks = releases.map((r, i) => `
       <article class="rel">
         <div class="rel-head">
-          <h2 class="rel-version"><a class="rel-version-link" href="https://github.com/chrissabato/stadium-sound/releases/tag/v${esc(r.version)}" target="_blank" rel="noopener">v${esc(r.version)}</a></h2>${i === 0 ? '\n          <span class="rel-latest">Latest</span>' : ''}
+          <h2 class="rel-version">v${esc(r.version)}</h2>${i === 0 ? '\n          <span class="rel-latest">Latest</span>' : ''}
           <span class="rel-date">${fmtDate(r.date)}</span>
+          <a class="rel-download" href="https://github.com/chrissabato/stadium-sound/releases/tag/v${esc(r.version)}" target="_blank" rel="noopener">Download ↓</a>
         </div>
         <ul class="rel-items">
 ${r.items.map((item) => `          <li>${esc(item)}</li>`).join('\n')}
@@ -195,12 +196,6 @@ const html = `<!DOCTYPE html>
       color: #fff;
     }
 
-    .rel-version-link {
-      color: inherit;
-      text-decoration: none;
-    }
-    .rel-version-link:hover { color: var(--orange); text-decoration: underline; }
-
     .rel-latest {
       font-size: 10px;
       font-weight: 800;
@@ -218,6 +213,19 @@ const html = `<!DOCTYPE html>
       color: var(--faint);
       white-space: nowrap;
     }
+
+    .rel-download {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--orange);
+      border: 1px solid var(--orange);
+      border-radius: 3px;
+      padding: 3px 8px;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s;
+    }
+    .rel-download:hover { background: var(--orange); color: #fff; }
 
     .rel-items {
       list-style: none;
