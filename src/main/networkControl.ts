@@ -2,8 +2,12 @@ import { BrowserWindow } from 'electron'
 import { createServer, type IncomingMessage, type Server } from 'http'
 import { networkInterfaces } from 'os'
 import { createSocket, type Socket, type RemoteInfo } from 'dgram'
-import { WebSocketServer, type WebSocket } from 'ws'
-import remoteHtml from './remote/index.html?raw'
+// `ws` and the remote page HTML are only ever needed once the feature is
+// actually turned on — importing them at module scope would load the ws
+// package (and its dependency tree) into every Stadium Sound process even
+// when network control stays off, which is the common case. Both are typed
+// here and loaded lazily in startInternal() instead.
+import type { WebSocketServer, WebSocket } from 'ws'
 import { encodeOsc, isAuthenticatedRequest, isControlCommand, oscCommand, parseOsc, type ControlCommand } from './controlProtocol'
 
 export interface RemoteState {
@@ -109,6 +113,11 @@ async function startInternal(oscPort: number, remotePort: number, token: string)
   status = { running: false, oscPort, remotePort, addresses: [] }
   publishStatus()
   try {
+    const [{ WebSocketServer }, { default: remoteHtml }] = await Promise.all([
+      import('ws'),
+      import('./remote/index.html?raw')
+    ])
+
     udp = createSocket('udp4')
     udp.on('message', (message: Buffer, remote: RemoteInfo) => {
       const parsed = parseOsc(message)
