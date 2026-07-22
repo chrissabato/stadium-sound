@@ -223,42 +223,54 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
             <div style={{ height: 1, background: '#334155' }} />
           </div>
 
-          {(['outputDeviceId', 'monitorDeviceId'] as const).map((key) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>
-                  {key === 'outputDeviceId' ? 'Output' : 'Monitor'}
+          {(['outputDeviceId', 'monitorDeviceId'] as const).map((key) => {
+            const selected = config[key]
+            // The device list only reflects what's currently plugged in. If the
+            // persisted selection was unplugged/renamed since, it won't match any
+            // <option> here — without this, the <select> silently falls back to
+            // showing "System Default" (the first option), which lies about the
+            // actual stored device id and hides why e.g. the Monitor button is disabled.
+            const isKnownSelection = selected === '' || audioDevices.some((d) => d.deviceId === selected)
+            return (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>
+                    {key === 'outputDeviceId' ? 'Output' : 'Monitor'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                    {key === 'outputDeviceId'
+                      ? 'Main venue audio output'
+                      : 'Private preview output (headphones / cue mix)'}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                  {key === 'outputDeviceId'
-                    ? 'Main venue audio output'
-                    : 'Private preview output (headphones / cue mix)'}
-                </div>
+                <select
+                  value={selected}
+                  onChange={(e) => update(key, e.target.value)}
+                  style={{
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: 4,
+                    color: isKnownSelection ? '#f1f5f9' : '#f87171',
+                    padding: '6px 10px',
+                    fontSize: 13,
+                    minWidth: 200,
+                    maxWidth: 240,
+                    flexShrink: 0
+                  }}
+                >
+                  <option value="">System Default</option>
+                  {!isKnownSelection && (
+                    <option value={selected}>Unavailable device ({selected.slice(0, 8)})</option>
+                  )}
+                  {audioDevices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Device ${d.deviceId.slice(0, 8)}`}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <select
-                value={config[key]}
-                onChange={(e) => update(key, e.target.value)}
-                style={{
-                  background: '#0f172a',
-                  border: '1px solid #334155',
-                  borderRadius: 4,
-                  color: '#f1f5f9',
-                  padding: '6px 10px',
-                  fontSize: 13,
-                  minWidth: 200,
-                  maxWidth: 240,
-                  flexShrink: 0
-                }}
-              >
-                <option value="">System Default</option>
-                {audioDevices.map((d) => (
-                  <option key={d.deviceId} value={d.deviceId}>
-                    {d.label || `Device ${d.deviceId.slice(0, 8)}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
+            )
+          })}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
