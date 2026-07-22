@@ -19,16 +19,19 @@ function getWin(): BrowserWindow | null {
 // can have hundreds of files, and blocking the IPC call until every one is
 // tag-read would leave the UI with no way to show a progress bar.
 function runLibraryScan(id: string, folderPath: string): void {
-  const win = getWin()
+  const send = (channel: string, payload: unknown): void => {
+    const win = getWin()
+    if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
+  }
   scanFolder(folderPath, (scanned, total) => {
-    win?.webContents.send('library:scanProgress', { id, scanned, total })
+    send('library:scanProgress', { id, scanned, total })
   })
     .then((tracks) => {
       const all = replaceLibraryTracks(id, tracks)
-      win?.webContents.send('library:scanComplete', { id, libraries: all })
+      send('library:scanComplete', { id, libraries: all })
     })
     .catch(() => {
-      win?.webContents.send('library:scanComplete', { id, libraries: loadLibraries() })
+      send('library:scanComplete', { id, libraries: loadLibraries() })
     })
 }
 
