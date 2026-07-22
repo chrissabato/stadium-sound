@@ -539,6 +539,13 @@ export default function App() {
     }))
   }
 
+  // "Filename" has no dedicated field on Track — derive a basename from filePath.
+  function sortTracks(field: 'artist' | 'title' | 'filename') {
+    if (!selectedBank) return
+    const key = (t: Track) => field === 'filename' ? t.filePath.split(/[\\/]/).pop() ?? '' : t[field]
+    reorderTracks([...selectedBank.tracks].sort((a, b) => key(a).localeCompare(key(b))))
+  }
+
   // Dragging a track cell (reorder mode) onto a different bank in the sidebar
   // relocates it there, appended to the end — a no-op if dropped on its own bank.
   function moveTrackToBank(trackId: string, targetBankId: string) {
@@ -1173,6 +1180,30 @@ export default function App() {
                 >
                   {isReordering ? '✓ Done Reordering' : '⇅ Reorder'}
                 </button>
+                {isReordering && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>Sort:</span>
+                    {(['artist', 'title', 'filename'] as const).map((field) => (
+                      <button
+                        key={field}
+                        onClick={() => sortTracks(field)}
+                        title={`Sort tracks in this bank by ${field}`}
+                        style={{
+                          padding: '5px 12px',
+                          background: '#1e293b',
+                          border: '1px solid #334155',
+                          borderRadius: 4,
+                          color: '#94a3b8',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          textTransform: 'capitalize'
+                        }}
+                      >
+                        {field}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div style={{ position: 'relative' }}>
                   <button
                     onClick={() => setAddMenuOpen((v) => !v)}
