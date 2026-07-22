@@ -11,6 +11,16 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.5.0',
+    date: '2026-07-21',
+    items: [
+      'New Network Control: enable OSC and a web remote in Settings so phones, tablets, and Bitfocus Companion can trigger playback over the local network.',
+      'The web remote works from any phone or tablet — open the pairing URL or scan its QR code from Settings.',
+      'A Companion token is shown as its own copyable field in Settings for setting up the Companion module.',
+      'The website changelog page now links each version to its GitHub release, where older installers can be downloaded.'
+    ]
+  },
+  {
     version: '0.4.4',
     date: '2026-07-19',
     items: [
