@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import type { NetworkControlPrefs, NetworkControlStatus, UpdateStatus } from '../../../types/electron'
+import { QrCode } from './QrCode'
 
 interface FadeConfig {
   fadeIn: number
@@ -380,7 +381,15 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
               {networkStatus?.error
                 ? `Could not start: ${networkStatus.error}`
                 : networkStatus?.addresses.length
-                  ? <>Open on iPad: {networkStatus.addresses.map((address) => <div key={address} style={{ marginTop: 3 }}><a href={address} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>{address}</a></div>)}</>
+                  ? <>
+                      Open on iPad:
+                      {networkStatus.addresses.map((address) => (
+                        <div key={address} style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <QrCode value={address} size={80} />
+                          <a href={address} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', wordBreak: 'break-all' }}>{address}</a>
+                        </div>
+                      ))}
+                    </>
                   : 'Starting network control…'}
             </div>
           )}
