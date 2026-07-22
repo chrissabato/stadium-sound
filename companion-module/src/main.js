@@ -1,5 +1,5 @@
 const dgram = require('dgram')
-const { InstanceBase, Regex, runEntrypoint, InstanceStatus } = require('@companion-module/base')
+const { InstanceBase, Regex, InstanceStatus } = require('@companion-module/base')
 const { encode, decode } = require('./osc')
 const updateActions = require('./actions')
 const updateFeedbacks = require('./feedbacks')
@@ -12,7 +12,7 @@ class StadiumSoundInstance extends InstanceBase {
 		{ type: 'textinput', id: 'host', label: 'Stadium Sound computer IP', width: 8, default: '127.0.0.1', regex: Regex.IP },
 		{ type: 'textinput', id: 'port', label: 'OSC UDP port', width: 4, default: '9000', regex: Regex.PORT },
 		{ type: 'textinput', id: 'remotePort', label: 'Remote web port', width: 4, default: '9001', regex: Regex.PORT },
-		{ type: 'textinput', id: 'token', label: 'Pairing token (from the iPad URL)', width: 12, default: '' }
+		{ type: 'textinput', id: 'token', label: 'Pairing token (from the remote URL)', width: 12, default: '' }
 	] }
 	openSocket() {
 		this.updateStatus(InstanceStatus.Connecting)
@@ -51,4 +51,6 @@ class StadiumSoundInstance extends InstanceBase {
 	}
 }
 
-runEntrypoint(StadiumSoundInstance, [])
+// @companion-module/base v2 dropped runEntrypoint() — the host process now
+// imports this file and instantiates the default export itself.
+module.exports = StadiumSoundInstance

@@ -35,7 +35,7 @@ All releases: [github.com/chrissabato/stadium-sound/releases](https://github.com
 
 ## Network control
 
-Open **Settings → Network Control** and enable **OSC & iPad Remote**. Stadium Sound shows a pairing URL to open in Safari. The URL contains a persistent token; devices without it cannot load state or open the control WebSocket. The remote mirrors the selected bank and provides track, stop, fade, random, bank, and master-volume controls. OSC itself is unauthenticated, so keep the computer and controllers on the same trusted production network.
+Open **Settings → Network Control** and enable **OSC & Web Remote**. Stadium Sound shows a pairing URL (and a QR code) to open in a browser on any phone or tablet on the network. The URL contains a persistent token; devices without it cannot load state or open the control WebSocket. The remote mirrors the selected bank and provides track, stop, fade, random, bank, and master-volume controls. OSC itself is unauthenticated, so keep the computer and controllers on the same trusted production network.
 
 OSC listens on UDP port `9000` by default. Messages use the following addresses:
 
