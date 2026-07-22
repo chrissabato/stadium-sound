@@ -9,6 +9,16 @@ import { buildMenu } from './menu'
 import { loadSettings, saveWindowBounds } from './settingsStore'
 import { startNetworkControl, stopNetworkControl } from './networkControl'
 
+// Windows-on-ARM devices (Snapdragon X Elite/Adreno GPUs in particular) have
+// a history of crashing Chromium's GPU process under the default D3D11/ANGLE
+// backend — the window renders black, then the repeated GPU crashes take the
+// whole app down. This app has nothing GPU-bound to lose, so fall back to
+// software rendering there rather than chase driver bugs. Must run before
+// app ready.
+if (process.platform === 'win32' && process.arch === 'arm64') {
+  app.disableHardwareAcceleration()
+}
+
 // media:// streams audio files to <audio> elements so a track with no decoded
 // buffer yet can start playing near-instantly instead of waiting for a full
 // read+decode. Must be registered before app ready.
@@ -136,6 +146,13 @@ function createWindow(): void {
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
+  })
+
+  // If the renderer/GPU process still goes down (crash, killed, OOM), reload
+  // instead of leaving a dead black window — losing in-memory playback state
+  // is better than a frozen app that looks alive but isn't.
+  win.webContents.on('render-process-gone', (_e, details) => {
+    if (!win.isDestroyed() && details.reason !== 'clean-exit') win.reload()
   })
 
   const { recentFiles } = loadSettings()
