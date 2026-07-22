@@ -22,6 +22,7 @@ export interface NetworkControlStatus {
   oscPort: number
   remotePort: number
   addresses: string[]
+  token: string
   error?: string
 }
 
@@ -29,7 +30,7 @@ let udp: Socket | null = null
 let http: Server | null = null
 let wss: WebSocketServer | null = null
 let currentState: RemoteState | null = null
-let status: NetworkControlStatus = { running: false, oscPort: 9000, remotePort: 9001, addresses: [] }
+let status: NetworkControlStatus = { running: false, oscPort: 9000, remotePort: 9001, addresses: [], token: '' }
 let pairingToken = ''
 let transition: Promise<NetworkControlStatus> = Promise.resolve(status)
 // Peers are added on every OSC packet received and otherwise never removed —
@@ -110,7 +111,7 @@ async function stopInternal(): Promise<NetworkControlStatus> {
 async function startInternal(oscPort: number, remotePort: number, token: string): Promise<NetworkControlStatus> {
   await stopInternal()
   pairingToken = token
-  status = { running: false, oscPort, remotePort, addresses: [] }
+  status = { running: false, oscPort, remotePort, addresses: [], token }
   publishStatus()
   try {
     const [{ WebSocketServer }, { default: remoteHtml }] = await Promise.all([
@@ -156,10 +157,10 @@ async function startInternal(oscPort: number, remotePort: number, token: string)
       })
     })
     await new Promise<void>((resolve, reject) => { http!.once('error', reject); http!.listen(remotePort, '0.0.0.0', resolve) })
-    status = { running: true, oscPort, remotePort, addresses: localAddresses(remotePort) }
+    status = { running: true, oscPort, remotePort, addresses: localAddresses(remotePort), token }
   } catch (error) {
     await stopInternal()
-    status = { running: false, oscPort, remotePort, addresses: [], error: error instanceof Error ? error.message : String(error) }
+    status = { running: false, oscPort, remotePort, addresses: [], token, error: error instanceof Error ? error.message : String(error) }
   }
   publishStatus()
   return status

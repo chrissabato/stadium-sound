@@ -93,6 +93,14 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
   const [networkDraft, setNetworkDraft] = useState(networkControl)
+  const [tokenCopied, setTokenCopied] = useState(false)
+
+  function copyToken(token: string) {
+    navigator.clipboard.writeText(token).then(() => {
+      setTokenCopied(true)
+      setTimeout(() => setTokenCopied(false), 1500)
+    })
+  }
 
   useEffect(() => {
     if (!open) return
@@ -351,7 +359,7 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>OSC &amp; iPad Remote</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>OSC &amp; Web Remote</div>
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Allow control from devices on this network</div>
             </div>
             {/* Toggling enabled applies against the currently-active ports, not
@@ -382,13 +390,47 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
                 ? `Could not start: ${networkStatus.error}`
                 : networkStatus?.addresses.length
                   ? <>
-                      Open on iPad:
+                      Open on your phone or tablet:
                       {networkStatus.addresses.map((address) => (
                         <div key={address} style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
                           <QrCode value={address} size={80} />
                           <a href={address} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', wordBreak: 'break-all' }}>{address}</a>
                         </div>
                       ))}
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: '#64748b', flexShrink: 0 }}>Companion token</span>
+                        <input
+                          readOnly
+                          value={networkStatus.token}
+                          onFocus={(e) => e.currentTarget.select()}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            background: '#1e293b',
+                            border: '1px solid #334155',
+                            borderRadius: 4,
+                            color: '#e2e8f0',
+                            padding: '4px 6px',
+                            fontFamily: 'monospace',
+                            fontSize: 11
+                          }}
+                        />
+                        <button
+                          onClick={() => copyToken(networkStatus.token)}
+                          style={{
+                            flexShrink: 0,
+                            padding: '4px 10px',
+                            background: tokenCopied ? '#166534' : '#1e293b',
+                            border: `1px solid ${tokenCopied ? '#4ade80' : '#334155'}`,
+                            borderRadius: 4,
+                            color: tokenCopied ? '#bbf7d0' : '#94a3b8',
+                            fontSize: 11,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {tokenCopied ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
                     </>
                   : 'Starting network control…'}
             </div>

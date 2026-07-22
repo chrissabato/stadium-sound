@@ -24,6 +24,7 @@ export interface NetworkControlStatus {
   oscPort: number
   remotePort: number
   addresses: string[]
+  token: string
   error?: string
 }
 
