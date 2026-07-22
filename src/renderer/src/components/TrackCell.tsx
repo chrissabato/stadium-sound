@@ -23,8 +23,8 @@ interface Props {
 export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, onClick, onEdit, onDelete }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
-  // The editor only persists volume when it's below 1 (full = undefined).
-  const hasCustomVolume = track.volume !== undefined && track.volume < 1
+  // The editor only persists volume when it's not exactly 1 (full = undefined).
+  const hasCustomVolume = track.volume !== undefined && track.volume !== 1
   const hasPlayer = !!(track.playerNumber || track.playerFirstName || track.playerLastName)
   const overlayRef = useRef<HTMLDivElement>(null)
   const cellRef = useRef<HTMLDivElement>(null)

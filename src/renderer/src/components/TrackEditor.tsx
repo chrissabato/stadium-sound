@@ -197,7 +197,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
       playerLastName: playerLastName || undefined,
       hotkey,
       colorLabel,
-      volume: volume < 1 ? volume : undefined
+      volume: volume !== 1 ? volume : undefined
     })
     stopPreview()
     onClose()
@@ -440,7 +440,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
             <input
               type="range"
               min={0}
-              max={1}
+              max={2}
               step={0.01}
               value={volume}
               onChange={(e) => {
@@ -453,7 +453,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
             <span style={{ color: '#94a3b8', fontSize: 12, minWidth: 36 }}>
               {Math.round(volume * 100)}%
             </span>
-            {volume < 1 && (
+            {volume !== 1 && (
               <button
                 onClick={() => {
                   setVolume(1)

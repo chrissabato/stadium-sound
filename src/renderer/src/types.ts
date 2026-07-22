@@ -17,7 +17,7 @@ export interface Track {
   playerLastName?: string
   hotkey?: string
   colorLabel?: string
-  volume?: number   // per-track level 0–1, multiplied with master volume; undefined = 1 (full)
+  volume?: number   // per-track level 0–2 (0–200%), multiplied with master volume; undefined = 1 (full)
 }
 
 export const AUDIO_EXTENSIONS = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac']
