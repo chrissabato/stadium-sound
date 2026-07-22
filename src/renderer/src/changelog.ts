@@ -11,6 +11,17 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.5.1',
+    date: '2026-07-22',
+    items: [
+      'Web remote (Settings → Network Control) now matches the app\'s colors and styling, and shows player number/name for walk-on cues instead of just artist/title.',
+      'Tapping a track on the web remote now stops it if it\'s already playing, instead of restarting it.',
+      'Random on the web remote scrolls the newly-picked track into view if it was off-screen.',
+      'The web remote can now select a playlist and play, skip, stop, and shuffle it, with the currently playing track highlighted.',
+      'The Bitfocus Companion module is now available to download from the Stadium Sound website.'
+    ]
+  },
+  {
     version: '0.5.0',
     date: '2026-07-21',
     items: [
