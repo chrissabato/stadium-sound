@@ -53,6 +53,28 @@ jobs:
           # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
+  build-companion-module:
+    needs: create-release
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: companion-module
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.20
+      - run: npm install
+      - run: npm run package
+      # companion-module-build names the archive from manifest.json's own
+      # version (independent of the app's version), so the release asset
+      # name is fixed instead, giving a stable releases/latest/download URL
+      # for the website link regardless of module version bumps.
+      - run: mv stadium-sound-*.tgz Stadium-Sound-Companion-Module.tgz
+      - run: gh release upload ${{ github.ref_name }} Stadium-Sound-Companion-Module.tgz --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   update-website-version:
     needs: create-release
     runs-on: ubuntu-latest
