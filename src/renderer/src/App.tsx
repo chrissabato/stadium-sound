@@ -18,6 +18,7 @@ import { AddFromLibraryModal } from './components/AddFromLibraryModal'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import type { Bank, Track, Playlist, PlaylistTrack, LibraryTrack } from './types'
 import { normalizeHotkeyEvent } from './types'
+import type { NetworkCommand } from '../../types/electron'
 
 function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -901,9 +902,14 @@ export default function App() {
   }, [])
 
   // OSC, Companion, and the web remote all enter through the same command
-  // stream. Re-subscribe as show state changes so commands always resolve
-  // against the currently loaded banks and playback state.
-  useEffect(() => window.electronAPI.network.onCommand((command) => {
+  // stream. Commands must always resolve against the currently loaded banks
+  // and playback state, but config/playedIds/missingFileIds change on nearly
+  // every user action — routing through a ref (same pattern as the keydown
+  // handler above) means that stays fresh without tearing down and
+  // re-registering the Electron IPC listener on every one of those changes.
+  const latestCommandHandlerRef = useRef<(command: NetworkCommand) => void>(() => {})
+
+  latestCommandHandlerRef.current = function onNetworkCommand(command) {
     if (command.type === 'stop') stopAll()
     else if (command.type === 'fade') stopWithFade()
     else if (command.type === 'random') playRandomTrack()
@@ -917,7 +923,9 @@ export default function App() {
       const track = config.banks.flatMap((bank) => bank.tracks).find((candidate) => candidate.id === command.trackId)
       if (track) playTrackForce(track)
     }
-  }), [config, audio.playingTrackId, audio.monitorPlayingTrackId, playedIds, missingFileIds])
+  }
+
+  useEffect(() => window.electronAPI.network.onCommand((command) => latestCommandHandlerRef.current(command)), [])
 
   useEffect(() => {
     if (!loaded || !networkControl.enabled) return

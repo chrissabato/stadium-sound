@@ -316,7 +316,9 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
               <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>OSC &amp; iPad Remote</div>
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Allow control from devices on this network</div>
             </div>
-            <input type="checkbox" checked={networkControl.enabled} onChange={(e) => onNetworkControlChange({ ...networkDraft, enabled: e.target.checked })} style={{ width: 16, height: 16, accentColor: '#3b82f6' }} />
+            {/* Toggling enabled applies against the currently-active ports, not
+                networkDraft — port edits only take effect via "Apply Ports" below. */}
+            <input type="checkbox" checked={networkControl.enabled} onChange={(e) => onNetworkControlChange({ ...networkControl, enabled: e.target.checked })} style={{ width: 16, height: 16, accentColor: '#3b82f6' }} />
           </div>
 
           <div style={{ display: 'flex', gap: 16 }}>

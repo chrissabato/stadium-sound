@@ -114,8 +114,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('settings:setNetworkControl', async (_event, prefs: { enabled: boolean; oscPort: number; remotePort: number }) => {
     saveNetworkControl(prefs.enabled, prefs.oscPort, prefs.remotePort)
-    const token = loadSettings().remoteToken
-    return prefs.enabled ? startNetworkControl(prefs.oscPort, prefs.remotePort, token) : stopNetworkControl()
+    // Re-read rather than trusting prefs directly: saveNetworkControl clamps/validates
+    // ports (e.g. a stray fractional value from the number input), and the server must
+    // be started with the same values that were actually persisted.
+    const settings = loadSettings()
+    return prefs.enabled ? startNetworkControl(settings.oscPort, settings.remotePort, settings.remoteToken) : stopNetworkControl()
   })
   ipcMain.handle('network:getStatus', () => getNetworkControlStatus())
   ipcMain.on('network:state', (_event, state) => updateRemoteState(state))

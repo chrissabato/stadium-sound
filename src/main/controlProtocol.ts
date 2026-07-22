@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'crypto'
+
 export type ControlCommand =
   | { type: 'play'; trackId: string }
   | { type: 'selectBank'; bank: string | number }
@@ -59,10 +61,19 @@ export function encodeOsc(address: string, args: Array<string | number> = []): B
   return Buffer.concat([paddedString(address), paddedString(tags), ...values])
 }
 
+// Constant-time comparison: a plain !== leaks how many leading characters
+// matched via response latency, letting an attacker on the LAN narrow down
+// the pairing token faster than brute force.
+function tokensMatch(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided)
+  const b = Buffer.from(expected)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
 export function isAuthenticatedRequest(requestUrl: string, host: string, token: string, origin?: string): boolean {
   try {
     const url = new URL(requestUrl, `http://${host}`)
-    if (url.searchParams.get('token') !== token) return false
+    if (!tokensMatch(url.searchParams.get('token') ?? '', token)) return false
     return origin === undefined || new URL(origin).host === host
   } catch { return false }
 }

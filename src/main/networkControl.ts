@@ -28,7 +28,16 @@ let currentState: RemoteState | null = null
 let status: NetworkControlStatus = { running: false, oscPort: 9000, remotePort: 9001, addresses: [] }
 let pairingToken = ''
 let transition: Promise<NetworkControlStatus> = Promise.resolve(status)
-const oscPeers = new Map<string, { address: string; port: number }>()
+// Peers are added on every OSC packet received and otherwise never removed —
+// prune anything quiet for this long so a long-running show doesn't
+// accumulate an ever-growing broadcast list from stale/one-off senders.
+const OSC_PEER_TTL_MS = 10 * 60 * 1000
+const oscPeers = new Map<string, { address: string; port: number; lastSeen: number }>()
+
+function pruneStalePeers(): void {
+  const cutoff = Date.now() - OSC_PEER_TTL_MS
+  for (const [key, peer] of oscPeers) if (peer.lastSeen < cutoff) oscPeers.delete(key)
+}
 
 function window(): BrowserWindow | null { return BrowserWindow.getAllWindows()[0] ?? null }
 function dispatch(command: ControlCommand): void { window()?.webContents.send('network:command', command) }
@@ -61,6 +70,7 @@ function sendStateToPeer(peer: { address: string; port: number }): void {
 
 function broadcastState(): void {
   if (!currentState) return
+  pruneStalePeers()
   const payload = JSON.stringify({ type: 'state', state: currentState })
   for (const client of wss?.clients ?? []) if (client.readyState === 1) client.send(payload)
   for (const peer of oscPeers.values()) sendStateToPeer(peer)
@@ -103,7 +113,7 @@ async function startInternal(oscPort: number, remotePort: number, token: string)
     udp.on('message', (message: Buffer, remote: RemoteInfo) => {
       const parsed = parseOsc(message)
       if (!parsed) return
-      const peer = { address: remote.address, port: remote.port }
+      const peer = { address: remote.address, port: remote.port, lastSeen: Date.now() }
       oscPeers.set(`${remote.address}:${remote.port}`, peer)
       if (parsed.address === '/stadium-sound/state/subscribe') sendStateToPeer(peer)
       const command = oscCommand(parsed.address, parsed.args)

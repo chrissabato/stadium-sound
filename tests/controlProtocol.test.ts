@@ -31,3 +31,8 @@ test('remote authentication requires both token and same-host WebSocket origin',
   assert.equal(isAuthenticatedRequest('/?token=secret', '10.0.0.2:9001', 'secret', 'http://10.0.0.2:9001'), true)
   assert.equal(isAuthenticatedRequest('/?token=secret', '10.0.0.2:9001', 'secret', 'https://evil.example'), false)
 })
+
+test('token comparison rejects mismatched lengths and a missing token without throwing', () => {
+  assert.equal(isAuthenticatedRequest('/?token=short', '10.0.0.2:9001', 'a-much-longer-secret-token'), false)
+  assert.equal(isAuthenticatedRequest('/', '10.0.0.2:9001', 'secret'), false)
+})
