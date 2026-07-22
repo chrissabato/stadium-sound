@@ -8,9 +8,30 @@ export interface EventSetState {
   showTrackTooltips: boolean
   showPlayedIndicator: boolean
   showMeters: boolean
+  networkControl: NetworkControlPrefs
   uiZoom: number
   lastSeenChangelogVersion: string
 }
+
+export interface NetworkControlPrefs {
+  enabled: boolean
+  oscPort: number
+  remotePort: number
+}
+
+export interface NetworkControlStatus {
+  running: boolean
+  oscPort: number
+  remotePort: number
+  addresses: string[]
+  error?: string
+}
+
+export type NetworkCommand =
+  | { type: 'play'; trackId: string }
+  | { type: 'selectBank'; bank: string | number }
+  | { type: 'stop' | 'fade' | 'random' }
+  | { type: 'volume'; value: number }
 
 export interface EventSetOpenResult {
   config: AppConfig
@@ -64,8 +85,15 @@ export interface ElectronAPI {
     setShowTrackTooltips: (enabled: boolean) => Promise<void>
     setShowPlayedIndicator: (enabled: boolean) => Promise<void>
     setShowMeters: (enabled: boolean) => Promise<void>
+    setNetworkControl: (prefs: NetworkControlPrefs) => Promise<NetworkControlStatus>
     setUiZoom: (zoom: number) => Promise<void>
     setLastSeenChangelogVersion: (version: string) => Promise<void>
+  }
+  network: {
+    getStatus: () => Promise<NetworkControlStatus>
+    publishState: (state: unknown) => void
+    onCommand: (callback: (command: NetworkCommand) => void) => () => void
+    onStatus: (callback: (status: NetworkControlStatus) => void) => () => void
   }
   app: {
     getVersion: () => Promise<string>

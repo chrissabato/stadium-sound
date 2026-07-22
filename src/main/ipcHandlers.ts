@@ -3,7 +3,8 @@ import { autoUpdater } from 'electron-updater'
 import { readFile, access } from 'fs/promises'
 import { readFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
-import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveUiZoom, saveLastSeenChangelogVersion } from './settingsStore'
+import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveLastSeenChangelogVersion } from './settingsStore'
+import { getNetworkControlStatus, startNetworkControl, stopNetworkControl, updateRemoteState } from './networkControl'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
 import { AUDIO_EXTENSIONS, getAudioMetadata, scanFolder } from './libraryScanner'
@@ -75,20 +76,21 @@ export function registerIpcHandlers(): void {
     const showTrackTooltips = settings.showTrackTooltips
     const showPlayedIndicator = settings.showPlayedIndicator
     const showMeters = settings.showMeters
+    const networkControl = { enabled: settings.networkControlEnabled, oscPort: settings.oscPort, remotePort: settings.remotePort }
     const uiZoom = settings.uiZoom
     const lastSeenChangelogVersion = settings.lastSeenChangelogVersion
     if (settings.lastFile && eventSetExists(settings.lastFile)) {
       try {
         const config = loadEventSet(settings.lastFile)
-        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, uiZoom, lastSeenChangelogVersion }
+        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, lastSeenChangelogVersion }
       } catch (err) {
         // File exists but is unreadable — tell the user, remove from recents, start blank
         showOpenError(settings.lastFile, err, 'Your last event set could not be reopened.')
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
-        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, uiZoom, lastSeenChangelogVersion }
+        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, lastSeenChangelogVersion }
       }
     }
-    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, uiZoom, lastSeenChangelogVersion }
+    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, lastSeenChangelogVersion }
   })
 
   // Machine-level audio device preference — saved independently of the event
@@ -111,6 +113,17 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('settings:setShowMeters', (_event, enabled: boolean) => {
     saveShowMeters(enabled)
   })
+
+  ipcMain.handle('settings:setNetworkControl', async (_event, prefs: { enabled: boolean; oscPort: number; remotePort: number }) => {
+    saveNetworkControl(prefs.enabled, prefs.oscPort, prefs.remotePort)
+    // Re-read rather than trusting prefs directly: saveNetworkControl clamps/validates
+    // ports (e.g. a stray fractional value from the number input), and the server must
+    // be started with the same values that were actually persisted.
+    const settings = loadSettings()
+    return prefs.enabled ? startNetworkControl(settings.oscPort, settings.remotePort, settings.remoteToken) : stopNetworkControl()
+  })
+  ipcMain.handle('network:getStatus', () => getNetworkControlStatus())
+  ipcMain.on('network:state', (_event, state) => updateRemoteState(state))
 
   // Records which release's What's New the user has seen, so the dialog only
   // auto-opens once per update.

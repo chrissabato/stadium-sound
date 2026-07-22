@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import type { UpdateStatus } from '../../../types/electron'
+import type { NetworkControlPrefs, NetworkControlStatus, UpdateStatus } from '../../../types/electron'
 
 interface FadeConfig {
   fadeIn: number
@@ -19,6 +19,9 @@ interface Props {
   onShowPlayedIndicatorChange: (enabled: boolean) => void
   showMeters: boolean
   onShowMetersChange: (enabled: boolean) => void
+  networkControl: NetworkControlPrefs
+  networkStatus: NetworkControlStatus | null
+  onNetworkControlChange: (prefs: NetworkControlPrefs) => Promise<void>
   uiZoom: number
   onUiZoomChange: (zoom: number) => void
   onShowChangelog: () => void
@@ -84,10 +87,11 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, uiZoom, onUiZoomChange, onShowChangelog, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, onShowChangelog, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
+  const [networkDraft, setNetworkDraft] = useState(networkControl)
 
   useEffect(() => {
     if (!open) return
@@ -104,6 +108,8 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
     const unsub = window.electronAPI.app.onUpdateStatus(setUpdateStatus)
     return unsub
   }, [open])
+
+  useEffect(() => { if (open) setNetworkDraft(networkControl) }, [open, networkControl])
 
   if (!open) return null
 
@@ -334,6 +340,50 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
               />
             </label>
           </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Network Control
+            </span>
+            <div style={{ height: 1, background: '#334155' }} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>OSC &amp; iPad Remote</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Allow control from devices on this network</div>
+            </div>
+            {/* Toggling enabled applies against the currently-active ports, not
+                networkDraft — port edits only take effect via "Apply Ports" below. */}
+            <input type="checkbox" checked={networkControl.enabled} onChange={(e) => onNetworkControlChange({ ...networkControl, enabled: e.target.checked })} style={{ width: 16, height: 16, accentColor: '#3b82f6' }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 16 }}>
+            {([['oscPort', 'OSC UDP port'], ['remotePort', 'Remote web port']] as const).map(([key, label]) => (
+              <label key={key} style={{ flex: 1, fontSize: 12, color: '#94a3b8' }}>{label}
+                <input type="number" min={1024} max={65535} value={networkDraft[key]}
+                  onChange={(e) => setNetworkDraft({ ...networkDraft, [key]: Math.max(1024, Math.min(65535, Number(e.target.value))) })}
+                  style={{ display: 'block', width: '100%', marginTop: 5, background: '#0f172a', border: '1px solid #334155', borderRadius: 4, color: '#f1f5f9', padding: '6px 8px' }} />
+              </label>
+            ))}
+          </div>
+
+          {(networkDraft.oscPort !== networkControl.oscPort || networkDraft.remotePort !== networkControl.remotePort) && (
+            <button onClick={() => onNetworkControlChange({ ...networkDraft, enabled: networkControl.enabled })}
+              style={{ alignSelf: 'flex-end', padding: '6px 14px', background: '#1d4ed8', border: 0, borderRadius: 4, color: '#fff', cursor: 'pointer' }}>
+              Apply Ports
+            </button>
+          )}
+
+          {networkControl.enabled && (
+            <div style={{ padding: '10px 12px', borderRadius: 4, background: '#0f172a', fontSize: 12, color: networkStatus?.error ? '#f87171' : '#94a3b8' }}>
+              {networkStatus?.error
+                ? `Could not start: ${networkStatus.error}`
+                : networkStatus?.addresses.length
+                  ? <>Open on iPad: {networkStatus.addresses.map((address) => <div key={address} style={{ marginTop: 3 }}><a href={address} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>{address}</a></div>)}</>
+                  : 'Starting network control…'}
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

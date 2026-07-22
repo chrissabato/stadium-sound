@@ -33,6 +33,23 @@ All releases: [github.com/chrissabato/stadium-sound/releases](https://github.com
 - Sports Sounds Pro (.set) file importer
 - Auto-update — new versions install in the background
 
+## Network control
+
+Open **Settings → Network Control** and enable **OSC & iPad Remote**. Stadium Sound shows a pairing URL to open in Safari. The URL contains a persistent token; devices without it cannot load state or open the control WebSocket. The remote mirrors the selected bank and provides track, stop, fade, random, bank, and master-volume controls. OSC itself is unauthenticated, so keep the computer and controllers on the same trusted production network.
+
+OSC listens on UDP port `9000` by default. Messages use the following addresses:
+
+| Address | Argument | Description |
+| --- | --- | --- |
+| `/stadium-sound/track/play` | string track ID | Play/restart a track |
+| `/stadium-sound/bank/select` | string ID/name or int (1-based) | Select a bank |
+| `/stadium-sound/stop` | none | Stop immediately |
+| `/stadium-sound/fade` | none | Stop using the configured fade |
+| `/stadium-sound/random` | none | Play a random unplayed track |
+| `/stadium-sound/volume` | float `0…1` | Set master volume |
+
+Stadium Sound sends `/stadium-sound/state/playing`, `/state/bank`, and `/state/volume` feedback immediately after an OSC client sends `/stadium-sound/state/subscribe`, then after each state change. The Bitfocus Companion module source is in [`companion-module`](companion-module); package it and install the resulting module archive as a developer module in Companion. Configure it with the IP, both ports, and the `token` value from the pairing URL; it discovers banks/tracks and monitors connection health automatically.
+
 ## Development
 
 ```bash

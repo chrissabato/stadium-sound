@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { AppConfig, AudioDevicePrefs, Bank, Track } from '../types'
 import { DEFAULT_CONFIG, DEFAULT_AUDIO_DEVICE_PREFS } from '../types'
+import type { NetworkControlPrefs, NetworkControlStatus } from '../../../types/electron'
 
 function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -24,6 +25,9 @@ export interface ConfigState {
   setShowPlayedIndicator: (enabled: boolean) => void
   showMeters: boolean
   setShowMeters: (enabled: boolean) => void
+  networkControl: NetworkControlPrefs
+  networkStatus: NetworkControlStatus | null
+  setNetworkControl: (prefs: NetworkControlPrefs) => Promise<void>
   uiZoom: number
   setUiZoom: (zoom: number) => void
   lastSeenChangelogVersion: string
@@ -47,6 +51,8 @@ export function useConfig(): ConfigState {
   const [showTrackTooltips, setShowTrackTooltipsState] = useState(true)
   const [showPlayedIndicator, setShowPlayedIndicatorState] = useState(true)
   const [showMeters, setShowMetersState] = useState(true)
+  const [networkControl, setNetworkControlState] = useState<NetworkControlPrefs>({ enabled: false, oscPort: 9000, remotePort: 9001 })
+  const [networkStatus, setNetworkStatus] = useState<NetworkControlStatus | null>(null)
   const [uiZoom, setUiZoomState] = useState(1)
   const [lastSeenChangelogVersion, setLastSeenChangelogVersion] = useState('')
 
@@ -65,6 +71,7 @@ export function useConfig(): ConfigState {
 
   // Load on mount
   useEffect(() => {
+    const removeStatus = window.electronAPI.network.onStatus(setNetworkStatus)
     window.electronAPI.eventSet.getInitialState().then((state) => {
       if (state.config) {
         applyState(state.config as AppConfig, state.filePath)
@@ -75,10 +82,13 @@ export function useConfig(): ConfigState {
       setShowTrackTooltipsState(state.showTrackTooltips)
       setShowPlayedIndicatorState(state.showPlayedIndicator)
       setShowMetersState(state.showMeters)
+      setNetworkControlState(state.networkControl)
+      window.electronAPI.network.getStatus().then(setNetworkStatus).catch(() => {})
       setUiZoomState(state.uiZoom)
       setLastSeenChangelogVersion(state.lastSeenChangelogVersion)
       setLoaded(true)
     })
+    return removeStatus
   }, [])
 
   const setAudioDevices = useCallback((prefs: AudioDevicePrefs) => {
@@ -99,6 +109,11 @@ export function useConfig(): ConfigState {
   const setShowMeters = useCallback((enabled: boolean) => {
     setShowMetersState(enabled)
     window.electronAPI.settings.setShowMeters(enabled)
+  }, [])
+
+  const setNetworkControl = useCallback(async (prefs: NetworkControlPrefs) => {
+    setNetworkControlState(prefs)
+    setNetworkStatus(await window.electronAPI.settings.setNetworkControl(prefs))
   }, [])
 
   const setUiZoom = useCallback((zoom: number) => {
@@ -211,5 +226,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, uiZoom, setUiZoom, lastSeenChangelogVersion }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, lastSeenChangelogVersion }
 }

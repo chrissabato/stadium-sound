@@ -7,6 +7,7 @@ import { autoUpdater } from 'electron-updater'
 import { registerIpcHandlers } from './ipcHandlers'
 import { buildMenu } from './menu'
 import { loadSettings, saveWindowBounds } from './settingsStore'
+import { startNetworkControl, stopNetworkControl } from './networkControl'
 
 // media:// streams audio files to <audio> elements so a track with no decoded
 // buffer yet can start playing near-instantly instead of waiting for a full
@@ -183,6 +184,8 @@ app.whenReady().then(() => {
   app.setAppUserModelId('com.venue.audioplayer')
   registerMediaProtocol()
   createWindow()
+  const network = loadSettings()
+  if (network.networkControlEnabled) startNetworkControl(network.oscPort, network.remotePort, network.remoteToken)
   if (app.isPackaged) {
     autoUpdater.checkForUpdatesAndNotify({
       title: 'Stadium Sound update ready',
@@ -195,5 +198,6 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  stopNetworkControl()
   if (process.platform !== 'darwin') app.quit()
 })

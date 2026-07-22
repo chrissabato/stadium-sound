@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import { randomBytes } from 'crypto'
 
 interface WindowBounds {
   x: number
@@ -19,6 +20,10 @@ interface AppSettings {
   showTrackTooltips: boolean
   showPlayedIndicator: boolean
   showMeters: boolean
+  networkControlEnabled: boolean
+  oscPort: number
+  remotePort: number
+  remoteToken: string
   uiZoom: number
   // Which release's What's New the user has already seen — '' until first
   // recorded, which doubles as "fresh install, don't pop the dialog".
@@ -38,7 +43,7 @@ export function loadSettings(): AppSettings {
       typeof wb.width === 'number' && typeof wb.height === 'number'
         ? wb as WindowBounds
         : null
-    return {
+    const settings: AppSettings = {
       lastFile: typeof parsed.lastFile === 'string' ? parsed.lastFile : null,
       recentFiles: Array.isArray(parsed.recentFiles) ? parsed.recentFiles : [],
       windowBounds,
@@ -48,6 +53,10 @@ export function loadSettings(): AppSettings {
       showTrackTooltips: typeof parsed.showTrackTooltips === 'boolean' ? parsed.showTrackTooltips : true,
       showPlayedIndicator: typeof parsed.showPlayedIndicator === 'boolean' ? parsed.showPlayedIndicator : true,
       showMeters: typeof parsed.showMeters === 'boolean' ? parsed.showMeters : true,
+      networkControlEnabled: typeof parsed.networkControlEnabled === 'boolean' ? parsed.networkControlEnabled : false,
+      oscPort: validPort(parsed.oscPort, 9000),
+      remotePort: validPort(parsed.remotePort, 9001),
+      remoteToken: validToken(parsed.remoteToken),
       uiZoom:
         typeof parsed.uiZoom === 'number' && parsed.uiZoom >= 0.5 && parsed.uiZoom <= 3
           ? parsed.uiZoom
@@ -55,8 +64,10 @@ export function loadSettings(): AppSettings {
       lastSeenChangelogVersion:
         typeof parsed.lastSeenChangelogVersion === 'string' ? parsed.lastSeenChangelogVersion : ''
     }
+    if (parsed.remoteToken !== settings.remoteToken) writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
+    return settings
   } catch {
-    return {
+    const settings: AppSettings = {
       lastFile: null,
       recentFiles: [],
       windowBounds: null,
@@ -66,10 +77,25 @@ export function loadSettings(): AppSettings {
       showTrackTooltips: true,
       showPlayedIndicator: true,
       showMeters: true,
+      networkControlEnabled: false,
+      oscPort: 9000,
+      remotePort: 9001,
+      remoteToken: fallbackRemoteToken,
       uiZoom: 1,
       lastSeenChangelogVersion: ''
     }
+    return settings
   }
+}
+
+function makeToken(): string { return randomBytes(18).toString('base64url') }
+const fallbackRemoteToken = makeToken()
+function validToken(value: unknown): string { return typeof value === 'string' && /^[A-Za-z0-9_-]{20,64}$/.test(value) ? value : fallbackRemoteToken }
+
+function validPort(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1024 && value <= 65535
+    ? value
+    : fallback
 }
 
 export function saveWindowBounds(bounds: WindowBounds, isMaximized: boolean): void {
@@ -103,6 +129,16 @@ export function saveShowPlayedIndicator(showPlayedIndicator: boolean): void {
 export function saveShowMeters(showMeters: boolean): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, showMeters }, null, 2), 'utf-8')
+}
+
+export function saveNetworkControl(networkControlEnabled: boolean, oscPort: number, remotePort: number): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({
+    ...s,
+    networkControlEnabled,
+    oscPort: validPort(oscPort, 9000),
+    remotePort: validPort(remotePort, 9001)
+  }, null, 2), 'utf-8')
 }
 
 export function saveUiZoom(uiZoom: number): void {

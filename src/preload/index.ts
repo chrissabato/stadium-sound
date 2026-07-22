@@ -55,10 +55,25 @@ const api: ElectronAPI = {
       ipcRenderer.invoke('settings:setShowPlayedIndicator', enabled),
     setShowMeters: (enabled: boolean) =>
       ipcRenderer.invoke('settings:setShowMeters', enabled),
+    setNetworkControl: (prefs) => ipcRenderer.invoke('settings:setNetworkControl', prefs),
     setUiZoom: (zoom: number) =>
       ipcRenderer.invoke('settings:setUiZoom', zoom),
     setLastSeenChangelogVersion: (version: string) =>
       ipcRenderer.invoke('settings:setLastSeenChangelogVersion', version)
+  },
+  network: {
+    getStatus: () => ipcRenderer.invoke('network:getStatus'),
+    publishState: (state) => ipcRenderer.send('network:state', state),
+    onCommand: (callback) => {
+      const handler = (_: Electron.IpcRendererEvent, command: Parameters<typeof callback>[0]) => callback(command)
+      ipcRenderer.on('network:command', handler)
+      return () => ipcRenderer.removeListener('network:command', handler)
+    },
+    onStatus: (callback) => {
+      const handler = (_: Electron.IpcRendererEvent, status: Parameters<typeof callback>[0]) => callback(status)
+      ipcRenderer.on('network:status', handler)
+      return () => ipcRenderer.removeListener('network:status', handler)
+    }
   },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
