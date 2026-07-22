@@ -11,6 +11,15 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.5.2',
+    date: '2026-07-22',
+    items: [
+      'Fixed a crash on some Windows-on-ARM laptops (Snapdragon X Elite) where the app window would go black and eventually stop responding after an update.',
+      'The app now recovers automatically if the window ever goes unresponsive, instead of staying stuck.',
+      'Fixed a rare crash when closing the app while a library scan was still in progress.'
+    ]
+  },
+  {
     version: '0.5.1',
     date: '2026-07-22',
     items: [
