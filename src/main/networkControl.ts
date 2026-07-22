@@ -15,6 +15,10 @@ export interface RemoteState {
   selectedBankId: string
   playingTrackId: string | null
   masterVolume: number
+  playlists: Array<{ id: string; name: string; tracks: Array<{ id: string; title: string; artist: string }> }>
+  selectedPlaylistId: string
+  playingPlaylistId: string | null
+  playlistIndex: number
 }
 
 export interface NetworkControlStatus {

@@ -1019,6 +1019,20 @@ export default function App() {
           playTrackForce(track)
         }
       }
+    } else if (command.type === 'selectPlaylist') {
+      const playlists = config.playlists ?? []
+      const playlist = typeof command.playlist === 'number'
+        ? playlists[Math.max(0, Math.floor(command.playlist) - 1)]
+        : playlists.find((candidate) => candidate.id === command.playlist || candidate.name === command.playlist)
+      if (playlist) selectPlaylist(playlist.id)
+    } else if (command.type === 'playlistPlay') {
+      if (selectedPlaylist) playlistPlay(selectedPlaylist)
+    } else if (command.type === 'playlistStop') {
+      if (selectedPlaylist) playlistPause(selectedPlaylist)
+    } else if (command.type === 'playlistSkip') {
+      if (selectedPlaylist) playlistSkip(selectedPlaylist)
+    } else if (command.type === 'playlistShuffle') {
+      if (selectedPlaylist) shufflePlaylistTracks(selectedPlaylist)
     }
   }
 
@@ -1035,9 +1049,17 @@ export default function App() {
       })),
       selectedBankId: config.selectedBankId,
       playingTrackId: audio.playingTrackId,
-      masterVolume: config.masterVolume
+      masterVolume: config.masterVolume,
+      playlists: (config.playlists ?? []).map((playlist) => ({
+        id: playlist.id,
+        name: playlist.name,
+        tracks: playlist.tracks.map(({ itemId, title, artist }) => ({ id: itemId, title, artist }))
+      })),
+      selectedPlaylistId: config.selectedPlaylistId ?? '',
+      playingPlaylistId,
+      playlistIndex
     })
-  }, [loaded, networkControl.enabled, config.banks, config.selectedBankId, config.masterVolume, audio.playingTrackId])
+  }, [loaded, networkControl.enabled, config.banks, config.selectedBankId, config.masterVolume, audio.playingTrackId, config.playlists, config.selectedPlaylistId, playingPlaylistId, playlistIndex])
 
   // Only the (fast) config read gates first paint — audio is never a startup
   // blocker: songs stream on demand and short clips warm in the background.

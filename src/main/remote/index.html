@@ -18,6 +18,23 @@
     select { width: 100%; padding: 0 12px }
     .volume { display: flex; gap: 10px; align-items: center; color: #cbd5e1; font-size: 13px }
     .volume input { flex: 1; height: 36px }
+    .tabs { display: flex; gap: 8px; margin: 12px 0 }
+    .tab { flex: 1; min-height: 40px; font-size: 14px; font-weight: 600 }
+    .tab.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd }
+    .pl-select { margin-bottom: 10px }
+    .pl-transport { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px }
+    .pl-transport button { min-height: 44px; font-size: 13px; padding: 0 4px }
+    .pl-play { background: #15803d; border-color: #15803d; color: #fff }
+    .pl-transport button:disabled { background: #1e293b; border-color: #1e293b; color: #475569 }
+    .pl-row { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid #1e293b }
+    .pl-row.current { background: #15803d; border-radius: 4px }
+    .pl-row-index { font-size: 12px; color: #64748b; width: 20px; text-align: right; flex-shrink: 0 }
+    .pl-row.current .pl-row-index { color: #bbf7d0 }
+    .pl-row-title { font-size: 13px; font-weight: 600; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .pl-row.current .pl-row-title { color: #fff }
+    .pl-row-artist { font-size: 11px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .pl-row.current .pl-row-artist { color: #bbf7d0 }
+    .pl-empty { text-align: center; color: #64748b; padding: 40px 0 }
     .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(145px,1fr)); gap: 10px; padding: 10px 0 }
     .track { position: relative; min-height: 92px; padding: 12px; overflow: hidden; display: flex; flex-direction: column; gap: 2px; text-align: left }
     .track.playing { background: #15803d; border-color: #16a34a; box-shadow: 0 0 12px rgba(21,128,61,0.5) }
@@ -40,10 +57,26 @@
   <div class="top">
     <div class="title"><h1>Stadium Sound</h1><span class="status" id="status">Connecting…</span></div>
     <div class="controls"><button class="stop" data-cmd="stop">STOP</button><button class="fade" data-cmd="fade">Fade</button><button class="random" data-cmd="random">Random</button></div>
-    <select id="banks"></select>
     <label class="volume">Volume <input id="volume" type="range" min="0" max="1" step="0.01"></label>
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="bank">Bank</button>
+      <button type="button" class="tab" data-tab="playlist">Playlist</button>
+    </div>
+    <div id="bankControls">
+      <select id="banks"></select>
+    </div>
+    <div id="playlistControls" style="display:none">
+      <select id="playlists" class="pl-select"></select>
+      <div class="pl-transport">
+        <button type="button" class="pl-play" data-plcmd="playlistPlay">▶ Play</button>
+        <button type="button" data-plcmd="playlistStop">■ Stop</button>
+        <button type="button" data-plcmd="playlistSkip">▶▶ Skip</button>
+        <button type="button" data-plcmd="playlistShuffle">⇄ Shuffle</button>
+      </div>
+    </div>
   </div>
   <main class="grid" id="tracks"></main>
+  <div id="playlistTracks" style="display:none"></div>
   <script>
     let ws, state
     let pendingRandomScroll = false
@@ -53,10 +86,25 @@
     const tracks = document.getElementById('tracks')
     const status = document.getElementById('status')
     const topBar = document.querySelector('.top')
+    const bankControls = document.getElementById('bankControls')
+    const playlistControls = document.getElementById('playlistControls')
+    const playlists = document.getElementById('playlists')
+    const playlistTracks = document.getElementById('playlistTracks')
+    const playBtn = document.querySelector('[data-plcmd="playlistPlay"]')
+    const stopBtn = document.querySelector('[data-plcmd="playlistStop"]')
+    const skipBtn = document.querySelector('[data-plcmd="playlistSkip"]')
+    const shuffleBtn = document.querySelector('[data-plcmd="playlistShuffle"]')
     const send = (command) => {
       if (ws?.readyState !== 1) return
       if (command.type === 'random') pendingRandomScroll = true
       ws.send(JSON.stringify({ type: 'command', command }))
+    }
+    function setTab(tab) {
+      document.querySelectorAll('.tab').forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab))
+      bankControls.style.display = tab === 'bank' ? '' : 'none'
+      tracks.style.display = tab === 'bank' ? '' : 'none'
+      playlistControls.style.display = tab === 'playlist' ? '' : 'none'
+      playlistTracks.style.display = tab === 'playlist' ? '' : 'none'
     }
     function esc(value) { const element = document.createElement('div'); element.textContent = String(value); return element.innerHTML }
     function attr(value) { return esc(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;') }
@@ -67,6 +115,28 @@
           `<span class="player-first">${esc(track.playerFirstName || '')}</span>`
       }
       return `<span class="track-title">${esc(track.title || 'Untitled')}</span><span class="artist">${esc(track.artist || '')}</span>`
+    }
+    function renderPlaylists() {
+      const list = state.playlists || []
+      playlists.innerHTML = list.map((p) => `<option value="${attr(p.id)}">${esc(p.name)}</option>`).join('')
+      playlists.value = state.selectedPlaylistId
+      const playlist = list.find((p) => p.id === state.selectedPlaylistId)
+      const isPlayingThis = !!playlist && state.playingPlaylistId === playlist.id
+      const canStop = isPlayingThis && !!state.playingTrackId
+      const canSkip = isPlayingThis && state.playlistIndex + 1 < playlist.tracks.length
+      playBtn.disabled = !playlist || playlist.tracks.length === 0
+      stopBtn.disabled = !canStop
+      skipBtn.disabled = !canSkip
+      shuffleBtn.disabled = !playlist || playlist.tracks.length < 2
+      playlistTracks.innerHTML = playlist?.tracks.map((track, i) => {
+        const isCurrent = isPlayingThis && i === state.playlistIndex && !!state.playingTrackId
+        return `<div class="pl-row ${isCurrent ? 'current' : ''}">` +
+          `<span class="pl-row-index">${i + 1}</span>` +
+          `<div style="flex:1;min-width:0">` +
+          `<div class="pl-row-title">${esc(track.title || 'Untitled')}</div>` +
+          (track.artist ? `<div class="pl-row-artist">${esc(track.artist)}</div>` : '') +
+          `</div></div>`
+      }).join('') || '<div class="pl-empty">No tracks in this playlist</div>'
     }
     function render() {
       if (!state) return
@@ -85,6 +155,7 @@
           if (!fullyVisible) playing.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
       }
+      renderPlaylists()
     }
     function connect() {
       ws = new WebSocket(`ws://${location.host}/?token=${encodeURIComponent(token)}`)
@@ -93,12 +164,17 @@
       ws.onmessage = (event) => { const message = JSON.parse(event.data); if (message.type === 'state') { state = message.state; render() } }
     }
     connect()
+    setTab('bank')
     document.addEventListener('click', (event) => {
       const button = event.target.closest('button')
-      if (button?.dataset.track) send({ type: 'play', trackId: button.dataset.track })
-      else if (button?.dataset.cmd) send({ type: button.dataset.cmd })
+      if (!button) return
+      if (button.dataset.track) send({ type: 'play', trackId: button.dataset.track })
+      else if (button.dataset.cmd) send({ type: button.dataset.cmd })
+      else if (button.dataset.plcmd) send({ type: button.dataset.plcmd })
+      else if (button.dataset.tab) setTab(button.dataset.tab)
     })
     banks.onchange = () => send({ type: 'selectBank', bank: banks.value })
+    playlists.onchange = () => send({ type: 'selectPlaylist', playlist: playlists.value })
     volume.oninput = () => send({ type: 'volume', value: Number(volume.value) })
   </script>
 </body>

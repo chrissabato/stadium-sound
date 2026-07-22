@@ -17,12 +17,29 @@ test('OSC command parsing rejects invalid and out-of-range commands', () => {
   assert.equal(parseOsc(Buffer.from('/not-padded')), null)
 })
 
+test('OSC command parsing covers playlist addresses', () => {
+  assert.deepEqual(oscCommand('/stadium-sound/playlist/select', ['warmups']), { type: 'selectPlaylist', playlist: 'warmups' })
+  assert.deepEqual(oscCommand('/stadium-sound/playlist/select', [2]), { type: 'selectPlaylist', playlist: 2 })
+  assert.equal(oscCommand('/stadium-sound/playlist/select', ['']), null)
+  assert.deepEqual(oscCommand('/stadium-sound/playlist/play', []), { type: 'playlistPlay' })
+  assert.deepEqual(oscCommand('/stadium-sound/playlist/stop', []), { type: 'playlistStop' })
+  assert.deepEqual(oscCommand('/stadium-sound/playlist/skip', []), { type: 'playlistSkip' })
+  assert.deepEqual(oscCommand('/stadium-sound/playlist/shuffle', []), { type: 'playlistShuffle' })
+})
+
 test('runtime command validation covers every supported shape', () => {
   assert.equal(isControlCommand({ type: 'stop' }), true)
   assert.equal(isControlCommand({ type: 'play', trackId: 'abc' }), true)
   assert.equal(isControlCommand({ type: 'selectBank', bank: 1 }), true)
   assert.equal(isControlCommand({ type: 'volume', value: Number.NaN }), false)
   assert.equal(isControlCommand(undefined), false)
+  assert.equal(isControlCommand({ type: 'selectPlaylist', playlist: 'warmups' }), true)
+  assert.equal(isControlCommand({ type: 'selectPlaylist', playlist: 0 }), false)
+  assert.equal(isControlCommand({ type: 'selectPlaylist', playlist: '' }), false)
+  assert.equal(isControlCommand({ type: 'playlistPlay' }), true)
+  assert.equal(isControlCommand({ type: 'playlistStop' }), true)
+  assert.equal(isControlCommand({ type: 'playlistSkip' }), true)
+  assert.equal(isControlCommand({ type: 'playlistShuffle' }), true)
 })
 
 test('remote authentication requires both token and same-host WebSocket origin', () => {

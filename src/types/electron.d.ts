@@ -33,6 +33,8 @@ export type NetworkCommand =
   | { type: 'selectBank'; bank: string | number }
   | { type: 'stop' | 'fade' | 'random' }
   | { type: 'volume'; value: number }
+  | { type: 'selectPlaylist'; playlist: string | number }
+  | { type: 'playlistPlay' | 'playlistStop' | 'playlistSkip' | 'playlistShuffle' }
 
 export interface EventSetOpenResult {
   config: AppConfig
