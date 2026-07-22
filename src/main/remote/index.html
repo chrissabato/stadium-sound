@@ -13,18 +13,25 @@
     h1 { font-size: 20px; margin: 0 }
     .status { font-size: 12px; color: #94a3b8 }
     .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 12px 0 }
-    button, select { touch-action: manipulation; border: 1px solid #334155; border-radius: 12px; background: #172033; color: #fff; min-height: 52px; font-size: 16px; font-weight: 650 }
-    .stop { background: #991b1b }
-    .fade { background: #9a3412 }
-    .random { background: #1d4ed8 }
+    button, select { touch-action: manipulation; border: 1px solid #334155; border-radius: 4px; background: #1e293b; color: #e2e8f0; min-height: 52px; font-size: 16px; font-weight: 650 }
+    .stop { background: #dc2626; border-color: #dc2626; color: #fff }
     select { width: 100%; padding: 0 12px }
     .volume { display: flex; gap: 10px; align-items: center; color: #cbd5e1; font-size: 13px }
     .volume input { flex: 1; height: 36px }
     .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(145px,1fr)); gap: 10px; padding: 10px 0 }
-    .track { position: relative; min-height: 92px; padding: 12px; overflow: hidden }
-    .track.playing { background: #166534; border-color: #4ade80 }
+    .track { position: relative; min-height: 92px; padding: 12px; overflow: hidden; display: flex; flex-direction: column; gap: 2px; text-align: left }
+    .track.playing { background: #15803d; border-color: #16a34a; box-shadow: 0 0 12px rgba(21,128,61,0.5) }
     .bar { position: absolute; top: 0; left: 0; right: 0; height: 5px }
-    .artist { display: block; color: #94a3b8; font-size: 12px; margin-top: 5px }
+    .track-title { font-size: 13px; font-weight: 600; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .track.playing .track-title { color: #fff }
+    .artist { display: block; color: #94a3b8; font-size: 12px }
+    .track.playing .artist { color: #86efac }
+    .player-num { font-size: 22px; font-weight: 800; line-height: 1; color: #f1f5f9 }
+    .track.playing .player-num { color: #fff }
+    .player-last { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .track.playing .player-last { color: #fff }
+    .player-first { font-size: 11px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .track.playing .player-first { color: #86efac }
     .empty { text-align: center; color: #64748b; padding: 60px 0 }
     @media(min-width:800px) { .grid { grid-template-columns: repeat(5,1fr) } }
   </style>
@@ -39,21 +46,45 @@
   <main class="grid" id="tracks"></main>
   <script>
     let ws, state
+    let pendingRandomScroll = false
     const token = new URLSearchParams(location.search).get('token') || ''
     const banks = document.getElementById('banks')
     const volume = document.getElementById('volume')
     const tracks = document.getElementById('tracks')
     const status = document.getElementById('status')
-    const send = (command) => ws?.readyState === 1 && ws.send(JSON.stringify({ type: 'command', command }))
+    const topBar = document.querySelector('.top')
+    const send = (command) => {
+      if (ws?.readyState !== 1) return
+      if (command.type === 'random') pendingRandomScroll = true
+      ws.send(JSON.stringify({ type: 'command', command }))
+    }
     function esc(value) { const element = document.createElement('div'); element.textContent = String(value); return element.innerHTML }
     function attr(value) { return esc(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;') }
+    function trackBody(track) {
+      if (track.playerNumber || track.playerFirstName || track.playerLastName) {
+        return (track.playerNumber ? `<span class="player-num">#${esc(track.playerNumber)}</span>` : '') +
+          `<span class="player-last">${esc(track.playerLastName || '')}</span>` +
+          `<span class="player-first">${esc(track.playerFirstName || '')}</span>`
+      }
+      return `<span class="track-title">${esc(track.title || 'Untitled')}</span><span class="artist">${esc(track.artist || '')}</span>`
+    }
     function render() {
       if (!state) return
       const bank = state.banks.find((candidate) => candidate.id === state.selectedBankId)
       banks.innerHTML = state.banks.map((candidate) => `<option value="${attr(candidate.id)}">${esc(candidate.name)}</option>`).join('')
       banks.value = state.selectedBankId
       volume.value = state.masterVolume
-      tracks.innerHTML = bank?.tracks.map((track) => `<button class="track ${track.id === state.playingTrackId ? 'playing' : ''}" data-track="${attr(track.id)}">${track.colorLabel ? `<i class="bar" style="background:${attr(track.colorLabel)}"></i>` : ''}${esc(track.title || 'Untitled')}<span class="artist">${esc(track.artist || '')}</span></button>`).join('') || '<div class="empty">No tracks in this bank</div>'
+      tracks.innerHTML = bank?.tracks.map((track) => `<button class="track ${track.id === state.playingTrackId ? 'playing' : ''}" data-track="${attr(track.id)}">${track.colorLabel ? `<i class="bar" style="background:${attr(track.colorLabel)}"></i>` : ''}${trackBody(track)}</button>`).join('') || '<div class="empty">No tracks in this bank</div>'
+      if (pendingRandomScroll) {
+        pendingRandomScroll = false
+        const playing = state.playingTrackId && [...tracks.querySelectorAll('.track')].find((el) => el.dataset.track === state.playingTrackId)
+        if (playing) {
+          const rect = playing.getBoundingClientRect()
+          const topBound = topBar.getBoundingClientRect().bottom
+          const fullyVisible = rect.top >= topBound && rect.bottom <= window.innerHeight
+          if (!fullyVisible) playing.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
     }
     function connect() {
       ws = new WebSocket(`ws://${location.host}/?token=${encodeURIComponent(token)}`)

@@ -1007,7 +1007,18 @@ export default function App() {
       if (bank) selectBank(bank.id)
     } else if (command.type === 'play') {
       const track = config.banks.flatMap((bank) => bank.tracks).find((candidate) => candidate.id === command.trackId)
-      if (track) playTrackForce(track)
+      if (track) {
+        // Mirror playTrack()'s toggle so tapping the currently-playing track's
+        // remote button stops it instead of restarting it — but skip
+        // playTrack()'s Monitor Mode branch, which is a local audition concept
+        // that shouldn't apply to a networked command controlling the main bus.
+        if (audio.playingTrackId === track.id) {
+          breakPlaylistChain()
+          audio.stopAll()
+        } else {
+          playTrackForce(track)
+        }
+      }
     }
   }
 
@@ -1019,7 +1030,8 @@ export default function App() {
       banks: config.banks.map((bank) => ({
         id: bank.id,
         name: bank.name,
-        tracks: bank.tracks.map(({ id, title, artist, colorLabel }) => ({ id, title, artist, colorLabel }))
+        tracks: bank.tracks.map(({ id, title, artist, colorLabel, playerNumber, playerFirstName, playerLastName }) =>
+          ({ id, title, artist, colorLabel, playerNumber, playerFirstName, playerLastName }))
       })),
       selectedBankId: config.selectedBankId,
       playingTrackId: audio.playingTrackId,

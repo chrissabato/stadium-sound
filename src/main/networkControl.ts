@@ -11,7 +11,7 @@ import type { WebSocketServer, WebSocket } from 'ws'
 import { encodeOsc, isAuthenticatedRequest, isControlCommand, oscCommand, parseOsc, type ControlCommand } from './controlProtocol'
 
 export interface RemoteState {
-  banks: Array<{ id: string; name: string; tracks: Array<{ id: string; title: string; artist: string; colorLabel?: string }> }>
+  banks: Array<{ id: string; name: string; tracks: Array<{ id: string; title: string; artist: string; colorLabel?: string; playerNumber?: string; playerFirstName?: string; playerLastName?: string }> }>
   selectedBankId: string
   playingTrackId: string | null
   masterVolume: number
