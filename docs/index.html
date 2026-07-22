@@ -356,6 +356,38 @@
       line-height: 1.6;
     }
 
+    .feat-companion {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      padding: 32px;
+      background: linear-gradient(135deg, rgba(232,90,36,0.14), var(--card));
+      border-top: 1px solid var(--orange);
+    }
+    .feat-companion img {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+    .feat-companion-body { flex: 1; min-width: 0; }
+    .feat-companion-eyebrow {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 6px;
+    }
+    .feat-companion .feat-name { font-size: 17px; margin-bottom: 8px; }
+    .feat-companion .feat-desc { margin-bottom: 18px; max-width: 560px; }
+
+    .btn-companion { background: var(--orange); color: #fff; }
+    .btn-companion:hover { background: var(--orange-d); }
+
     /* ── DOWNLOAD LINKS ── */
     .dl-links { display: flex; flex-direction: column; gap: 8px; }
 
@@ -493,6 +525,7 @@
 
       .features { padding: 56px 24px; }
       .feat-grid { grid-template-columns: 1fr 1fr; }
+      .feat-companion { flex-direction: column; align-items: flex-start; }
 
       footer { padding: 24px; flex-direction: column; gap: 16px; }
     }
@@ -642,11 +675,13 @@
       <div class="feat-name">Keyboard Shortcuts</div>
       <p class="feat-desc">Assign a hotkey to any track for instant, no-mouse triggering. Pull up the full cheat sheet any time from the toolbar.</p>
     </div>
-    <div class="feat" style="grid-column: 1 / -1; border-top: 1px solid var(--border2); background: var(--card); display: flex; align-items: flex-start; gap: 28px; padding: 28px;">
-      <div style="font-size: 22px; flex-shrink: 0; margin-top: 2px;">📡</div>
-      <div>
+    <div class="feat feat-companion">
+      <img src="companion-logo.png" alt="Bitfocus Companion" width="72" height="72">
+      <div class="feat-companion-body">
+        <span class="feat-companion-eyebrow">Integration</span>
         <div class="feat-name">OSC &amp; Companion Control</div>
-        <p class="feat-desc">Trigger playback from Bitfocus Companion, a web remote on any phone or tablet, or raw OSC — enable it in Settings → Network Control. <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Companion-Module.tgz" style="color: var(--orange); font-weight: 700; text-decoration: none; border-bottom: 1px solid rgba(232,90,36,0.4);">Download the Companion module ↓</a></p>
+        <p class="feat-desc">Trigger playback from Bitfocus Companion, a web remote on any phone or tablet, or raw OSC — enable it in Settings → Network Control.</p>
+        <a href="https://github.com/chrissabato/stadium-sound/releases/latest/download/Stadium-Sound-Companion-Module.tgz" class="btn btn-companion">↓ Download Companion Module</a>
       </div>
     </div>
     <div class="feat" style="grid-column: 1 / -1; border-top: 1px solid var(--border2); background: var(--card); display: flex; align-items: flex-start; gap: 28px; padding: 28px;">
