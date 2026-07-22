@@ -67,6 +67,11 @@ jobs:
         run: |
           sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/${{ github.ref_name }}/g" docs/index.html
           sed -i -E "s/[A-Z][a-z]{2} [0-9]{1,2}, [0-9]{4}/$(date -u +'%b %-d, %Y')/g" docs/index.html
+      # docs/changelog.html is generated from src/renderer/src/changelog.ts
+      # (the in-app What's New data) — the bump commit on main already
+      # contains this release's entry.
+      - name: Regenerate website changelog page
+        run: node scripts/build-changelog-page.mjs
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
@@ -75,7 +80,7 @@ jobs:
             echo "No version change to commit"
             exit 0
           fi
-          git add docs/index.html
+          git add docs/index.html docs/changelog.html
           git commit -m "chore: update website version to ${{ github.ref_name }}"
           git push
       # A GITHUB_TOKEN push does not trigger other workflows (GitHub's

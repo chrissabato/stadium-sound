@@ -13,6 +13,8 @@ import { Settings } from './components/Settings'
 import { FeedbackModal } from './components/FeedbackModal'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { ShortcutsModal } from './components/ShortcutsModal'
+import { ChangelogModal } from './components/ChangelogModal'
+import { CHANGELOG } from './changelog'
 import { LibraryManager } from './components/LibraryManager'
 import { AddFromLibraryModal } from './components/AddFromLibraryModal'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -67,7 +69,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, lastSeenChangelogVersion } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -75,8 +77,11 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [changelogOpen, setChangelogOpen] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
   const [libraryManagerOpen, setLibraryManagerOpen] = useState(false)
   const [addFromLibraryTarget, setAddFromLibraryTarget] = useState<'bank' | 'playlist' | null>(null)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [playedIds, setPlayedIds] = useState<Set<string>>(new Set())
   const [isReordering, setIsReordering] = useState(false)
   const [missingFileIds, setMissingFileIds] = useState<Set<string>>(new Set())
@@ -91,23 +96,32 @@ export default function App() {
   const suppressPlaylistAdvanceRef = useRef(false)
   const searchRef = useRef<TrackSearchHandle>(null)
 
-  useEffect(() => {
-    return window.electronAPI.onMenuAction(async (action) => {
-      if (action === 'resetPlayed') {
-        setPlayedIds(new Set())
-      } else if (action === 'verifyTracks') {
-        const allTracks = config.banks.flatMap((b) => b.tracks)
-        const paths = allTracks.map((t) => t.filePath)
-        const results = await window.electronAPI.checkFiles(paths)
-        const missing = new Set(allTracks.filter((_, i) => !results[i]).map((t) => t.id))
-        setMissingFileIds(missing)
-      }
-    })
-  }, [config.banks])
+  const resetPlayed = () => setPlayedIds(new Set())
+
+  const verifyTracks = async () => {
+    const allTracks = config.banks.flatMap((b) => b.tracks)
+    const paths = allTracks.map((t) => t.filePath)
+    const results = await window.electronAPI.checkFiles(paths)
+    const missing = new Set(allTracks.filter((_, i) => !results[i]).map((t) => t.id))
+    setMissingFileIds(missing)
+  }
 
   useEffect(() => {
     return window.electronAPI.window.onFullscreenChange(setIsFullscreen)
   }, [])
+
+  // Pop What's New once after an update. A blank recorded version means a
+  // fresh install (or first run of the release that introduced this) — record
+  // silently so new users aren't greeted with a changelog.
+  useEffect(() => {
+    if (!loaded) return
+    window.electronAPI.app.getVersion().then((v) => {
+      setAppVersion(v)
+      if (lastSeenChangelogVersion === v) return
+      if (lastSeenChangelogVersion && CHANGELOG.some((r) => r.version === v)) setChangelogOpen(true)
+      window.electronAPI.settings.setLastSeenChangelogVersion(v)
+    }).catch(() => {})
+  }, [loaded])
 
   // Keep audio engine in sync with persisted fade settings
   useEffect(() => {
@@ -122,6 +136,49 @@ export default function App() {
   useEffect(() => {
     audio.setOutputDevices(audioDevices.outputDeviceId, audioDevices.monitorDeviceId)
   }, [audioDevices.outputDeviceId, audioDevices.monitorDeviceId])
+
+  // Settings stores '' for "System Default" (legacy configs may hold Chromium's
+  // synthetic 'default'/'communications' ids). To tell whether the monitor and
+  // main outputs are physically the same device, resolve those aliases to the
+  // concrete device backing the system default — matched via the synthetic
+  // 'default' entry's groupId, falling back to its "Default - <label>" label.
+  const [systemDefaultDeviceId, setSystemDefaultDeviceId] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    async function refresh() {
+      try {
+        const outputs = (await navigator.mediaDevices.enumerateDevices())
+          .filter((d) => d.kind === 'audiooutput')
+        const def = outputs.find((d) => d.deviceId === 'default')
+        const real = def && outputs.find((d) =>
+          d.deviceId !== 'default' && d.deviceId !== 'communications' &&
+          (d.groupId === def.groupId || (d.label !== '' && def.label.endsWith(d.label))))
+        if (!cancelled) setSystemDefaultDeviceId(real?.deviceId ?? null)
+      } catch {
+        if (!cancelled) setSystemDefaultDeviceId(null)
+      }
+    }
+    refresh()
+    navigator.mediaDevices.addEventListener('devicechange', refresh)
+    return () => {
+      cancelled = true
+      navigator.mediaDevices.removeEventListener('devicechange', refresh)
+    }
+  }, [])
+
+  const resolveDeviceId = (id: string) =>
+    id === '' || id === 'default' || id === 'communications' ? systemDefaultDeviceId : id
+  // Both selections pointing at the default alias always count as the same
+  // device, even when the default couldn't be resolved (null === null).
+  const monitorMatchesOutput =
+    resolveDeviceId(audioDevices.outputDeviceId) === resolveDeviceId(audioDevices.monitorDeviceId)
+
+  // If a device change (or settings edit) collapses monitor and main onto the
+  // same device while the monitor bus is armed, disarm it — the button is
+  // disabled in that state, so it could never be un-armed by hand.
+  useEffect(() => {
+    if (monitorMatchesOutput && audio.isMonitorMode) audio.setMonitorMode(false)
+  }, [monitorMatchesOutput, audio.isMonitorMode])
 
   // Keep audio engine in sync with the persisted master volume — without this
   // the engine plays at full volume after a restart until the slider is moved.
@@ -275,6 +332,31 @@ export default function App() {
   // bus defaults to 'main' so playlist call sites (which never pass it) are
   // always unaffected by whether Monitor mode is currently armed.
   function playTrackForce(track: Track, bus: AudioBus = 'main') {
+    // Re-check this track's file on every press — the same check Verify Tracks
+    // runs — without delaying the play attempt. A vanished file flips the cell
+    // to the missing styling right away instead of failing silently; a
+    // restored one sheds a stale missing mark.
+    window.electronAPI.checkFiles([track.filePath]).then(([exists]) => {
+      if (!exists) {
+        setMissingFileIds((prev) => prev.has(track.id) ? prev : new Set(prev).add(track.id))
+        // A track whose file is gone never actually played, and the played
+        // tint wins over the missing styling in TrackCell — undo the
+        // optimistic played mark below so the missing state is visible.
+        setPlayedIds((prev) => {
+          if (!prev.has(track.id)) return prev
+          const next = new Set(prev)
+          next.delete(track.id)
+          return next
+        })
+      } else {
+        setMissingFileIds((prev) => {
+          if (!prev.has(track.id)) return prev
+          const next = new Set(prev)
+          next.delete(track.id)
+          return next
+        })
+      }
+    }).catch(() => {})
     // Every track streams from disk instantly when it has no decoded buffer.
     // Only short clips get a background decode kicked off here, so their
     // *next* play uses the sample-accurate buffer path — decoding full songs
@@ -837,6 +919,10 @@ export default function App() {
       if (e.key === 'Escape') { e.preventDefault(); setShortcutsOpen(false) }
       return
     }
+    if (changelogOpen) {
+      if (e.key === 'Escape') { e.preventDefault(); setChangelogOpen(false) }
+      return
+    }
     if (e.key === '?') {
       e.preventDefault()
       setShortcutsOpen(true)
@@ -860,7 +946,7 @@ export default function App() {
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
       e.preventDefault()
-      audio.setMonitorMode(!audio.isMonitorMode)
+      if (!monitorMatchesOutput) audio.setMonitorMode(!audio.isMonitorMode)
       return
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
@@ -964,6 +1050,7 @@ export default function App() {
         currentFilePath={currentFilePath}
         masterVolume={config.masterVolume}
         isMonitorMode={audio.isMonitorMode}
+        monitorDisabled={monitorMatchesOutput}
         showPlaylistPanel={showPlaylistPanel}
         isFullscreen={isFullscreen}
         banks={config.banks}
@@ -979,6 +1066,8 @@ export default function App() {
           return next
         })}
         onOpenSettings={() => setSettingsOpen(true)}
+        onResetPlayed={resetPlayed}
+        onVerifyTracks={verifyTracks}
         onOpenShortcuts={() => setShortcutsOpen(true)}
         onOpenFeedback={() => setFeedbackOpen(true)}
         onOpenLibraries={() => setLibraryManagerOpen(true)}
@@ -1050,32 +1139,76 @@ export default function App() {
                 >
                   {isReordering ? '✓ Done Reordering' : '⇅ Reorder'}
                 </button>
-                <button
-                  onClick={addTracks}
-                  style={{
-                    padding: '5px 12px',
-                    background: '#1e293b',
-                    border: '1px solid #334155',
-                    borderRadius: 4,
-                    color: '#94a3b8',
-                    fontSize: 12
-                  }}
-                >
-                  + Add Tracks
-                </button>
-                <button
-                  onClick={() => setAddFromLibraryTarget('bank')}
-                  style={{
-                    padding: '5px 12px',
-                    background: '#1e293b',
-                    border: '1px solid #334155',
-                    borderRadius: 4,
-                    color: '#94a3b8',
-                    fontSize: 12
-                  }}
-                >
-                  🗀 From Library
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setAddMenuOpen((v) => !v)}
+                    title="Add tracks"
+                    style={{
+                      padding: '5px 12px',
+                      background: addMenuOpen ? '#1e3a5f' : '#1e293b',
+                      border: `1px solid ${addMenuOpen ? '#3b82f6' : '#334155'}`,
+                      borderRadius: 4,
+                      color: addMenuOpen ? '#93c5fd' : '#94a3b8',
+                      fontSize: 12,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    +
+                  </button>
+                  {addMenuOpen && (
+                    <>
+                      <div
+                        onClick={() => setAddMenuOpen(false)}
+                        style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        right: 0,
+                        marginTop: 4,
+                        zIndex: 11,
+                        background: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: 4,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minWidth: 160,
+                        overflow: 'hidden'
+                      }}>
+                        <button
+                          onClick={() => { addTracks(); setAddMenuOpen(false) }}
+                          style={{
+                            padding: '8px 12px',
+                            background: 'transparent',
+                            border: 'none',
+                            textAlign: 'left',
+                            color: '#e2e8f0',
+                            fontSize: 12,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🗋 Select File
+                        </button>
+                        <button
+                          onClick={() => { setAddFromLibraryTarget('bank'); setAddMenuOpen(false) }}
+                          style={{
+                            padding: '8px 12px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderTop: '1px solid #334155',
+                            textAlign: 'left',
+                            color: '#e2e8f0',
+                            fontSize: 12,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🗀 From Library
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1229,6 +1362,9 @@ export default function App() {
         networkControl={networkControl}
         networkStatus={networkStatus}
         onNetworkControlChange={setNetworkControl}
+        uiZoom={uiZoom}
+        onUiZoomChange={setUiZoom}
+        onShowChangelog={() => setChangelogOpen(true)}
         onClose={() => setSettingsOpen(false)}
       />
 
@@ -1241,6 +1377,12 @@ export default function App() {
         open={shortcutsOpen}
         banks={config.banks}
         onClose={() => setShortcutsOpen(false)}
+      />
+
+      <ChangelogModal
+        open={changelogOpen}
+        currentVersion={appVersion}
+        onClose={() => setChangelogOpen(false)}
       />
 
       <LibraryManager

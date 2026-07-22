@@ -7,10 +7,15 @@ interface Props {
   duration: number
   onInPointChange: (t: number) => void
   onOutPointChange: (t: number) => void
+  // Polled every frame; return the current preview position in seconds, or
+  // null when nothing is playing. A callback (not a prop value) so the
+  // playhead can animate without re-rendering or redrawing the waveform.
+  getPlayheadTime?: () => number | null
 }
 
-export function WaveformCanvas({ audioBuffer, inPoint, outPoint, duration, onInPointChange, onOutPointChange }: Props) {
+export function WaveformCanvas({ audioBuffer, inPoint, outPoint, duration, onInPointChange, onOutPointChange, getPlayheadTime }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const playheadRef = useRef<HTMLDivElement>(null)
   const dragging = useRef<'in' | 'out' | null>(null)
 
   const drawWaveform = useCallback(() => {
@@ -74,6 +79,26 @@ export function WaveformCanvas({ audioBuffer, inPoint, outPoint, duration, onInP
 
   useEffect(() => { drawWaveform() }, [drawWaveform])
 
+  useEffect(() => {
+    if (!getPlayheadTime) return
+    let raf = 0
+    const step = () => {
+      const el = playheadRef.current
+      if (el) {
+        const t = getPlayheadTime()
+        if (t === null || duration <= 0) {
+          el.style.display = 'none'
+        } else {
+          el.style.display = 'block'
+          el.style.left = `${Math.max(0, Math.min(t / duration, 1)) * 100}%`
+        }
+      }
+      raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [getPlayheadTime, duration])
+
   function posToTime(clientX: number): number {
     const canvas = canvasRef.current
     if (!canvas) return 0
@@ -112,21 +137,38 @@ export function WaveformCanvas({ audioBuffer, inPoint, outPoint, duration, onInP
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={800}
-      height={100}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
-      style={{
-        width: '100%',
-        height: 100,
-        borderRadius: 4,
-        cursor: 'ew-resize',
-        display: 'block'
-      }}
-    />
+    <div style={{ position: 'relative' }}>
+      <canvas
+        ref={canvasRef}
+        width={800}
+        height={100}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+        style={{
+          width: '100%',
+          height: 100,
+          borderRadius: 4,
+          cursor: 'ew-resize',
+          display: 'block'
+        }}
+      />
+      <div
+        ref={playheadRef}
+        data-testid="waveform-playhead"
+        style={{
+          display: 'none',
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          width: 2,
+          marginLeft: -1,
+          background: '#f97316',
+          boxShadow: '0 0 4px rgba(249, 115, 22, 0.8)',
+          pointerEvents: 'none'
+        }}
+      />
+    </div>
   )
 }

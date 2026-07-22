@@ -15,48 +15,36 @@ function trackKey(libraryId: string, track: LibraryTrack): string {
 
 export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClose }: Props) {
   const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  // Rows added this session — marked so the user can see what they've already
+  // grabbed while the modal stays open for more searches.
+  const [added, setAdded] = useState<Set<string>>(new Set())
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase()
+    // Libraries can hold hundreds of tracks — an unfiltered dump is just
+    // noise, so show nothing until the user starts typing.
+    if (!q) return []
     return libraries
       .map((lib) => ({
         library: lib,
-        tracks: !q
-          ? lib.tracks
-          : lib.tracks.filter(
-              (t) => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
-            )
+        tracks: lib.tracks.filter(
+          (t) => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
+        )
       }))
       .filter((g) => g.tracks.length > 0)
   }, [libraries, query])
 
   if (!open) return null
 
-  function toggle(key: string) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
-
   function handleClose() {
     setQuery('')
-    setSelected(new Set())
+    setAdded(new Set())
     onClose()
   }
 
-  function handleAdd() {
-    const tracks: LibraryTrack[] = []
-    for (const lib of libraries) {
-      for (const t of lib.tracks) {
-        if (selected.has(trackKey(lib.id, t))) tracks.push(t)
-      }
-    }
-    if (tracks.length > 0) onAdd(tracks)
-    handleClose()
+  function addTrack(key: string, track: LibraryTrack) {
+    onAdd([track])
+    setAdded((prev) => new Set(prev).add(key))
   }
 
   return (
@@ -114,6 +102,8 @@ export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClo
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', minHeight: 100 }}>
           {libraries.length === 0 ? (
             <div style={{ fontSize: 12, color: '#475569' }}>No libraries added yet.</div>
+          ) : query.trim() === '' ? (
+            <div style={{ fontSize: 12, color: '#475569' }}>Type to search your libraries.</div>
           ) : groups.length === 0 ? (
             <div style={{ fontSize: 12, color: '#475569' }}>No matching tracks.</div>
           ) : (
@@ -124,21 +114,22 @@ export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClo
                 </div>
                 {tracks.map((t) => {
                   const key = trackKey(library.id, t)
-                  const isSelected = selected.has(key)
+                  const isAdded = added.has(key)
                   return (
-                    <label
+                    <div
                       key={key}
+                      onClick={() => addTrack(key, t)}
+                      title={`Add to ${targetLabel}`}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
                         padding: '6px 8px',
                         borderRadius: 4,
-                        background: isSelected ? '#1e3a5f' : 'transparent',
+                        background: isAdded ? '#14332a' : 'transparent',
                         cursor: 'pointer'
                       }}
                     >
-                      <input type="checkbox" checked={isSelected} onChange={() => toggle(key)} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {t.title}
@@ -149,7 +140,10 @@ export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClo
                           </div>
                         )}
                       </div>
-                    </label>
+                      {isAdded && (
+                        <span style={{ fontSize: 11, color: '#4ade80', flexShrink: 0 }}>✓ Added</span>
+                      )}
+                    </div>
                   )
                 })}
               </div>
@@ -157,37 +151,25 @@ export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClo
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 12, color: '#64748b' }}>
+            Click a track to add it to {targetLabel}
+          </span>
           <button
             onClick={handleClose}
             style={{
-              padding: '7px 16px',
-              background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: 4,
-              color: '#94a3b8',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: 'pointer'
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAdd}
-            disabled={selected.size === 0}
-            style={{
               padding: '7px 20px',
-              background: selected.size === 0 ? '#1e293b' : '#3b82f6',
+              background: '#3b82f6',
               border: 'none',
               borderRadius: 4,
-              color: selected.size === 0 ? '#475569' : '#fff',
+              color: '#fff',
               fontWeight: 600,
               fontSize: 13,
-              cursor: selected.size === 0 ? 'default' : 'pointer'
+              cursor: 'pointer',
+              flexShrink: 0
             }}
           >
-            Add {selected.size > 0 ? selected.size : ''} to {targetLabel}
+            Done
           </button>
         </div>
       </div>

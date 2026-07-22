@@ -28,6 +28,9 @@ export interface ConfigState {
   networkControl: NetworkControlPrefs
   networkStatus: NetworkControlStatus | null
   setNetworkControl: (prefs: NetworkControlPrefs) => Promise<void>
+  uiZoom: number
+  setUiZoom: (zoom: number) => void
+  lastSeenChangelogVersion: string
 }
 
 function fileLabel(filePath: string | null): string {
@@ -50,6 +53,8 @@ export function useConfig(): ConfigState {
   const [showMeters, setShowMetersState] = useState(true)
   const [networkControl, setNetworkControlState] = useState<NetworkControlPrefs>({ enabled: false, oscPort: 9000, remotePort: 9001 })
   const [networkStatus, setNetworkStatus] = useState<NetworkControlStatus | null>(null)
+  const [uiZoom, setUiZoomState] = useState(1)
+  const [lastSeenChangelogVersion, setLastSeenChangelogVersion] = useState('')
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -79,6 +84,8 @@ export function useConfig(): ConfigState {
       setShowMetersState(state.showMeters)
       setNetworkControlState(state.networkControl)
       window.electronAPI.network.getStatus().then(setNetworkStatus).catch(() => {})
+      setUiZoomState(state.uiZoom)
+      setLastSeenChangelogVersion(state.lastSeenChangelogVersion)
       setLoaded(true)
     })
     return removeStatus
@@ -107,6 +114,11 @@ export function useConfig(): ConfigState {
   const setNetworkControl = useCallback(async (prefs: NetworkControlPrefs) => {
     setNetworkControlState(prefs)
     setNetworkStatus(await window.electronAPI.settings.setNetworkControl(prefs))
+  }, [])
+
+  const setUiZoom = useCallback((zoom: number) => {
+    setUiZoomState(zoom)
+    window.electronAPI.settings.setUiZoom(zoom)
   }, [])
 
   const scheduleAutoSave = useCallback((updated: AppConfig) => {
@@ -214,5 +226,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, lastSeenChangelogVersion }
 }

@@ -22,8 +22,13 @@ interface Props {
   networkControl: NetworkControlPrefs
   networkStatus: NetworkControlStatus | null
   onNetworkControlChange: (prefs: NetworkControlPrefs) => Promise<void>
+  uiZoom: number
+  onUiZoomChange: (zoom: number) => void
+  onShowChangelog: () => void
   onClose: () => void
 }
+
+const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2]
 
 function FadeRow({
   label,
@@ -82,7 +87,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, networkControl, networkStatus, onNetworkControlChange, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, onShowChangelog, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
@@ -255,6 +260,38 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Display Zoom</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Scale the whole interface up or down — useful on high-resolution screens
+              </div>
+            </div>
+            <select
+              value={String(uiZoom)}
+              onChange={(e) => onUiZoomChange(parseFloat(e.target.value))}
+              style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: 4,
+                color: '#f1f5f9',
+                padding: '6px 10px',
+                fontSize: 13,
+                minWidth: 90,
+                flexShrink: 0
+              }}
+            >
+              {!ZOOM_LEVELS.includes(uiZoom) && (
+                <option value={String(uiZoom)}>{Math.round(uiZoom * 100)}%</option>
+              )}
+              {ZOOM_LEVELS.map((z) => (
+                <option key={z} value={String(z)}>
+                  {Math.round(z * 100)}%
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Track Info Tooltips</div>
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
                 Show a popup with the full title/artist on hover when a soundboard button's text is cut off
@@ -361,6 +398,21 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
                 {version ? `Version ${version}` : '—'}
               </div>
+              <button
+                onClick={onShowChangelog}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  marginTop: 4,
+                  color: '#93c5fd',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                What's New
+              </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
               {updateStatus.state === 'downloaded' ? (

@@ -9,6 +9,8 @@ export interface EventSetState {
   showPlayedIndicator: boolean
   showMeters: boolean
   networkControl: NetworkControlPrefs
+  uiZoom: number
+  lastSeenChangelogVersion: string
 }
 
 export interface NetworkControlPrefs {
@@ -84,6 +86,8 @@ export interface ElectronAPI {
     setShowPlayedIndicator: (enabled: boolean) => Promise<void>
     setShowMeters: (enabled: boolean) => Promise<void>
     setNetworkControl: (prefs: NetworkControlPrefs) => Promise<NetworkControlStatus>
+    setUiZoom: (zoom: number) => Promise<void>
+    setLastSeenChangelogVersion: (version: string) => Promise<void>
   }
   network: {
     getStatus: () => Promise<NetworkControlStatus>

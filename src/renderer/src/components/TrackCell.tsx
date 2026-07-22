@@ -301,13 +301,13 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
           {hasCustomVolume && (
             <span
               title={`Custom volume: ${Math.round(track.volume! * 100)}%`}
-              style={{ fontSize: 10, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#475569', fontVariantNumeric: 'tabular-nums' }}
+              style={{ fontSize: 11, fontWeight: 600, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#94a3b8', fontVariantNumeric: 'tabular-nums' }}
             >
               {Math.round(track.volume! * 100)}%
             </span>
           )}
           {hasCustomPoints && (
-            <span style={{ fontSize: 10, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#475569' }}>✂</span>
+            <span style={{ fontSize: 11, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#94a3b8' }}>✂</span>
           )}
         </div>
       </div>
