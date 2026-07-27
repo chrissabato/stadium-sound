@@ -15,11 +15,12 @@ import { PlaylistPanel } from './components/PlaylistPanel'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { ChangelogModal } from './components/ChangelogModal'
 import { LoudnessReportModal } from './components/LoudnessReportModal'
+import { PlayCountReportModal } from './components/PlayCountReportModal'
 import { CHANGELOG } from './changelog'
 import { LibraryManager } from './components/LibraryManager'
 import { AddFromLibraryModal } from './components/AddFromLibraryModal'
 import { ConfirmDialog } from './components/ConfirmDialog'
-import type { Bank, Track, Playlist, PlaylistTrack, LibraryTrack } from './types'
+import type { AppConfig, Bank, Track, Playlist, PlaylistTrack, LibraryTrack } from './types'
 import { normalizeHotkeyEvent } from './types'
 import type { NetworkCommand } from '../../types/electron'
 
@@ -79,6 +80,7 @@ export default function App() {
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [loudnessReportOpen, setLoudnessReportOpen] = useState(false)
+  const [playCountReportOpen, setPlayCountReportOpen] = useState(false)
   const [changelogOpen, setChangelogOpen] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [libraryManagerOpen, setLibraryManagerOpen] = useState(false)
@@ -123,6 +125,66 @@ export default function App() {
           if (volume === undefined) return t
           return { ...t, volume: volume !== 1 ? volume : undefined }
         })
+      }))
+    }))
+  }
+
+  // Counts main-bus plays only — a monitor audition is a private cue and
+  // must never inflate the total used for E+ audio-log submissions.
+  //
+  // A track added to a playlist from a bank button keeps that bank track's
+  // id (see addTrackToPlaylist), but a track added to a playlist straight
+  // from a library search gets its own fresh id with no bank counterpart —
+  // so playCount can't live solely on the bank copy. Every object sharing
+  // this id (in any bank, in any playlist) is kept mirrored to the same
+  // count instead, so however a track gets triggered, one running total.
+  function findPlayCount(c: AppConfig, trackId: string): number {
+    return c.banks.flatMap((b) => b.tracks).find((t) => t.id === trackId)?.playCount
+      ?? (c.playlists ?? []).flatMap((p) => p.tracks).find((t) => t.id === trackId)?.playCount
+      ?? 0
+  }
+
+  function applyPlayCount(c: AppConfig, trackId: string, value: number | undefined): AppConfig {
+    return {
+      ...c,
+      banks: c.banks.map((bank) => ({
+        ...bank,
+        tracks: bank.tracks.map((t) => t.id === trackId ? { ...t, playCount: value } : t)
+      })),
+      playlists: (c.playlists ?? []).map((p) => ({
+        ...p,
+        tracks: p.tracks.map((t) => t.id === trackId ? { ...t, playCount: value } : t)
+      }))
+    }
+  }
+
+  function incrementPlayCount(trackId: string) {
+    updateConfig((c) => applyPlayCount(c, trackId, findPlayCount(c, trackId) + 1))
+  }
+
+  // Undoes the optimistic increment above once the async file-existence
+  // check (see playTrackForce) confirms the track never actually played.
+  function decrementPlayCount(trackId: string) {
+    updateConfig((c) => {
+      const current = findPlayCount(c, trackId)
+      if (!current) return c
+      const next = current - 1
+      return applyPlayCount(c, trackId, next > 0 ? next : undefined)
+    })
+  }
+
+  // Bulk reset from the Play Count Report — the only way playCount ever
+  // goes back to zero; nothing else in the app auto-clears it.
+  const resetAllPlayCounts = () => {
+    updateConfig((c) => ({
+      ...c,
+      banks: c.banks.map((bank) => ({
+        ...bank,
+        tracks: bank.tracks.map((t) => t.playCount ? { ...t, playCount: undefined } : t)
+      })),
+      playlists: (c.playlists ?? []).map((p) => ({
+        ...p,
+        tracks: p.tracks.map((t) => t.playCount ? { ...t, playCount: undefined } : t)
       }))
     }))
   }
@@ -375,6 +437,7 @@ export default function App() {
           next.delete(track.id)
           return next
         })
+        decrementPlayCount(track.id)
       } else {
         setMissingFileIds((prev) => {
           if (!prev.has(track.id)) return prev
@@ -407,6 +470,7 @@ export default function App() {
     if (bus === 'main') {
       setNowPlayingTrack(track)
       setPlayedIds((prev) => new Set([...prev, track.id]))
+      incrementPlayCount(track.id)
     }
   }
 
@@ -1137,6 +1201,7 @@ export default function App() {
         onResetPlayed={resetPlayed}
         onVerifyTracks={verifyTracks}
         onOpenLoudnessReport={() => setLoudnessReportOpen(true)}
+        onOpenPlayCountReport={() => setPlayCountReportOpen(true)}
         onOpenShortcuts={() => setShortcutsOpen(true)}
         onOpenFeedback={() => setFeedbackOpen(true)}
         onOpenLibraries={() => setLibraryManagerOpen(true)}
@@ -1490,6 +1555,14 @@ export default function App() {
         onTargetChange={setNormalizeTargetLufs}
         onNormalizeTracks={applyNormalizeGains}
         onClose={() => setLoudnessReportOpen(false)}
+      />
+
+      <PlayCountReportModal
+        open={playCountReportOpen}
+        banks={config.banks}
+        playlists={config.playlists ?? []}
+        onResetAll={resetAllPlayCounts}
+        onClose={() => setPlayCountReportOpen(false)}
       />
 
       <LibraryManager

@@ -18,6 +18,7 @@ export interface Track {
   hotkey?: string
   colorLabel?: string
   volume?: number   // per-track level 0–2 (0–200%), multiplied with master volume; undefined = 1 (full)
+  playCount?: number   // main-bus plays this event set has recorded; undefined = never played
 }
 
 export const AUDIO_EXTENSIONS = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac']

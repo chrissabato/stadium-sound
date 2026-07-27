@@ -108,6 +108,10 @@ const api: ElectronAPI = {
       callback(action, data)
     ipcRenderer.on('menu:action', handler)
     return () => ipcRenderer.removeListener('menu:action', handler)
+  },
+  report: {
+    exportCsv: (csv: string, defaultFileName: string) =>
+      ipcRenderer.invoke('report:exportCsv', csv, defaultFileName)
   }
 }
 

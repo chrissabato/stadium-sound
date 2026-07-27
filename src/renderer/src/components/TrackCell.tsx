@@ -306,6 +306,14 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
               {Math.round(track.volume! * 100)}%
             </span>
           )}
+          {!!track.playCount && (
+            <span
+              title={`Played ${track.playCount} time${track.playCount === 1 ? '' : 's'} this event set`}
+              style={{ fontSize: 11, fontWeight: 600, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#94a3b8', fontVariantNumeric: 'tabular-nums' }}
+            >
+              ▶{track.playCount}
+            </span>
+          )}
           {hasCustomPoints && (
             <span style={{ fontSize: 11, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#94a3b8' }}>✂</span>
           )}

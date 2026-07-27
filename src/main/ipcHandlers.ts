@@ -1,7 +1,7 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { readFile, access } from 'fs/promises'
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
 import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveNormalizeTargetLufs, saveLastSeenChangelogVersion } from './settingsStore'
 import { getNetworkControlStatus, startNetworkControl, stopNetworkControl, updateRemoteState } from './networkControl'
@@ -184,6 +184,17 @@ export function registerIpcHandlers(): void {
     const recentFiles = addRecentFile(filePath)
     refreshMenu(recentFiles)
     return { filePath, recentFiles }
+  })
+
+  ipcMain.handle('report:exportCsv', async (_event, csv: string, defaultFileName: string) => {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: 'Export Play Count Report',
+      filters: [{ name: 'CSV', extensions: ['csv'] }],
+      defaultPath: defaultFileName
+    })
+    if (canceled || !filePath) return false
+    writeFileSync(filePath, csv)
+    return true
   })
 
   ipcMain.handle('eventSet:openFile', (_event, filePath: string) => {

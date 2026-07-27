@@ -114,6 +114,9 @@ export interface ElectronAPI {
     toggleFullscreen: () => Promise<boolean>
     onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
   }
+  report: {
+    exportCsv: (csv: string, defaultFileName: string) => Promise<boolean>
+  }
   onMenuAction: (callback: (action: string, data?: string) => void) => () => void
 }
 
