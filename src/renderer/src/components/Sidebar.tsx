@@ -6,6 +6,7 @@ interface Props {
   banks: Bank[]
   selectedBankId: string
   monitorPlayingBankId: string | null
+  mainPlayingBankId: string | null
   isReordering: boolean
   missingFileIds: Set<string>
   onSelectBank: (id: string) => void
@@ -16,7 +17,7 @@ interface Props {
   onDropTrackOnBank: (trackId: string, bankId: string) => void
 }
 
-export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReordering, missingFileIds, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks, onDropTrackOnBank }: Props) {
+export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, mainPlayingBankId, isReordering, missingFileIds, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks, onDropTrackOnBank }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [newBankName, setNewBankName] = useState('')
@@ -188,6 +189,14 @@ export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, isReorder
                 <span style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {bank.name}
                 </span>
+                {mainPlayingBankId === bank.id && bank.id !== selectedBankId && (
+                  <span
+                    title="Playing on main bus"
+                    style={{ fontSize: 12, flexShrink: 0, filter: 'drop-shadow(0 0 4px rgba(57,255,20,0.8))' }}
+                  >
+                    ▶
+                  </span>
+                )}
                 {monitorPlayingBankId === bank.id && (
                   <span
                     title="Playing on monitor bus"

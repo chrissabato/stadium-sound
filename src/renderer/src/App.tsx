@@ -196,6 +196,12 @@ export default function App() {
     ? config.banks.find((b) => b.tracks.some((t) => t.id === audio.monitorPlayingTrackId))?.id ?? null
     : null
 
+  // Same idea for the main bus: flag the bank that owns the track currently
+  // playing on main, so it's still visible if the user has switched away.
+  const mainPlayingBankId = audio.playingTrackId
+    ? config.banks.find((b) => b.tracks.some((t) => t.id === audio.playingTrackId))?.id ?? null
+    : null
+
   function selectBank(id: string) {
     setIsReordering(false)
     updateConfig((c) => ({ ...c, selectedBankId: id }))
@@ -1121,6 +1127,7 @@ export default function App() {
           banks={config.banks}
           selectedBankId={config.selectedBankId}
           monitorPlayingBankId={monitorPlayingBankId}
+          mainPlayingBankId={mainPlayingBankId}
           isReordering={isReordering}
           missingFileIds={missingFileIds}
           onSelectBank={selectBank}
