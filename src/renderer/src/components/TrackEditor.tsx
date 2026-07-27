@@ -26,9 +26,12 @@ interface Props {
   // title of the other track in this bank currently holding the picked hotkey, if any —
   // used only to warn the user it'll be reassigned on save, doesn't block anything
   hotkeyOwner: (hotkey: string) => string | null
+  // Target loudness (LUFS) the Normalize button aims for — a user setting,
+  // not hardcoded, so it stays in sync with the Loudness Report's target.
+  normalizeTargetLufs: number
 }
 
-export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getBuffer, hotkeyOwner }: Props) {
+export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getBuffer, hotkeyOwner, normalizeTargetLufs }: Props) {
   const [filePath, setFilePath] = useState('')
   const [artist, setArtist] = useState('')
   const [title, setTitle] = useState('')
@@ -182,7 +185,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
         setNormalizeInfo('Selection is silent — level unchanged')
         return
       }
-      const gain = normalizeTrackGain(measured)
+      const gain = normalizeTrackGain(measured, normalizeTargetLufs)
       setVolume(gain)
       if (previewGainRef.current) previewGainRef.current.gain.value = gain
       setNormalizeInfo(`Measured ${Math.round(measured)} LUFS → set to ${Math.round(gain * 100)}%`)

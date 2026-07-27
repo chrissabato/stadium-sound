@@ -10,6 +10,7 @@ export interface EventSetState {
   showMeters: boolean
   networkControl: NetworkControlPrefs
   uiZoom: number
+  normalizeTargetLufs: number
   lastSeenChangelogVersion: string
 }
 
@@ -90,6 +91,7 @@ export interface ElectronAPI {
     setShowMeters: (enabled: boolean) => Promise<void>
     setNetworkControl: (prefs: NetworkControlPrefs) => Promise<NetworkControlStatus>
     setUiZoom: (zoom: number) => Promise<void>
+    setNormalizeTargetLufs: (lufs: number) => Promise<void>
     setLastSeenChangelogVersion: (version: string) => Promise<void>
   }
   network: {

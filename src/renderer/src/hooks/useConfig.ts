@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import type { AppConfig, AudioDevicePrefs, Bank, Track } from '../types'
 import { DEFAULT_CONFIG, DEFAULT_AUDIO_DEVICE_PREFS } from '../types'
 import type { NetworkControlPrefs, NetworkControlStatus } from '../../../types/electron'
+import { DEFAULT_NORMALIZE_TARGET_LUFS } from './useAudioEngine'
 
 function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -30,6 +31,8 @@ export interface ConfigState {
   setNetworkControl: (prefs: NetworkControlPrefs) => Promise<void>
   uiZoom: number
   setUiZoom: (zoom: number) => void
+  normalizeTargetLufs: number
+  setNormalizeTargetLufs: (lufs: number) => void
   lastSeenChangelogVersion: string
 }
 
@@ -54,6 +57,7 @@ export function useConfig(): ConfigState {
   const [networkControl, setNetworkControlState] = useState<NetworkControlPrefs>({ enabled: false, oscPort: 9000, remotePort: 9001 })
   const [networkStatus, setNetworkStatus] = useState<NetworkControlStatus | null>(null)
   const [uiZoom, setUiZoomState] = useState(1)
+  const [normalizeTargetLufs, setNormalizeTargetLufsState] = useState(DEFAULT_NORMALIZE_TARGET_LUFS)
   const [lastSeenChangelogVersion, setLastSeenChangelogVersion] = useState('')
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
@@ -85,6 +89,7 @@ export function useConfig(): ConfigState {
       setNetworkControlState(state.networkControl)
       window.electronAPI.network.getStatus().then(setNetworkStatus).catch(() => {})
       setUiZoomState(state.uiZoom)
+      setNormalizeTargetLufsState(state.normalizeTargetLufs)
       setLastSeenChangelogVersion(state.lastSeenChangelogVersion)
       setLoaded(true)
     })
@@ -119,6 +124,11 @@ export function useConfig(): ConfigState {
   const setUiZoom = useCallback((zoom: number) => {
     setUiZoomState(zoom)
     window.electronAPI.settings.setUiZoom(zoom)
+  }, [])
+
+  const setNormalizeTargetLufs = useCallback((lufs: number) => {
+    setNormalizeTargetLufsState(lufs)
+    window.electronAPI.settings.setNormalizeTargetLufs(lufs)
   }, [])
 
   const scheduleAutoSave = useCallback((updated: AppConfig) => {
@@ -226,5 +236,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, lastSeenChangelogVersion }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion }
 }

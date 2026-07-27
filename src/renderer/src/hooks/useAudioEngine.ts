@@ -134,9 +134,12 @@ export function createAnalyserChain(ctx: AudioContext, source: AudioNode): BusAn
   return { left, right, loudnessLeft, loudnessRight }
 }
 
-// Target for normalizeTrackGain — roughly matches streaming-service integrated
-// loudness targets, and sits comfortably under 0dBFS for typical show content.
-export const NORMALIZE_TARGET_LUFS = -16
+// Fallback target for normalizeTrackGain when the user hasn't set one —
+// roughly matches streaming-service integrated loudness targets, and sits
+// comfortably under 0dBFS for typical show content. The actual target is a
+// machine-level setting (settingsStore's normalizeTargetLufs); this is only
+// the value used before that setting has loaded and the seed for its default.
+export const DEFAULT_NORMALIZE_TARGET_LUFS = -16
 
 // Integrated (whole-selection, ungated) loudness of an already-decoded buffer,
 // in LUFS, per ITU-R BS.1770's K-weighting + mean-square formula — same math
@@ -186,7 +189,7 @@ export async function measureIntegratedLufs(
 // to the clamp ceiling.
 export function normalizeTrackGain(
   measuredLufs: number,
-  targetLufs: number = NORMALIZE_TARGET_LUFS
+  targetLufs: number = DEFAULT_NORMALIZE_TARGET_LUFS
 ): number {
   if (!Number.isFinite(measuredLufs)) return 1
   const gain = Math.pow(10, (targetLufs - measuredLufs) / 20)

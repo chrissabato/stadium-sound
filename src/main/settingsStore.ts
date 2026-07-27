@@ -25,6 +25,11 @@ interface AppSettings {
   remotePort: number
   remoteToken: string
   uiZoom: number
+  // Target integrated loudness (LUFS) for the per-track Normalize button and
+  // the Loudness Report's too-loud/too-quiet thresholds. Machine-level like
+  // the rest of this file rather than part of the .eset — it's an operator
+  // calibration ("how loud does this rig run"), not show content.
+  normalizeTargetLufs: number
   // Which release's What's New the user has already seen — '' until first
   // recorded, which doubles as "fresh install, don't pop the dialog".
   lastSeenChangelogVersion: string
@@ -61,6 +66,7 @@ export function loadSettings(): AppSettings {
         typeof parsed.uiZoom === 'number' && parsed.uiZoom >= 0.5 && parsed.uiZoom <= 3
           ? parsed.uiZoom
           : 1,
+      normalizeTargetLufs: validLufs(parsed.normalizeTargetLufs),
       lastSeenChangelogVersion:
         typeof parsed.lastSeenChangelogVersion === 'string' ? parsed.lastSeenChangelogVersion : ''
     }
@@ -82,10 +88,19 @@ export function loadSettings(): AppSettings {
       remotePort: 9001,
       remoteToken: fallbackRemoteToken,
       uiZoom: 1,
+      normalizeTargetLufs: DEFAULT_NORMALIZE_TARGET_LUFS,
       lastSeenChangelogVersion: ''
     }
     return settings
   }
+}
+
+const DEFAULT_NORMALIZE_TARGET_LUFS = -16
+
+function validLufs(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value <= 0 && value >= -40
+    ? value
+    : DEFAULT_NORMALIZE_TARGET_LUFS
 }
 
 function makeToken(): string { return randomBytes(18).toString('base64url') }
@@ -144,6 +159,11 @@ export function saveNetworkControl(networkControlEnabled: boolean, oscPort: numb
 export function saveUiZoom(uiZoom: number): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, uiZoom }, null, 2), 'utf-8')
+}
+
+export function saveNormalizeTargetLufs(normalizeTargetLufs: number): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, normalizeTargetLufs: validLufs(normalizeTargetLufs) }, null, 2), 'utf-8')
 }
 
 export function saveLastSeenChangelogVersion(lastSeenChangelogVersion: string): void {

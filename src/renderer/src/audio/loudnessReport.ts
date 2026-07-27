@@ -1,5 +1,5 @@
 import type { Bank, Track } from '../types'
-import { measureIntegratedLufs, NORMALIZE_TARGET_LUFS } from '../hooks/useAudioEngine'
+import { measureIntegratedLufs } from '../hooks/useAudioEngine'
 
 // How far (in LU) a track's integrated loudness may sit from the target
 // before it's flagged as an outlier — wide enough that normal show-content
@@ -21,6 +21,8 @@ export interface TrackLoudnessEntry {
 
 export interface LoudnessReport {
   entries: TrackLoudnessEntry[]
+  targetLufs: number
+  toleranceLu: number
   measuredCount: number
   silentCount: number
   errorCount: number
@@ -31,17 +33,28 @@ export interface LoudnessReport {
   tooQuiet: TrackLoudnessEntry[]
 }
 
+export interface SuggestedTarget {
+  targetLufs: number
+  trackCount: number
+  trackPercent: number
+}
+
 // Walks every track in every bank, measuring integrated loudness one at a
 // time. `decode` is injected (e.g. useAudioEngine's decodeTransient) rather
 // than imported, so this stays independent of any live AudioContext — the
 // same loop drives both this report and, in the future, a "normalize all
 // tracks" action, just swapping what happens with each measurement.
 // `onProgress` fires after each track so a caller can drive a progress bar.
-export async function analyzeLoudness(
+// Deliberately target-agnostic — measuring is expensive (a full decode +
+// offline render per track), classifying against a target is not, so target
+// changes (a settings edit, or the report's own suggested-target button)
+// are handled by re-running summarizeLoudness() over these same entries
+// rather than re-measuring anything.
+export async function measureLoudness(
   banks: Bank[],
   decode: (filePath: string) => Promise<AudioBuffer>,
   onProgress?: (done: number, total: number) => void
-): Promise<LoudnessReport> {
+): Promise<TrackLoudnessEntry[]> {
   const jobs: { bank: Bank; track: Track }[] = []
   for (const bank of banks) {
     for (const track of bank.tracks) jobs.push({ bank, track })
@@ -97,7 +110,7 @@ export async function analyzeLoudness(
     onProgress?.(i + 1, jobs.length)
   }
 
-  return summarize(entries)
+  return entries
 }
 
 // readAudioFile/decodeAudioData failures arrive as raw IPC/DOMException text
@@ -110,7 +123,13 @@ function describeError(err: unknown): string {
   return 'Could not read file'
 }
 
-function summarize(entries: TrackLoudnessEntry[]): LoudnessReport {
+// Cheap, synchronous, and safe to call on every render — classifies already-
+// measured entries against a target without touching any audio.
+export function summarizeLoudness(
+  entries: TrackLoudnessEntry[],
+  targetLufs: number,
+  toleranceLu: number = LOUDNESS_TOLERANCE_LU
+): LoudnessReport {
   const measured = entries.filter((e) => e.lufs !== null)
   const values = measured.map((e) => e.lufs as number)
   const averageLufs = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null
@@ -124,13 +143,53 @@ function summarize(entries: TrackLoudnessEntry[]): LoudnessReport {
 
   return {
     entries,
+    targetLufs,
+    toleranceLu,
     measuredCount: measured.length,
     silentCount: entries.filter((e) => e.lufs === null && !e.error).length,
     errorCount: entries.filter((e) => !!e.error).length,
     averageLufs,
     loudest,
     quietest,
-    tooLoud: measured.filter((e) => (e.lufs as number) > NORMALIZE_TARGET_LUFS + LOUDNESS_TOLERANCE_LU),
-    tooQuiet: measured.filter((e) => (e.lufs as number) < NORMALIZE_TARGET_LUFS - LOUDNESS_TOLERANCE_LU)
+    tooLoud: measured.filter((e) => (e.lufs as number) > targetLufs + toleranceLu),
+    tooQuiet: measured.filter((e) => (e.lufs as number) < targetLufs - toleranceLu)
+  }
+}
+
+// Suggests a normalize target based on where most of the library's tracks
+// already sit, rather than a fixed broadcast-style number — so normalizing
+// nudges the minority into line with the majority instead of moving
+// everything. Finds the narrowest-effort window (width = 2×tolerance, same
+// band summarizeLoudness uses for too-loud/too-quiet) that contains the most
+// measured tracks — i.e. the target that would minimize outliers — via a
+// sliding window over the sorted values.
+export function suggestTarget(
+  entries: TrackLoudnessEntry[],
+  toleranceLu: number = LOUDNESS_TOLERANCE_LU
+): SuggestedTarget | null {
+  const values = entries
+    .filter((e) => e.lufs !== null)
+    .map((e) => e.lufs as number)
+    .sort((a, b) => a - b)
+  if (values.length === 0) return null
+
+  const windowWidth = toleranceLu * 2
+  let bestStart = 0
+  let bestEnd = 1
+  let left = 0
+  for (let right = 0; right < values.length; right++) {
+    while (values[right] - values[left] > windowWidth) left++
+    if (right - left + 1 > bestEnd - bestStart) {
+      bestStart = left
+      bestEnd = right + 1
+    }
+  }
+
+  const windowValues = values.slice(bestStart, bestEnd)
+  const targetLufs = windowValues.reduce((a, b) => a + b, 0) / windowValues.length
+  return {
+    targetLufs: Math.round(targetLufs * 10) / 10,
+    trackCount: windowValues.length,
+    trackPercent: Math.round((windowValues.length / values.length) * 100)
   }
 }

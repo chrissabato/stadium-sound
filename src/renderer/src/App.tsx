@@ -70,7 +70,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, lastSeenChangelogVersion } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -1407,6 +1407,7 @@ export default function App() {
         loadBuffer={loadEditorBuffer}
         getBuffer={audio.getBuffer}
         hotkeyOwner={hotkeyOwner}
+        normalizeTargetLufs={normalizeTargetLufs}
       />
 
       <Settings
@@ -1439,6 +1440,8 @@ export default function App() {
         onNetworkControlChange={setNetworkControl}
         uiZoom={uiZoom}
         onUiZoomChange={setUiZoom}
+        normalizeTargetLufs={normalizeTargetLufs}
+        onNormalizeTargetLufsChange={setNormalizeTargetLufs}
         onShowChangelog={() => setChangelogOpen(true)}
         onClose={() => setSettingsOpen(false)}
       />
@@ -1464,6 +1467,8 @@ export default function App() {
         open={loudnessReportOpen}
         banks={config.banks}
         decode={audio.decodeTransient}
+        targetLufs={normalizeTargetLufs}
+        onTargetChange={setNormalizeTargetLufs}
         onClose={() => setLoudnessReportOpen(false)}
       />
 

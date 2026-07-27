@@ -58,6 +58,8 @@ const api: ElectronAPI = {
     setNetworkControl: (prefs) => ipcRenderer.invoke('settings:setNetworkControl', prefs),
     setUiZoom: (zoom: number) =>
       ipcRenderer.invoke('settings:setUiZoom', zoom),
+    setNormalizeTargetLufs: (lufs: number) =>
+      ipcRenderer.invoke('settings:setNormalizeTargetLufs', lufs),
     setLastSeenChangelogVersion: (version: string) =>
       ipcRenderer.invoke('settings:setLastSeenChangelogVersion', version)
   },

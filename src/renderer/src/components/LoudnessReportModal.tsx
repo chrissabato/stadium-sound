@@ -1,30 +1,29 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { Bank } from '../types'
 import {
-  analyzeLoudness,
+  measureLoudness,
+  summarizeLoudness,
+  suggestTarget,
   LOUDNESS_TOLERANCE_LU,
-  type LoudnessReport,
   type TrackLoudnessEntry
 } from '../audio/loudnessReport'
-import { NORMALIZE_TARGET_LUFS } from '../hooks/useAudioEngine'
 
 interface Props {
   open: boolean
   banks: Bank[]
   decode: (filePath: string) => Promise<AudioBuffer>
+  targetLufs: number
+  onTargetChange: (lufs: number) => void
   onClose: () => void
 }
 
-const TOO_LOUD_LUFS = NORMALIZE_TARGET_LUFS + LOUDNESS_TOLERANCE_LU
-const TOO_QUIET_LUFS = NORMALIZE_TARGET_LUFS - LOUDNESS_TOLERANCE_LU
-
 type Status = 'loud' | 'quiet' | 'ok' | 'silent' | 'error'
 
-function statusFor(entry: TrackLoudnessEntry): Status {
+function statusFor(entry: TrackLoudnessEntry, tooLoudLufs: number, tooQuietLufs: number): Status {
   if (entry.error) return 'error'
   if (entry.lufs === null) return 'silent'
-  if (entry.lufs > TOO_LOUD_LUFS) return 'loud'
-  if (entry.lufs < TOO_QUIET_LUFS) return 'quiet'
+  if (entry.lufs > tooLoudLufs) return 'loud'
+  if (entry.lufs < tooQuietLufs) return 'quiet'
   return 'ok'
 }
 
@@ -55,10 +54,13 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
   )
 }
 
-export function LoudnessReportModal({ open, banks, decode, onClose }: Props) {
+export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetChange, onClose }: Props) {
   const [analyzing, setAnalyzing] = useState(false)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
-  const [report, setReport] = useState<LoudnessReport | null>(null)
+  // Raw measurements only — target-dependent classification is derived below
+  // via summarizeLoudness(), so changing the target (settings, or the
+  // "Use this target" button) never requires re-decoding anything.
+  const [entries, setEntries] = useState<TrackLoudnessEntry[] | null>(null)
   // Identifies the current run so a superseded one (Re-analyze clicked while
   // a previous run is still in flight) can't clobber newer state with stale
   // results after it eventually finishes.
@@ -67,13 +69,13 @@ export function LoudnessReportModal({ open, banks, decode, onClose }: Props) {
   function runAnalysis() {
     const runId = ++runIdRef.current
     setAnalyzing(true)
-    setReport(null)
+    setEntries(null)
     const total = banks.reduce((n, b) => n + b.tracks.length, 0)
     setProgress({ done: 0, total })
-    analyzeLoudness(banks, decode, (done, t) => {
+    measureLoudness(banks, decode, (done, t) => {
       if (runIdRef.current === runId) setProgress({ done, total: t })
     })
-      .then((r) => { if (runIdRef.current === runId) setReport(r) })
+      .then((r) => { if (runIdRef.current === runId) setEntries(r) })
       .finally(() => { if (runIdRef.current === runId) setAnalyzing(false) })
   }
 
@@ -83,15 +85,26 @@ export function LoudnessReportModal({ open, banks, decode, onClose }: Props) {
   // is to not blow away a cached report by re-running on every open. A
   // background run also isn't aborted on close: closing mid-analysis just
   // means the next open finds it either still running (progress keeps
-  // advancing) or already resolved into a cached report.
+  // advancing) or already resolved into cached entries.
   useEffect(() => {
-    if (open && !report && !analyzing) runAnalysis()
+    if (open && !entries && !analyzing) runAnalysis()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
+
+  const report = useMemo(
+    () => entries ? summarizeLoudness(entries, targetLufs, LOUDNESS_TOLERANCE_LU) : null,
+    [entries, targetLufs]
+  )
+  const suggestion = useMemo(
+    () => entries ? suggestTarget(entries, LOUDNESS_TOLERANCE_LU) : null,
+    [entries]
+  )
 
   if (!open) return null
 
   const totalTracks = banks.reduce((n, b) => n + b.tracks.length, 0)
+  const tooLoudLufs = targetLufs + LOUDNESS_TOLERANCE_LU
+  const tooQuietLufs = targetLufs - LOUDNESS_TOLERANCE_LU
   const sortedEntries = report
     ? [...report.entries].sort((a, b) => {
         if (a.lufs === null && b.lufs === null) return 0
@@ -100,6 +113,7 @@ export function LoudnessReportModal({ open, banks, decode, onClose }: Props) {
         return b.lufs - a.lufs
       })
     : []
+  const suggestionDiffersFromTarget = suggestion !== null && Math.abs(suggestion.targetLufs - targetLufs) >= 0.1
 
   return (
     <div
@@ -159,7 +173,7 @@ export function LoudnessReportModal({ open, banks, decode, onClose }: Props) {
               <StatTile
                 label="Average LUFS"
                 value={report.averageLufs !== null ? `${report.averageLufs.toFixed(1)}` : '—'}
-                sub={`target ${NORMALIZE_TARGET_LUFS}`}
+                sub={`target ${targetLufs}`}
               />
               <StatTile
                 label="Loudest"
@@ -171,10 +185,45 @@ export function LoudnessReportModal({ open, banks, decode, onClose }: Props) {
                 value={report.quietest ? `${report.quietest.lufs!.toFixed(1)}` : '—'}
                 sub={report.quietest ? (report.quietest.title || report.quietest.filePath) : undefined}
               />
-              <StatTile label="Too Loud" value={String(report.tooLoud.length)} sub={`> ${TOO_LOUD_LUFS} LUFS`} />
-              <StatTile label="Too Quiet" value={String(report.tooQuiet.length)} sub={`< ${TOO_QUIET_LUFS} LUFS`} />
+              <StatTile label="Too Loud" value={String(report.tooLoud.length)} sub={`> ${tooLoudLufs} LUFS`} />
+              <StatTile label="Too Quiet" value={String(report.tooQuiet.length)} sub={`< ${tooQuietLufs} LUFS`} />
               <StatTile label="Skipped" value={String(report.errorCount + report.silentCount)} sub="missing, unreadable, or silent" />
             </div>
+
+            {suggestion && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: 6,
+                padding: '10px 14px'
+              }}>
+                <span style={{ fontSize: 12, color: '#94a3b8', flex: 1 }}>
+                  <strong style={{ color: '#f1f5f9' }}>Suggested target: {suggestion.targetLufs} LUFS</strong>
+                  {' — '}where {suggestion.trackCount} of {report.measuredCount} tracks ({suggestion.trackPercent}%)
+                  already cluster within ±{LOUDNESS_TOLERANCE_LU} LU, based on this library.
+                </span>
+                <button
+                  onClick={() => onTargetChange(suggestion.targetLufs)}
+                  disabled={!suggestionDiffersFromTarget}
+                  style={{
+                    flexShrink: 0,
+                    padding: '6px 12px',
+                    background: suggestionDiffersFromTarget ? '#1d4ed8' : 'transparent',
+                    border: `1px solid ${suggestionDiffersFromTarget ? '#3b82f6' : '#334155'}`,
+                    borderRadius: 4,
+                    color: suggestionDiffersFromTarget ? '#fff' : '#475569',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: suggestionDiffersFromTarget ? 'pointer' : 'default'
+                  }}
+                >
+                  {suggestionDiffersFromTarget ? 'Use as Target' : 'Already the target'}
+                </button>
+              </div>
+            )}
 
             <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #334155', borderRadius: 6 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -189,7 +238,7 @@ export function LoudnessReportModal({ open, banks, decode, onClose }: Props) {
                 </thead>
                 <tbody>
                   {sortedEntries.map((e) => {
-                    const status = statusFor(e)
+                    const status = statusFor(e, tooLoudLufs, tooQuietLufs)
                     const style = STATUS_STYLE[status]
                     return (
                       <tr key={e.trackId} style={{ borderTop: '1px solid #1e293b' }}>

@@ -25,6 +25,8 @@ interface Props {
   onNetworkControlChange: (prefs: NetworkControlPrefs) => Promise<void>
   uiZoom: number
   onUiZoomChange: (zoom: number) => void
+  normalizeTargetLufs: number
+  onNormalizeTargetLufsChange: (lufs: number) => void
   onShowChangelog: () => void
   onClose: () => void
 }
@@ -88,7 +90,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, onShowChangelog, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, normalizeTargetLufs, onNormalizeTargetLufsChange, onShowChangelog, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
@@ -271,6 +273,46 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
               </div>
             )
           })}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Loudness
+            </span>
+            <div style={{ height: 1, background: '#334155' }} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Normalize Target</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Integrated loudness the per-track Normalize button and the Loudness Report's too-loud/too-quiet thresholds aim for
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <input
+                type="number"
+                min={-30}
+                max={-6}
+                step={0.5}
+                value={normalizeTargetLufs}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value)
+                  if (Number.isFinite(v)) onNormalizeTargetLufsChange(Math.max(-30, Math.min(-6, v)))
+                }}
+                style={{
+                  width: 64,
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: 4,
+                  color: '#f1f5f9',
+                  padding: '5px 8px',
+                  fontSize: 13,
+                  textAlign: 'right'
+                }}
+              />
+              <span style={{ fontSize: 12, color: '#64748b' }}>LUFS</span>
+            </div>
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
