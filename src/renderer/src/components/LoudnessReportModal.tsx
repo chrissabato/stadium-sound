@@ -8,6 +8,7 @@ import {
   type TrackLoudnessEntry
 } from '../audio/loudnessReport'
 import { normalizeTrackGain } from '../hooks/useAudioEngine'
+import { ConfirmDialog } from './ConfirmDialog'
 
 export interface TrackGainUpdate {
   trackId: string
@@ -76,6 +77,10 @@ export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetC
   // invalidates which tracks still need it.
   const [normalizedTrackIds, setNormalizedTrackIds] = useState<Set<string>>(new Set())
   const [applyResult, setApplyResult] = useState<string | null>(null)
+  // Guards against losing track of a long analysis by an accidental close —
+  // the backdrop no longer closes the modal at all, and closing while
+  // analyzing (via × or the footer button) asks first.
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false)
   // Identifies the current run so a superseded one (Re-analyze clicked while
   // a previous run is still in flight) can't clobber newer state with stale
   // results after it eventually finishes.
@@ -137,6 +142,14 @@ export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetC
     setApplyResult(`Set Audio Level on ${updates.length} track${updates.length === 1 ? '' : 's'}.`)
   }
 
+  // Analysis itself is never aborted here (see the effect above) — this only
+  // gates *closing the modal*, so a background run left going after a
+  // confirmed close still lands in the cache for the next open.
+  function requestClose() {
+    if (analyzing) setConfirmCloseOpen(true)
+    else onClose()
+  }
+
   if (!open) return null
 
   const totalTracks = banks.reduce((n, b) => n + b.tracks.length, 0)
@@ -167,7 +180,6 @@ export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetC
         justifyContent: 'center',
         zIndex: 200
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div style={{
         background: '#1e293b',
@@ -184,7 +196,7 @@ export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetC
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontWeight: 700, fontSize: 16 }}>Loudness Report</span>
           <button
-            onClick={onClose}
+            onClick={requestClose}
             style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 22, lineHeight: 1, cursor: 'pointer' }}
           >
             ×
@@ -351,14 +363,24 @@ export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetC
               ↻ Re-analyze
             </button>
             <button
-              onClick={onClose}
+              onClick={requestClose}
               style={{ padding: '7px 20px', background: '#3b82f6', border: 'none', borderRadius: 4, color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
             >
-              Done
+              {analyzing ? 'Cancel' : 'Done'}
             </button>
           </div>
         </div>
       </div>
+
+      {confirmCloseOpen && (
+        <ConfirmDialog
+          title="Stop watching the analysis?"
+          message="The Loudness Report is still analyzing your tracks. Closing won't stop it — it keeps running and the results will be ready next time you open the report."
+          confirmLabel="Close"
+          onConfirm={() => { setConfirmCloseOpen(false); onClose() }}
+          onCancel={() => setConfirmCloseOpen(false)}
+        />
+      )}
     </div>
   )
 }
