@@ -59,26 +59,33 @@ export function LoudnessReportModal({ open, banks, decode, onClose }: Props) {
   const [analyzing, setAnalyzing] = useState(false)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
   const [report, setReport] = useState<LoudnessReport | null>(null)
-  const cancelledRef = useRef(false)
+  // Identifies the current run so a superseded one (Re-analyze clicked while
+  // a previous run is still in flight) can't clobber newer state with stale
+  // results after it eventually finishes.
+  const runIdRef = useRef(0)
 
   function runAnalysis() {
-    cancelledRef.current = false
+    const runId = ++runIdRef.current
     setAnalyzing(true)
     setReport(null)
     const total = banks.reduce((n, b) => n + b.tracks.length, 0)
     setProgress({ done: 0, total })
     analyzeLoudness(banks, decode, (done, t) => {
-      if (!cancelledRef.current) setProgress({ done, total: t })
+      if (runIdRef.current === runId) setProgress({ done, total: t })
     })
-      .then((r) => { if (!cancelledRef.current) setReport(r) })
-      .finally(() => { if (!cancelledRef.current) setAnalyzing(false) })
+      .then((r) => { if (runIdRef.current === runId) setReport(r) })
+      .finally(() => { if (runIdRef.current === runId) setAnalyzing(false) })
   }
 
-  // Auto-run once per open, not on every render — banks may have changed
-  // since the report was last opened, so a fresh open always gets fresh data.
+  // This component stays mounted for the app's lifetime (App.tsx renders it
+  // unconditionally; `open` only toggles the early-return below), so its
+  // state already survives close/reopen on its own — the only thing needed
+  // is to not blow away a cached report by re-running on every open. A
+  // background run also isn't aborted on close: closing mid-analysis just
+  // means the next open finds it either still running (progress keeps
+  // advancing) or already resolved into a cached report.
   useEffect(() => {
-    if (open) runAnalysis()
-    else cancelledRef.current = true
+    if (open && !report && !analyzing) runAnalysis()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
