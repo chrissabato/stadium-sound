@@ -11,6 +11,16 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.5.3',
+    date: '2026-07-26',
+    items: [
+      'While reordering a bank, new Sort by Artist / Title / Filename buttons alphabetize the tracks instantly instead of requiring manual drag-and-drop.',
+      'Per-track Audio Level can now boost a track up to 200%, not just attenuate it — useful for tracks recorded quieter than the rest of the library.',
+      'Fixed the Settings audio device dropdowns silently falling back to showing "System Default" when the previously selected device was unplugged, masking the real (still-remembered) selection.',
+      'The bank sidebar now shows a playing indicator for whichever bank has a track on the main output, even after switching to a different bank.'
+    ]
+  },
+  {
     version: '0.5.2',
     date: '2026-07-22',
     items: [
