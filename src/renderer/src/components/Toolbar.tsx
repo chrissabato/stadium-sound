@@ -252,7 +252,7 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorD
                   cursor: 'pointer'
                 }}
               >
-                📊 Loudness Report
+                ▤ Loudness Report
               </button>
               <button
                 onClick={() => { onOpenShortcuts(); setMenuOpen(false) }}
