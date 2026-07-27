@@ -2,7 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react'
 import type { Track } from '../types'
 import { formatTime, parseTime, normalizeHotkeyEvent, TRACK_COLORS } from '../types'
 import { WaveformCanvas } from './WaveformCanvas'
-import { createAnalyserChain, type BusAnalysers } from '../hooks/useAudioEngine'
+import {
+  createAnalyserChain,
+  measureIntegratedLufs,
+  normalizeTrackGain,
+  type BusAnalysers
+} from '../hooks/useAudioEngine'
 import { LevelMeters } from './LevelMeters'
 
 interface Props {
@@ -40,6 +45,8 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
   const [capturingHotkey, setCapturingHotkey] = useState(false)
   const [colorLabel, setColorLabel] = useState<string | undefined>(undefined)
   const [volume, setVolume] = useState(1)
+  const [normalizing, setNormalizing] = useState(false)
+  const [normalizeInfo, setNormalizeInfo] = useState<string | null>(null)
   const [previewing, setPreviewing] = useState(false)
   const previewNodeRef = React.useRef<AudioBufferSourceNode | null>(null)
   const previewGainRef = React.useRef<GainNode | null>(null)
@@ -75,6 +82,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     setCapturingHotkey(false)
     setColorLabel(track.colorLabel)
     setVolume(track.volume ?? 1)
+    setNormalizeInfo(null)
 
     const existing = getBuffer(track.filePath)
     if (existing) {
@@ -155,6 +163,31 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
       ctx.close()
       previewCtxRef.current = null
       previewAnalysersRef.current = null
+    }
+  }
+
+  // Measures the currently trimmed selection (respects in/out points) and
+  // sets Audio Level so its integrated loudness lands at the normalize
+  // target. Pure function of the decoded buffer — the same
+  // measureIntegratedLufs/normalizeTrackGain pair this calls is what a future
+  // "normalize all tracks" pass would call per-track, without needing this
+  // editor open.
+  async function normalizeTrack() {
+    if (!audioBuffer || normalizing) return
+    setNormalizing(true)
+    setNormalizeInfo(null)
+    try {
+      const measured = await measureIntegratedLufs(audioBuffer, inPoint, outPoint)
+      if (!Number.isFinite(measured)) {
+        setNormalizeInfo('Selection is silent — level unchanged')
+        return
+      }
+      const gain = normalizeTrackGain(measured)
+      setVolume(gain)
+      if (previewGainRef.current) previewGainRef.current.gain.value = gain
+      setNormalizeInfo(`Measured ${Math.round(measured)} LUFS → set to ${Math.round(gain * 100)}%`)
+    } finally {
+      setNormalizing(false)
     }
   }
 
@@ -463,6 +496,25 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
               >
                 Reset to 100%
               </button>
+            )}
+            <button
+              onClick={normalizeTrack}
+              disabled={!audioBuffer || normalizing}
+              title="Measure this selection's loudness and set the Audio Level to match a consistent target"
+              style={{
+                padding: '4px 10px',
+                background: 'none',
+                border: '1px solid #334155',
+                borderRadius: 4,
+                color: audioBuffer && !normalizing ? '#94a3b8' : '#475569',
+                fontSize: 11,
+                cursor: audioBuffer && !normalizing ? 'pointer' : 'default'
+              }}
+            >
+              {normalizing ? 'Measuring…' : '⚖ Normalize'}
+            </button>
+            {normalizeInfo && (
+              <span style={{ fontSize: 11, color: '#64748b' }}>{normalizeInfo}</span>
             )}
           </div>
         </div>

@@ -86,13 +86,24 @@ export interface BusAnalysers {
   loudnessRight: AnalyserNode
 }
 
+// ITU-R BS.1770 K-weighting: a high-shelf "head" pre-filter followed by the
+// RLB high-pass, the spec's exact biquad coefficients. Shared by the live
+// analyser tap below and by measureIntegratedLufs's offline render, so both
+// paths agree on what "LUFS" means. Only valid at 48kHz — every caller must
+// create its (Offline)AudioContext with sampleRate: 48000.
+const K_WEIGHT_SHELF_COEFFS: [number[], number[]] = [
+  [1.53512485958697, -2.69169618940638, 1.19839281085285],
+  [1, -1.69065929318241, 0.73248077421585]
+]
+const K_WEIGHT_HIGHPASS_COEFFS: [number[], number[]] = [
+  [1.0, -2.0, 1.0],
+  [1, -1.99004745483398, 0.99007225036621]
+]
+
 // Builds the parallel analysis tap used by the level meters + LUFS readout,
 // hanging off `source`: a splitter feeding per-channel RMS analysers, plus a
-// K-weighting chain (ITU-R BS.1770 high-shelf "head" pre-filter then the RLB
-// high-pass, the spec's exact biquad coefficients) into loudness analysers.
-// Analysis-only — nothing here connects toward the destination, so it can
-// never alter the audible output. The IIR coefficients are only valid at
-// 48kHz: every caller must create its AudioContext with sampleRate: 48000.
+// K-weighting chain into loudness analysers. Analysis-only — nothing here
+// connects toward the destination, so it can never alter the audible output.
 export function createAnalyserChain(ctx: AudioContext, source: AudioNode): BusAnalysers {
   const splitter = ctx.createChannelSplitter(2)
   source.connect(splitter)
@@ -105,14 +116,8 @@ export function createAnalyserChain(ctx: AudioContext, source: AudioNode): BusAn
   splitter.connect(left, 0)
   splitter.connect(right, 1)
 
-  const kShelf = ctx.createIIRFilter(
-    [1.53512485958697, -2.69169618940638, 1.19839281085285],
-    [1, -1.69065929318241, 0.73248077421585]
-  )
-  const kHighpass = ctx.createIIRFilter(
-    [1.0, -2.0, 1.0],
-    [1, -1.99004745483398, 0.99007225036621]
-  )
+  const kShelf = ctx.createIIRFilter(...K_WEIGHT_SHELF_COEFFS)
+  const kHighpass = ctx.createIIRFilter(...K_WEIGHT_HIGHPASS_COEFFS)
   source.connect(kShelf)
   kShelf.connect(kHighpass)
   const kSplitter = ctx.createChannelSplitter(2)
@@ -127,6 +132,65 @@ export function createAnalyserChain(ctx: AudioContext, source: AudioNode): BusAn
   kSplitter.connect(loudnessRight, 1)
 
   return { left, right, loudnessLeft, loudnessRight }
+}
+
+// Target for normalizeTrackGain — roughly matches streaming-service integrated
+// loudness targets, and sits comfortably under 0dBFS for typical show content.
+export const NORMALIZE_TARGET_LUFS = -16
+
+// Integrated (whole-selection, ungated) loudness of an already-decoded buffer,
+// in LUFS, per ITU-R BS.1770's K-weighting + mean-square formula — same math
+// as the live LUFS readout, but computed once over the full in/out range via
+// an offline render instead of sampled from a running analyser. Used by the
+// per-track Normalize button, and reusable as-is for a future bank-wide pass:
+// call once per (already-decoded) track buffer, no playback required.
+export async function measureIntegratedLufs(
+  buffer: AudioBuffer,
+  inPoint = 0,
+  outPoint = buffer.duration
+): Promise<number> {
+  const start = Math.max(0, Math.min(inPoint, buffer.duration))
+  const end = Math.max(start, Math.min(outPoint, buffer.duration))
+  const duration = end - start
+  if (duration <= 0) return -Infinity
+
+  const sampleRate = 48000
+  const length = Math.max(1, Math.round(duration * sampleRate))
+  const offlineCtx = new OfflineAudioContext(buffer.numberOfChannels, length, sampleRate)
+  const source = offlineCtx.createBufferSource()
+  source.buffer = buffer
+  const kShelf = offlineCtx.createIIRFilter(...K_WEIGHT_SHELF_COEFFS)
+  const kHighpass = offlineCtx.createIIRFilter(...K_WEIGHT_HIGHPASS_COEFFS)
+  source.connect(kShelf)
+  kShelf.connect(kHighpass)
+  kHighpass.connect(offlineCtx.destination)
+  source.start(0, start, duration)
+
+  const rendered = await offlineCtx.startRendering()
+
+  // G = 1 per channel (L/R only — this app never has surround content).
+  let sumSquares = 0
+  for (let ch = 0; ch < rendered.numberOfChannels; ch++) {
+    const data = rendered.getChannelData(ch)
+    let channelSum = 0
+    for (let i = 0; i < data.length; i++) channelSum += data[i] * data[i]
+    sumSquares += channelSum / data.length
+  }
+  if (sumSquares <= 0) return -Infinity
+  return -0.691 + 10 * Math.log10(sumSquares)
+}
+
+// Linear gain to move a track measured at `measuredLufs` to `targetLufs`,
+// clamped to the Audio Level slider's 0–200% range (types.ts's Track.volume).
+// Silence (measuredLufs = -Infinity) is left untouched rather than blown up
+// to the clamp ceiling.
+export function normalizeTrackGain(
+  measuredLufs: number,
+  targetLufs: number = NORMALIZE_TARGET_LUFS
+): number {
+  if (!Number.isFinite(measuredLufs)) return 1
+  const gain = Math.pow(10, (targetLufs - measuredLufs) / 20)
+  return Math.max(0, Math.min(2, gain))
 }
 
 interface PlaybackSnapshot {
