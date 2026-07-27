@@ -14,6 +14,7 @@ import { FeedbackModal } from './components/FeedbackModal'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { ChangelogModal } from './components/ChangelogModal'
+import { LoudnessReportModal } from './components/LoudnessReportModal'
 import { CHANGELOG } from './changelog'
 import { LibraryManager } from './components/LibraryManager'
 import { AddFromLibraryModal } from './components/AddFromLibraryModal'
@@ -77,6 +78,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [loudnessReportOpen, setLoudnessReportOpen] = useState(false)
   const [changelogOpen, setChangelogOpen] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [libraryManagerOpen, setLibraryManagerOpen] = useState(false)
@@ -1115,6 +1117,7 @@ export default function App() {
         onOpenSettings={() => setSettingsOpen(true)}
         onResetPlayed={resetPlayed}
         onVerifyTracks={verifyTracks}
+        onOpenLoudnessReport={() => setLoudnessReportOpen(true)}
         onOpenShortcuts={() => setShortcutsOpen(true)}
         onOpenFeedback={() => setFeedbackOpen(true)}
         onOpenLibraries={() => setLibraryManagerOpen(true)}
@@ -1455,6 +1458,13 @@ export default function App() {
         open={changelogOpen}
         currentVersion={appVersion}
         onClose={() => setChangelogOpen(false)}
+      />
+
+      <LoudnessReportModal
+        open={loudnessReportOpen}
+        banks={config.banks}
+        decode={audio.decodeTransient}
+        onClose={() => setLoudnessReportOpen(false)}
       />
 
       <LibraryManager

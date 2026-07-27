@@ -21,6 +21,7 @@ interface Props {
   onOpenSettings: () => void
   onResetPlayed: () => void
   onVerifyTracks: () => void
+  onOpenLoudnessReport: () => void
   onOpenShortcuts: () => void
   onOpenFeedback: () => void
   onOpenLibraries: () => void
@@ -28,7 +29,7 @@ interface Props {
   onAddLibraryTrack: (track: LibraryTrack) => void
 }
 
-export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorDisabled, showPlaylistPanel, isFullscreen, banks, libraries, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onResetPlayed, onVerifyTracks, onOpenShortcuts, onOpenFeedback, onOpenLibraries, onSelectSearchResult, onAddLibraryTrack }: Props) {
+export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorDisabled, showPlaylistPanel, isFullscreen, banks, libraries, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onResetPlayed, onVerifyTracks, onOpenLoudnessReport, onOpenShortcuts, onOpenFeedback, onOpenLibraries, onSelectSearchResult, onAddLibraryTrack }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const fileName = currentFilePath
     ? currentFilePath.split(/[\\/]/).pop() ?? 'Event Set'
@@ -237,6 +238,21 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorD
                 }}
               >
                 ✓ Verify Tracks
+              </button>
+              <button
+                onClick={() => { onOpenLoudnessReport(); setMenuOpen(false) }}
+                style={{
+                  padding: '8px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderTop: '1px solid #334155',
+                  textAlign: 'left',
+                  color: '#e2e8f0',
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                📊 Loudness Report
               </button>
               <button
                 onClick={() => { onOpenShortcuts(); setMenuOpen(false) }}
