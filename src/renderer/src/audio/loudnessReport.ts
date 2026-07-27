@@ -36,9 +36,7 @@ export interface LoudnessReport {
 // than imported, so this stays independent of any live AudioContext — the
 // same loop drives both this report and, in the future, a "normalize all
 // tracks" action, just swapping what happens with each measurement.
-// Decodes are cached per file path within a single run, since the same file
-// often appears in several banks/playlists. `onProgress` fires after each
-// track so a caller can drive a progress bar.
+// `onProgress` fires after each track so a caller can drive a progress bar.
 export async function analyzeLoudness(
   banks: Bank[],
   decode: (filePath: string) => Promise<AudioBuffer>,
@@ -47,6 +45,19 @@ export async function analyzeLoudness(
   const jobs: { bank: Bank; track: Track }[] = []
   for (const bank of banks) {
     for (const track of bank.tracks) jobs.push({ bank, track })
+  }
+
+  // A decoded buffer is only kept around while a later job still needs the
+  // same file — caching every decode for the whole run (as this used to do)
+  // holds every track's full PCM in memory simultaneously, which for a few
+  // hundred full-length songs is tens of GB and starts failing decodes
+  // partway through with no relation to the actual files being fine.
+  // Counting each path's remaining uses up front lets a duplicate's buffer
+  // be dropped the moment its last reference has been measured.
+  const remainingUses = new Map<string, number>()
+  for (const { track } of jobs) {
+    if (!track.filePath) continue
+    remainingUses.set(track.filePath, (remainingUses.get(track.filePath) ?? 0) + 1)
   }
 
   const bufferCache = new Map<string, AudioBuffer>()
@@ -69,13 +80,18 @@ export async function analyzeLoudness(
         let buffer = bufferCache.get(track.filePath)
         if (!buffer) {
           buffer = await decode(track.filePath)
-          bufferCache.set(track.filePath, buffer)
+          // Only worth caching if something later still needs this same file.
+          if ((remainingUses.get(track.filePath) ?? 1) > 1) bufferCache.set(track.filePath, buffer)
         }
         const outPoint = track.outPoint || track.duration || buffer.duration
         const lufs = await measureIntegratedLufs(buffer, track.inPoint, outPoint)
         entries.push({ ...base, lufs: Number.isFinite(lufs) ? lufs : null })
       } catch (err) {
         entries.push({ ...base, lufs: null, error: describeError(err) })
+      } finally {
+        const remaining = (remainingUses.get(track.filePath) ?? 1) - 1
+        remainingUses.set(track.filePath, remaining)
+        if (remaining <= 0) bufferCache.delete(track.filePath)
       }
     }
     onProgress?.(i + 1, jobs.length)
