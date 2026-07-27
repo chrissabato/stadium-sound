@@ -108,6 +108,25 @@ export default function App() {
     setMissingFileIds(missing)
   }
 
+  // Bulk apply from the Loudness Report's "Normalize Out-of-Range" button —
+  // sets Audio Level the same way the per-track Normalize button does, just
+  // for many tracks (across any bank) at once.
+  const applyNormalizeGains = (updates: { trackId: string; volume: number }[]) => {
+    if (updates.length === 0) return
+    const byId = new Map(updates.map((u) => [u.trackId, u.volume]))
+    updateConfig((c) => ({
+      ...c,
+      banks: c.banks.map((bank) => ({
+        ...bank,
+        tracks: bank.tracks.map((t) => {
+          const volume = byId.get(t.id)
+          if (volume === undefined) return t
+          return { ...t, volume: volume !== 1 ? volume : undefined }
+        })
+      }))
+    }))
+  }
+
   useEffect(() => {
     return window.electronAPI.window.onFullscreenChange(setIsFullscreen)
   }, [])
@@ -1469,6 +1488,7 @@ export default function App() {
         decode={audio.decodeTransient}
         targetLufs={normalizeTargetLufs}
         onTargetChange={setNormalizeTargetLufs}
+        onNormalizeTracks={applyNormalizeGains}
         onClose={() => setLoudnessReportOpen(false)}
       />
 

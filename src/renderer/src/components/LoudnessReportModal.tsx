@@ -7,6 +7,12 @@ import {
   LOUDNESS_TOLERANCE_LU,
   type TrackLoudnessEntry
 } from '../audio/loudnessReport'
+import { normalizeTrackGain } from '../hooks/useAudioEngine'
+
+export interface TrackGainUpdate {
+  trackId: string
+  volume: number
+}
 
 interface Props {
   open: boolean
@@ -14,6 +20,7 @@ interface Props {
   decode: (filePath: string) => Promise<AudioBuffer>
   targetLufs: number
   onTargetChange: (lufs: number) => void
+  onNormalizeTracks: (updates: TrackGainUpdate[]) => void
   onClose: () => void
 }
 
@@ -54,13 +61,21 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
   )
 }
 
-export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetChange, onClose }: Props) {
+export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetChange, onNormalizeTracks, onClose }: Props) {
   const [analyzing, setAnalyzing] = useState(false)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
   // Raw measurements only — target-dependent classification is derived below
   // via summarizeLoudness(), so changing the target (settings, or the
   // "Use this target" button) never requires re-decoding anything.
   const [entries, setEntries] = useState<TrackLoudnessEntry[] | null>(null)
+  // Which out-of-range tracks have had their Audio Level set in this session,
+  // so the bulk button doesn't look like it did nothing on a second glance —
+  // tooLoud/tooQuiet are computed from the file's raw loudness, which a gain
+  // change never alters, so without this the count would never shrink.
+  // Reset whenever the measurement or the target changes, since either
+  // invalidates which tracks still need it.
+  const [normalizedTrackIds, setNormalizedTrackIds] = useState<Set<string>>(new Set())
+  const [applyResult, setApplyResult] = useState<string | null>(null)
   // Identifies the current run so a superseded one (Re-analyze clicked while
   // a previous run is still in flight) can't clobber newer state with stale
   // results after it eventually finishes.
@@ -100,6 +115,28 @@ export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetC
     [entries]
   )
 
+  useEffect(() => {
+    setNormalizedTrackIds(new Set())
+    setApplyResult(null)
+  }, [entries, targetLufs])
+
+  function normalizeOutOfRange() {
+    if (!report) return
+    const targets = [...report.tooLoud, ...report.tooQuiet].filter((e) => !normalizedTrackIds.has(e.trackId))
+    if (targets.length === 0) return
+    const updates = targets.map((e) => ({
+      trackId: e.trackId,
+      volume: normalizeTrackGain(e.lufs as number, targetLufs)
+    }))
+    onNormalizeTracks(updates)
+    setNormalizedTrackIds((prev) => {
+      const next = new Set(prev)
+      for (const u of updates) next.add(u.trackId)
+      return next
+    })
+    setApplyResult(`Set Audio Level on ${updates.length} track${updates.length === 1 ? '' : 's'}.`)
+  }
+
   if (!open) return null
 
   const totalTracks = banks.reduce((n, b) => n + b.tracks.length, 0)
@@ -114,6 +151,10 @@ export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetC
       })
     : []
   const suggestionDiffersFromTarget = suggestion !== null && Math.abs(suggestion.targetLufs - targetLufs) >= 0.1
+  const outOfRangeCount = report ? report.tooLoud.length + report.tooQuiet.length : 0
+  const pendingCount = report
+    ? [...report.tooLoud, ...report.tooQuiet].filter((e) => !normalizedTrackIds.has(e.trackId)).length
+    : 0
 
   return (
     <div
@@ -250,6 +291,11 @@ export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetC
                         </td>
                         <td style={{ ...tdStyle, color: style.color, fontWeight: 600 }} title={e.error}>
                           {e.error ? `${style.label} — ${e.error}` : style.label}
+                          {normalizedTrackIds.has(e.trackId) && (
+                            <span style={{ color: '#22c55e', fontWeight: 400 }} title="Audio Level was adjusted to compensate">
+                              {' '}✓ leveled
+                            </span>
+                          )}
                         </td>
                       </tr>
                     )
@@ -260,28 +306,57 @@ export function LoudnessReportModal({ open, banks, decode, targetLufs, onTargetC
           </>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button
-            onClick={runAnalysis}
-            disabled={analyzing || totalTracks === 0}
-            style={{
-              padding: '7px 16px',
-              background: 'none',
-              border: '1px solid #334155',
-              borderRadius: 4,
-              color: analyzing ? '#475569' : '#94a3b8',
-              fontSize: 13,
-              cursor: analyzing ? 'default' : 'pointer'
-            }}
-          >
-            ↻ Re-analyze
-          </button>
-          <button
-            onClick={onClose}
-            style={{ padding: '7px 20px', background: '#3b82f6', border: 'none', borderRadius: 4, color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-          >
-            Done
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            {outOfRangeCount > 0 && (
+              <button
+                onClick={normalizeOutOfRange}
+                disabled={analyzing || pendingCount === 0}
+                title="Set Audio Level on every too-loud/too-quiet track so it lands at the target — same math as the per-track Normalize button"
+                style={{
+                  padding: '7px 16px',
+                  background: pendingCount > 0 ? '#1d4ed8' : 'transparent',
+                  border: `1px solid ${pendingCount > 0 ? '#3b82f6' : '#334155'}`,
+                  borderRadius: 4,
+                  color: pendingCount > 0 ? '#fff' : '#475569',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: pendingCount > 0 ? 'pointer' : 'default',
+                  flexShrink: 0
+                }}
+              >
+                {pendingCount > 0 ? `⚖ Normalize Out-of-Range (${pendingCount})` : '✓ Out-of-Range Tracks Leveled'}
+              </button>
+            )}
+            {applyResult && (
+              <span style={{ fontSize: 12, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {applyResult}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={runAnalysis}
+              disabled={analyzing || totalTracks === 0}
+              style={{
+                padding: '7px 16px',
+                background: 'none',
+                border: '1px solid #334155',
+                borderRadius: 4,
+                color: analyzing ? '#475569' : '#94a3b8',
+                fontSize: 13,
+                cursor: analyzing ? 'default' : 'pointer'
+              }}
+            >
+              ↻ Re-analyze
+            </button>
+            <button
+              onClick={onClose}
+              style={{ padding: '7px 20px', background: '#3b82f6', border: 'none', borderRadius: 4, color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+            >
+              Done
+            </button>
+          </div>
         </div>
       </div>
     </div>
