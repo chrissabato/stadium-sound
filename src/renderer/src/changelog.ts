@@ -11,6 +11,15 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.6.0',
+    date: '2026-07-26',
+    items: [
+      'New Loudness Report (⋯ menu) analyzes every track across all banks and flags which ones are too loud or too quiet against a target loudness, with a per-library suggested target and a one-click button to normalize everything out of range.',
+      'Edit Track now has a Normalize button that sets a track\'s Audio Level automatically to match the target loudness.',
+      'Normalize target loudness is now a setting (Settings → Loudness), shared by both the Normalize button and the Loudness Report.'
+    ]
+  },
+  {
     version: '0.5.3',
     date: '2026-07-26',
     items: [
