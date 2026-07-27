@@ -11,6 +11,14 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.7.0',
+    date: '2026-07-27',
+    items: [
+      'New Play Count Report (⋯ menu) shows how many times each track has actually played over the main output, with a small ▶N badge on the button itself, a CSV export for E+ audio log submissions, and a one-click Reset All Play Counts to start fresh for the next event.',
+      'Plays from a playlist count too, including tracks added straight from a media library without ever being placed on a bank.'
+    ]
+  },
+  {
     version: '0.6.0',
     date: '2026-07-26',
     items: [
