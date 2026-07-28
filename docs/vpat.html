@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility (VPAT) — Stadium Sound</title>
+  <meta name="description" content="Voluntary Product Accessibility Template (VPAT) for Stadium Sound, evaluated against WCAG 2.1 Level A and AA success criteria.">
+  <link rel="canonical" href="https://stadiumsound.chrissabato.com/vpat.html">
+  <meta name="theme-color" content="#07101f">
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WCBKBVCP0V"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WCBKBVCP0V');
+  </script>
+
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Stadium Sound">
+  <meta property="og:title" content="Accessibility (VPAT) — Stadium Sound">
+  <meta property="og:description" content="Voluntary Product Accessibility Template (VPAT) for Stadium Sound, evaluated against WCAG 2.1 Level A and AA success criteria.">
+  <meta property="og:url" content="https://stadiumsound.chrissabato.com/vpat.html">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #07101f;
+      --panel:    #0f1d30;
+      --card:     #162035;
+      --border:   #1f3048;
+      --border2:  #2a3f5a;
+      --orange:   #e85a24;
+      --orange-d: #c44d1d;
+      --text:     #dde6f0;
+      --sub:      #7a94ad;
+      --faint:    #2e4460;
+      --good:     #2d9e57;
+      --bad:      #c44848;
+      --mid:      #c9a23a;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+    a:focus-visible, summary:focus-visible, button:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 56px;
+      background: rgba(7,16,31,0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .nav-brand-name { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+
+    .beta-badge {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--orange);
+      border: 1px solid var(--orange);
+      border-radius: 3px;
+      padding: 2px 6px;
+      margin-left: 2px;
+    }
+
+    .nav-cta {
+      padding: 7px 18px;
+      background: var(--orange);
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 3px;
+      letter-spacing: 0.02em;
+      transition: background 0.15s;
+    }
+    .nav-cta:hover { background: var(--orange-d); }
+
+    main { max-width: 900px; margin: 0 auto; padding: 72px 32px 96px; }
+
+    .section-eye {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      font-size: clamp(32px, 4.5vw, 46px);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .page-sub { font-size: 15px; color: var(--sub); margin-bottom: 40px; max-width: 620px; }
+
+    .meta {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 8px 20px;
+      font-size: 13px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+    }
+    .meta dt { color: var(--sub); font-weight: 600; }
+    .meta dd { color: var(--text); }
+
+    .notice {
+      display: flex;
+      gap: 12px;
+      padding: 16px 18px;
+      background: rgba(232,90,36,0.08);
+      border: 1px solid rgba(232,90,36,0.35);
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 48px;
+    }
+    .notice-glyph { flex-shrink: 0; color: var(--orange); }
+    .notice strong { color: #fff; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #fff;
+      margin: 56px 0 8px;
+    }
+    h2:first-of-type { margin-top: 0; }
+
+    .table-note { font-size: 13px; color: var(--sub); margin-bottom: 18px; max-width: 640px; }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+
+    caption { text-align: left; }
+
+    thead th {
+      text-align: left;
+      background: var(--panel);
+      color: var(--sub);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+
+    td.crit { white-space: nowrap; font-weight: 600; color: #fff; }
+    td.remarks { color: var(--sub); min-width: 260px; }
+
+    .status { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
+    .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .status-supports::before { background: var(--good); }
+    .status-partial::before { background: var(--mid); }
+    .status-not::before { background: var(--bad); }
+    .status-na::before { background: var(--faint); }
+    .status-eval::before { background: var(--border2); }
+    .status-supports { color: var(--good); }
+    .status-partial { color: var(--mid); }
+    .status-not { color: var(--bad); }
+    .status-na, .status-eval { color: var(--sub); }
+
+    ol.priority, ul.legend {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+    ol.priority { counter-reset: pr; }
+    ol.priority li {
+      position: relative;
+      padding-left: 30px;
+      font-size: 14px;
+      color: var(--sub);
+      line-height: 1.6;
+    }
+    ol.priority li strong { color: var(--text); }
+    ol.priority li::before {
+      counter-increment: pr;
+      content: counter(pr);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      color: var(--orange);
+      font-size: 11px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    ul.legend { flex-direction: row; flex-wrap: wrap; gap: 16px; margin-bottom: 40px; font-size: 12px; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-brand { display: flex; align-items: center; gap: 10px; }
+    .footer-brand-name { font-size: 13px; font-weight: 700; color: var(--sub); }
+
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--faint);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--sub); }
+
+    @media (max-width: 860px) {
+      nav { padding: 0 20px; }
+      main { padding: 48px 20px 64px; }
+      .meta { grid-template-columns: 1fr; }
+      footer { padding: 24px; flex-direction: column; gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-brand">
+    <img src="logo.svg" alt="Stadium Sound" style="width:28px;height:28px;flex-shrink:0;">
+    <span class="nav-brand-name">Stadium Sound</span>
+    <span class="beta-badge">Beta</span>
+  </a>
+  <a href="/#" class="nav-cta">Download</a>
+</nav>
+
+<main>
+  <div class="section-eye">Accessibility</div>
+  <h1>Voluntary Product Accessibility Template</h1>
+  <p class="page-sub">A VPAT® 2.5 (WCAG Edition) conformance report for Stadium Sound, evaluated against WCAG 2.1 Level A and Level AA success criteria.</p>
+
+  <dl class="meta">
+    <dt>Product / Version</dt><dd>Stadium Sound, v0.7.0 (Windows x64/arm64, macOS x64/arm64)</dd>
+    <dt>Report Date</dt><dd>July 27, 2026</dd>
+    <dt>Applicable Standards</dt><dd>WCAG 2.1, Level A and Level AA</dd>
+    <dt>Evaluation Methods</dt><dd>Source-code audit of the application UI, web remote, and Electron window configuration</dd>
+    <dt>Contact</dt><dd><a href="https://github.com/chrissabato/stadium-sound/issues" target="_blank" rel="noopener">Open an issue on GitHub ↗</a></dd>
+  </dl>
+
+  <div class="notice">
+    <span class="notice-glyph">⚠</span>
+    <span>
+      <strong>This report was produced from a source-code audit</strong>, not from testing with assistive technology (NVDA, JAWS, VoiceOver, TalkBack) or a calibrated contrast-measurement tool. Criteria that require that kind of testing to answer with confidence are marked <strong>Not Evaluated</strong> below rather than guessed.
+    </span>
+  </div>
+
+  <h2>Summary</h2>
+  <p class="table-note">
+    Stadium Sound does not currently conform to WCAG 2.1 Level AA. The most significant, highest-impact gaps — and the order we intend to address them — are:
+  </p>
+  <ol class="priority">
+    <li><strong>Make the track grid keyboard-operable</strong> (2.1.1, 4.1.2, 2.5.3) — give each track cell a real button element with an accessible name, independent of whether a hotkey is assigned.</li>
+    <li><strong>Add visible focus styles</strong> (2.4.7) — a global focus-visible outline.</li>
+    <li><strong>Add live-region announcements for state changes</strong> (4.1.3) — now-playing state, remote connection status, level/LUFS updates.</li>
+    <li><strong>Pair color with an icon or text label for state</strong> (1.4.1) — playing / monitoring / already-played / clip-warning.</li>
+    <li><strong>Measure and fix contrast</strong> (1.4.3, 1.4.11) across the fixed dark theme.</li>
+    <li><strong>Provide a keyboard alternative for drag-to-reorder</strong> (2.5.1).</li>
+  </ol>
+
+  <h2>Terms Used in This Report</h2>
+  <ul class="legend">
+    <li><span class="status status-supports">●</span> Supports — meets the criterion without known defects</li>
+    <li><span class="status status-partial">●</span> Partially Supports — some functionality does not meet it</li>
+    <li><span class="status status-not">●</span> Does Not Support — the majority of functionality does not meet it</li>
+    <li><span class="status status-na">●</span> Not Applicable — the criterion is not relevant to this product</li>
+    <li><span class="status status-eval">●</span> Not Evaluated — requires AT or measurement-based testing we haven't run yet</li>
+  </ul>
+
+  <h2>Table 1: Success Criteria, Level A</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Criteria</th><th>Conformance</th><th>Remarks</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="crit">1.1.1 Non-text Content</td><td><span class="status status-not">Does Not Support</span></td><td class="remarks">Icon-only controls (e.g., modal close “×”) have no accessible name; only one <code>alt</code> attribute exists in the entire renderer (the logo). Status glyphs (▶, ⚠, ✂, ⠿) carry meaning with no text alternative in most instances.</td></tr>
+        <tr><td class="crit">1.2.1 Audio-only and Video-only (Prerecorded)</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">The app plays user-supplied audio clips it does not produce or narrate.</td></tr>
+        <tr><td class="crit">1.2.2 Captions (Prerecorded)</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">No vendor-authored synchronized media.</td></tr>
+        <tr><td class="crit">1.2.3 Audio Description or Media Alternative (Prerecorded)</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">Same as above.</td></tr>
+        <tr><td class="crit">1.3.1 Info and Relationships</td><td><span class="status status-partial">Partially Supports</span></td><td class="remarks">Some form fields use a <code>&lt;label&gt;</code>, but several inputs associate a label visually only. The primary track grid conveys state through div structure and color, not markup relationships.</td></tr>
+        <tr><td class="crit">1.3.2 Meaningful Sequence</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Requires AT-based verification of read order.</td></tr>
+        <tr><td class="crit">1.3.3 Sensory Characteristics</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Requires content-level review beyond this audit's scope.</td></tr>
+        <tr><td class="crit">1.4.1 Use of Color</td><td><span class="status status-not">Does Not Support</span></td><td class="remarks">Track state (playing / monitoring / already played) and level-meter warning zones are conveyed by color alone in most cases, with no consistent icon or text redundancy.</td></tr>
+        <tr><td class="crit">1.4.2 Audio Control</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">The app's entire purpose is user-initiated audio playback; there is no unexpected autoplaying audio outside user action.</td></tr>
+        <tr><td class="crit">2.1.1 Keyboard</td><td><span class="status status-not">Does Not Support</span></td><td class="remarks">The primary track-trigger grid is built from unlabeled clickable elements with no tab stop or key handler — a track without a manually assigned hotkey cannot be triggered from the keyboard. Drag-to-reorder has no keyboard equivalent.</td></tr>
+        <tr><td class="crit">2.1.2 No Keyboard Trap</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Requires interactive keyboard-only testing.</td></tr>
+        <tr><td class="crit">2.1.4 Character Key Shortcuts</td><td><span class="status status-partial">Partially Supports</span></td><td class="remarks">Per-track hotkeys are user-assigned and user-removable, satisfying the "can be turned off / remapped" allowance, but this has not been verified for every global shortcut.</td></tr>
+        <tr><td class="crit">2.2.1 Timing Adjustable</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">No session or content time limits are imposed.</td></tr>
+        <tr><td class="crit">2.2.2 Pause, Stop, Hide</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">The only continuously updating content (level meters) is essential to the app's core function, an allowed exception.</td></tr>
+        <tr><td class="crit">2.3.1 Three Flashes or Below Threshold</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">No flashing content identified.</td></tr>
+        <tr><td class="crit">2.4.1 Bypass Blocks</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">Single-view desktop application; not a multi-block web page with repeated navigation regions.</td></tr>
+        <tr><td class="crit">2.4.2 Page Titled</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Window/document title not audited.</td></tr>
+        <tr><td class="crit">2.4.3 Focus Order</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Requires interactive keyboard testing.</td></tr>
+        <tr><td class="crit">2.4.4 Link Purpose (In Context)</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">No hyperlink-style content in the application UI.</td></tr>
+        <tr><td class="crit">2.5.1 Pointer Gestures</td><td><span class="status status-not">Does Not Support</span></td><td class="remarks">Reordering tracks relies on drag-and-drop with no single-pointer, non-path-based alternative.</td></tr>
+        <tr><td class="crit">2.5.2 Pointer Cancellation</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Requires interactive pointer testing.</td></tr>
+        <tr><td class="crit">2.5.3 Label in Name</td><td><span class="status status-not">Does Not Support</span></td><td class="remarks">Follows from 1.1.1/4.1.2: many interactive elements have no accessible name at all.</td></tr>
+        <tr><td class="crit">2.5.4 Motion Actuation</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">No motion-actuated features.</td></tr>
+        <tr><td class="crit">3.1.1 Language of Page</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks"><code>lang</code> attribute on the root document not audited.</td></tr>
+        <tr><td class="crit">3.2.1 On Focus</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Requires interactive testing.</td></tr>
+        <tr><td class="crit">3.2.2 On Input</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Requires interactive testing.</td></tr>
+        <tr><td class="crit">3.3.1 Error Identification</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Form-validation error presentation not audited.</td></tr>
+        <tr><td class="crit">3.3.2 Labels or Instructions</td><td><span class="status status-partial">Partially Supports</span></td><td class="remarks">Most form fields have adjacent text labels; programmatic association is inconsistent.</td></tr>
+        <tr><td class="crit">4.1.1 Parsing</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Not verified with a markup validator.</td></tr>
+        <tr><td class="crit">4.1.2 Name, Role, Value</td><td><span class="status status-not">Does Not Support</span></td><td class="remarks">The core track grid and several icon-only controls are custom widgets with no ARIA role, accessible name, or state — they are not identifiable as controls to assistive technology.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Table 2: Success Criteria, Level AA</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Criteria</th><th>Conformance</th><th>Remarks</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="crit">1.2.4 Captions (Live)</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">No live synchronized media produced by the application.</td></tr>
+        <tr><td class="crit">1.2.5 Audio Description (Prerecorded)</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">Same rationale as 1.2.1–1.2.3.</td></tr>
+        <tr><td class="crit">1.3.4 Orientation</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">Desktop application window; not orientation-locked.</td></tr>
+        <tr><td class="crit">1.3.5 Identify Input Purpose</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">No common-purpose input fields (name, address, etc.) requiring autofill semantics.</td></tr>
+        <tr><td class="crit">1.4.3 Contrast (Minimum)</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Colors are hardcoded (no design-token layer) and have not been measured against the 4.5:1 / 3:1 thresholds. Flagged as a priority for follow-up testing.</td></tr>
+        <tr><td class="crit">1.4.4 Resize Text</td><td><span class="status status-partial">Partially Supports</span></td><td class="remarks">A UI Zoom setting (80%–200%) is available and persisted, but most text uses fixed pixel sizing, and behavior at 200% has not been confirmed for clipping/overlap.</td></tr>
+        <tr><td class="crit">1.4.5 Images of Text</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">UI text appears to be real text, not raster images, but not specifically audited.</td></tr>
+        <tr><td class="crit">1.4.10 Reflow</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">The track grid and web-remote layouts use fixed-width columns; reflow at 400% zoom / 320px width is a likely risk area and has not been tested.</td></tr>
+        <tr><td class="crit">1.4.11 Non-text Contrast</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Not measured.</td></tr>
+        <tr><td class="crit">1.4.12 Text Spacing</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Not tested against user style-sheet overrides.</td></tr>
+        <tr><td class="crit">1.4.13 Content on Hover or Focus</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Tooltip/hover-content behavior not audited.</td></tr>
+        <tr><td class="crit">2.4.5 Multiple Ways</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">Single-view desktop application.</td></tr>
+        <tr><td class="crit">2.4.6 Headings and Labels</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Heading structure not audited.</td></tr>
+        <tr><td class="crit">2.4.7 Focus Visible</td><td><span class="status status-not">Does Not Support</span></td><td class="remarks">No focus-visible styling exists anywhere in the renderer's CSS; keyboard focus relies entirely on whatever unstyled default Chromium applies.</td></tr>
+        <tr><td class="crit">3.1.2 Language of Parts</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">Single-language UI.</td></tr>
+        <tr><td class="crit">3.2.3 Consistent Navigation</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">Single-view desktop application; no repeated navigation structure across pages.</td></tr>
+        <tr><td class="crit">3.2.4 Consistent Identification</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Not specifically audited.</td></tr>
+        <tr><td class="crit">3.3.3 Error Suggestion</td><td><span class="status status-eval">Not Evaluated</span></td><td class="remarks">Form-validation messaging not audited.</td></tr>
+        <tr><td class="crit">3.3.4 Error Prevention (Legal, Financial, Data)</td><td><span class="status status-na">Not Applicable</span></td><td class="remarks">No legal, financial, or data-deletion transactions in the application.</td></tr>
+        <tr><td class="crit">4.1.3 Status Messages</td><td><span class="status status-not">Does Not Support</span></td><td class="remarks">No live regions exist anywhere in the app. Track start/stop, remote connection status, and level/LUFS updates change visually with nothing announced to assistive technology.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="table-note">
+    This report was drafted from an internal code audit and has not been validated with assistive technology. It will be updated as remediation work lands — check back for the latest version, or open a GitHub issue with questions.
+  </p>
+</main>
+
+<footer>
+  <div class="footer-brand">
+    <img src="logo.svg" alt="" style="width:20px;height:20px;">
+    <span class="footer-brand-name">Stadium Sound</span>
+  </div>
+  <div class="footer-links">
+    <a href="/changelog.html">Changelog</a>
+    <a href="/vpat.html">Accessibility</a>
+    <a href="https://chrissabato.com" target="_blank" rel="noopener">Chris Sabato ↗</a>
+    <a href="https://github.com/chrissabato/stadium-sound" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</footer>
+
+</body>
+</html>
