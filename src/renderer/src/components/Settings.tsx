@@ -20,6 +20,8 @@ interface Props {
   onShowPlayedIndicatorChange: (enabled: boolean) => void
   showMeters: boolean
   onShowMetersChange: (enabled: boolean) => void
+  telemetryOptOut: boolean
+  onTelemetryOptOutChange: (optOut: boolean) => void
   networkControl: NetworkControlPrefs
   networkStatus: NetworkControlStatus | null
   onNetworkControlChange: (prefs: NetworkControlPrefs) => Promise<void>
@@ -90,7 +92,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, normalizeTargetLufs, onNormalizeTargetLufsChange, onShowChangelog, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, telemetryOptOut, onTelemetryOptOutChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, normalizeTargetLufs, onNormalizeTargetLufsChange, onShowChangelog, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
@@ -399,6 +401,23 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
                 type="checkbox"
                 checked={showMeters}
                 onChange={(e) => onShowMetersChange(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Share Anonymous Usage Data</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Helps prioritize what to support: app version, OS/CPU/RAM. Never track names, file paths, or show content.
+              </div>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', flexShrink: 0, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!telemetryOptOut}
+                onChange={(e) => onTelemetryOptOutChange(!e.target.checked)}
                 style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
               />
             </label>

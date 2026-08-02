@@ -50,6 +50,10 @@ OSC listens on UDP port `9000` by default. Messages use the following addresses:
 
 Stadium Sound sends `/stadium-sound/state/playing`, `/state/bank`, and `/state/volume` feedback immediately after an OSC client sends `/stadium-sound/state/subscribe`, then after each state change. The Bitfocus Companion module source is in [`companion-module`](companion-module); package it and install the resulting module archive as a developer module in Companion. Configure it with the IP, both ports, and the `token` value from the pairing URL; it discovers banks/tracks and monitors connection health automatically.
 
+## Privacy
+
+Stadium Sound sends a small anonymous ping (at most once per day) so I can see how many installs are active and what hardware to support: a random install ID (not tied to any account or email), app version, OS/platform/architecture, CPU model and core count, and total RAM. It never includes track names, file paths, event set contents, or anything else about your show. Turn it off anytime in **Settings → Share Anonymous Usage Data**.
+
 ## Development
 
 ```bash

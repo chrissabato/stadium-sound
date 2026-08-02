@@ -4,4 +4,10 @@ compatibility_date = "2026-07-08"
 
 # Secrets (set via `wrangler secret put <NAME>` — do not put values here):
 #   GITHUB_TOKEN      fine-grained PAT with Issues: write on chrissabato/stadium-sound
-#   APP_SHARED_SECRET must match the value baked into FeedbackModal.tsx
+#   APP_SHARED_SECRET must match the value baked into FeedbackModal.tsx and telemetry.ts
+
+[[d1_databases]]
+binding = "TELEMETRY_DB"
+database_name = "stadium-sound-telemetry"
+database_id = "d00a07a1-ff6d-4f5a-994f-ef1cef0563fc"
+migrations_dir = "migrations"

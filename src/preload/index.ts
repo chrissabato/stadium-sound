@@ -61,7 +61,9 @@ const api: ElectronAPI = {
     setNormalizeTargetLufs: (lufs: number) =>
       ipcRenderer.invoke('settings:setNormalizeTargetLufs', lufs),
     setLastSeenChangelogVersion: (version: string) =>
-      ipcRenderer.invoke('settings:setLastSeenChangelogVersion', version)
+      ipcRenderer.invoke('settings:setLastSeenChangelogVersion', version),
+    setTelemetryOptOut: (optOut: boolean) =>
+      ipcRenderer.invoke('settings:setTelemetryOptOut', optOut)
   },
   network: {
     getStatus: () => ipcRenderer.invoke('network:getStatus'),

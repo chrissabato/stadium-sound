@@ -8,6 +8,7 @@ import { registerIpcHandlers } from './ipcHandlers'
 import { buildMenu } from './menu'
 import { loadSettings, saveWindowBounds } from './settingsStore'
 import { startNetworkControl, stopNetworkControl } from './networkControl'
+import { maybeSendTelemetryPing } from './telemetry'
 
 // Windows-on-ARM devices (Snapdragon X Elite/Adreno GPUs in particular) have
 // a history of crashing Chromium's GPU process under the default D3D11/ANGLE
@@ -208,6 +209,7 @@ app.whenReady().then(() => {
       title: 'Stadium Sound update ready',
       body: 'Stadium Sound {version} has been downloaded and will be installed when you quit.'
     })
+    maybeSendTelemetryPing()
   }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

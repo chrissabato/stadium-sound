@@ -1,6 +1,7 @@
 export interface Env {
   GITHUB_TOKEN: string
   APP_SHARED_SECRET: string
+  TELEMETRY_DB: D1Database
 }
 
 const GITHUB_REPO = 'chrissabato/stadium-sound'
@@ -20,6 +21,19 @@ interface FeedbackPayload {
   platform?: string
   website?: string // honeypot — must stay empty
 }
+
+interface TelemetryPayload {
+  installId: string
+  appVersion?: string
+  platform?: string
+  arch?: string
+  osRelease?: string
+  totalMemGb?: number
+  cpuModel?: string
+  cpuCount?: number
+}
+
+const FIELD_MAX = 100
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -53,82 +67,127 @@ export default {
       return new Response(null, { status: 204, headers: CORS_HEADERS })
     }
 
-    if (url.pathname !== '/submit' || request.method !== 'POST') {
-      return json({ ok: false, error: 'Not found' }, 404)
+    if (url.pathname === '/submit' && request.method === 'POST') {
+      return handleSubmit(request, env)
     }
 
-    if (request.headers.get('X-App-Secret') !== env.APP_SHARED_SECRET) {
-      return json({ ok: false, error: 'Unauthorized' }, 401)
+    if (url.pathname === '/telemetry' && request.method === 'POST') {
+      return handleTelemetry(request, env)
     }
 
-    let payload: FeedbackPayload
-    try {
-      payload = await request.json()
-    } catch {
-      return json({ ok: false, error: 'Invalid JSON body' }, 400)
-    }
+    return json({ ok: false, error: 'Not found' }, 404)
+  }
+}
 
-    // Honeypot: bots that fill every field get a fake success, no issue filed.
-    if (payload.website) {
-      return json({ ok: true })
-    }
+async function handleSubmit(request: Request, env: Env): Promise<Response> {
+  if (request.headers.get('X-App-Secret') !== env.APP_SHARED_SECRET) {
+    return json({ ok: false, error: 'Unauthorized' }, 401)
+  }
 
-    const message = typeof payload.message === 'string' ? payload.message.trim() : ''
-    if (message.length < MESSAGE_MIN || message.length > MESSAGE_MAX) {
-      return json(
-        { ok: false, error: `message must be between ${MESSAGE_MIN} and ${MESSAGE_MAX} characters` },
-        400
-      )
-    }
+  let payload: FeedbackPayload
+  try {
+    payload = await request.json()
+  } catch {
+    return json({ ok: false, error: 'Invalid JSON body' }, 400)
+  }
 
-    const category: Category = CATEGORIES.includes(payload.category as Category)
-      ? (payload.category as Category)
-      : 'general'
-
-    let email = ''
-    if (typeof payload.email === 'string' && payload.email.trim()) {
-      email = payload.email.trim().slice(0, EMAIL_MAX)
-      if (!EMAIL_RE.test(email)) {
-        return json({ ok: false, error: 'email is not valid' }, 400)
-      }
-    }
-
-    const appVersion = typeof payload.appVersion === 'string' ? payload.appVersion.slice(0, 50) : 'unknown'
-    const platform = typeof payload.platform === 'string' ? payload.platform.slice(0, 50) : 'unknown'
-
-    const titleSnippet = message.length > 60 ? `${message.slice(0, 60)}…` : message
-    const title = `[Feedback] ${categoryLabel(category)} — ${titleSnippet}`
-
-    const bodyLines = [
-      message,
-      '',
-      '---',
-      `**Category:** ${categoryLabel(category)}`,
-      `**App version:** ${appVersion}`,
-      `**Platform:** ${platform}`,
-      email ? `**Contact email:** ${email}` : undefined,
-      `**Submitted:** ${new Date().toISOString()} via the in-app feedback form`
-    ].filter((line): line is string => line !== undefined)
-
-    const ghResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/issues`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'stadium-sound-feedback-worker'
-      },
-      body: JSON.stringify({
-        title,
-        body: bodyLines.join('\n'),
-        labels: ['feedback']
-      })
-    })
-
-    if (!ghResponse.ok) {
-      return json({ ok: false, error: `GitHub API error (${ghResponse.status})` }, 502)
-    }
-
+  // Honeypot: bots that fill every field get a fake success, no issue filed.
+  if (payload.website) {
     return json({ ok: true })
   }
+
+  const message = typeof payload.message === 'string' ? payload.message.trim() : ''
+  if (message.length < MESSAGE_MIN || message.length > MESSAGE_MAX) {
+    return json(
+      { ok: false, error: `message must be between ${MESSAGE_MIN} and ${MESSAGE_MAX} characters` },
+      400
+    )
+  }
+
+  const category: Category = CATEGORIES.includes(payload.category as Category)
+    ? (payload.category as Category)
+    : 'general'
+
+  let email = ''
+  if (typeof payload.email === 'string' && payload.email.trim()) {
+    email = payload.email.trim().slice(0, EMAIL_MAX)
+    if (!EMAIL_RE.test(email)) {
+      return json({ ok: false, error: 'email is not valid' }, 400)
+    }
+  }
+
+  const appVersion = typeof payload.appVersion === 'string' ? payload.appVersion.slice(0, 50) : 'unknown'
+  const platform = typeof payload.platform === 'string' ? payload.platform.slice(0, 50) : 'unknown'
+
+  const titleSnippet = message.length > 60 ? `${message.slice(0, 60)}…` : message
+  const title = `[Feedback] ${categoryLabel(category)} — ${titleSnippet}`
+
+  const bodyLines = [
+    message,
+    '',
+    '---',
+    `**Category:** ${categoryLabel(category)}`,
+    `**App version:** ${appVersion}`,
+    `**Platform:** ${platform}`,
+    email ? `**Contact email:** ${email}` : undefined,
+    `**Submitted:** ${new Date().toISOString()} via the in-app feedback form`
+  ].filter((line): line is string => line !== undefined)
+
+  const ghResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/issues`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'User-Agent': 'stadium-sound-feedback-worker'
+    },
+    body: JSON.stringify({
+      title,
+      body: bodyLines.join('\n'),
+      labels: ['feedback']
+    })
+  })
+
+  if (!ghResponse.ok) {
+    return json({ ok: false, error: `GitHub API error (${ghResponse.status})` }, 502)
+  }
+
+  return json({ ok: true })
+}
+
+async function handleTelemetry(request: Request, env: Env): Promise<Response> {
+  if (request.headers.get('X-App-Secret') !== env.APP_SHARED_SECRET) {
+    return json({ ok: false, error: 'Unauthorized' }, 401)
+  }
+
+  let payload: TelemetryPayload
+  try {
+    payload = await request.json()
+  } catch {
+    return json({ ok: false, error: 'Invalid JSON body' }, 400)
+  }
+
+  // installId is a randomBytes(16).toString('hex') generated by the app — 32 lowercase hex chars.
+  const installId = typeof payload.installId === 'string' ? payload.installId : ''
+  if (!/^[a-f0-9]{32}$/.test(installId)) {
+    return json({ ok: false, error: 'installId is not valid' }, 400)
+  }
+
+  const appVersion = typeof payload.appVersion === 'string' ? payload.appVersion.slice(0, FIELD_MAX) : null
+  const platform = typeof payload.platform === 'string' ? payload.platform.slice(0, FIELD_MAX) : null
+  const arch = typeof payload.arch === 'string' ? payload.arch.slice(0, FIELD_MAX) : null
+  const osRelease = typeof payload.osRelease === 'string' ? payload.osRelease.slice(0, FIELD_MAX) : null
+  const totalMemGb =
+    typeof payload.totalMemGb === 'number' && Number.isFinite(payload.totalMemGb) ? payload.totalMemGb : null
+  const cpuModel = typeof payload.cpuModel === 'string' ? payload.cpuModel.slice(0, FIELD_MAX) : null
+  const cpuCount =
+    typeof payload.cpuCount === 'number' && Number.isInteger(payload.cpuCount) ? payload.cpuCount : null
+
+  await env.TELEMETRY_DB.prepare(
+    'INSERT INTO pings (install_id, app_version, platform, arch, os_release, total_mem_gb, cpu_model, cpu_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  )
+    .bind(installId, appVersion, platform, arch, osRelease, totalMemGb, cpuModel, cpuCount, new Date().toISOString())
+    .run()
+
+  return new Response(null, { status: 204 })
 }

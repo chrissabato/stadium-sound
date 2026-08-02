@@ -34,6 +34,8 @@ export interface ConfigState {
   normalizeTargetLufs: number
   setNormalizeTargetLufs: (lufs: number) => void
   lastSeenChangelogVersion: string
+  telemetryOptOut: boolean
+  setTelemetryOptOut: (optOut: boolean) => void
 }
 
 function fileLabel(filePath: string | null): string {
@@ -59,6 +61,7 @@ export function useConfig(): ConfigState {
   const [uiZoom, setUiZoomState] = useState(1)
   const [normalizeTargetLufs, setNormalizeTargetLufsState] = useState(DEFAULT_NORMALIZE_TARGET_LUFS)
   const [lastSeenChangelogVersion, setLastSeenChangelogVersion] = useState('')
+  const [telemetryOptOut, setTelemetryOptOutState] = useState(false)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -91,6 +94,7 @@ export function useConfig(): ConfigState {
       setUiZoomState(state.uiZoom)
       setNormalizeTargetLufsState(state.normalizeTargetLufs)
       setLastSeenChangelogVersion(state.lastSeenChangelogVersion)
+      setTelemetryOptOutState(state.telemetryOptOut)
       setLoaded(true)
     })
     return removeStatus
@@ -114,6 +118,11 @@ export function useConfig(): ConfigState {
   const setShowMeters = useCallback((enabled: boolean) => {
     setShowMetersState(enabled)
     window.electronAPI.settings.setShowMeters(enabled)
+  }, [])
+
+  const setTelemetryOptOut = useCallback((optOut: boolean) => {
+    setTelemetryOptOutState(optOut)
+    window.electronAPI.settings.setTelemetryOptOut(optOut)
   }, [])
 
   const setNetworkControl = useCallback(async (prefs: NetworkControlPrefs) => {
@@ -236,5 +245,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut }
 }

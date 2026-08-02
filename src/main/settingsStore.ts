@@ -33,6 +33,11 @@ interface AppSettings {
   // Which release's What's New the user has already seen — '' until first
   // recorded, which doubles as "fresh install, don't pop the dialog".
   lastSeenChangelogVersion: string
+  // Random per-install identifier sent with anonymous telemetry pings — not
+  // tied to any account/email, exists purely to dedupe installs server-side.
+  installId: string
+  telemetryOptOut: boolean
+  lastTelemetryPingAt: number | null
 }
 
 function settingsPath(): string {
@@ -68,9 +73,14 @@ export function loadSettings(): AppSettings {
           : 1,
       normalizeTargetLufs: validLufs(parsed.normalizeTargetLufs),
       lastSeenChangelogVersion:
-        typeof parsed.lastSeenChangelogVersion === 'string' ? parsed.lastSeenChangelogVersion : ''
+        typeof parsed.lastSeenChangelogVersion === 'string' ? parsed.lastSeenChangelogVersion : '',
+      installId: validInstallId(parsed.installId),
+      telemetryOptOut: typeof parsed.telemetryOptOut === 'boolean' ? parsed.telemetryOptOut : false,
+      lastTelemetryPingAt: typeof parsed.lastTelemetryPingAt === 'number' ? parsed.lastTelemetryPingAt : null
     }
-    if (parsed.remoteToken !== settings.remoteToken) writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
+    if (parsed.remoteToken !== settings.remoteToken || parsed.installId !== settings.installId) {
+      writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
+    }
     return settings
   } catch {
     const settings: AppSettings = {
@@ -89,7 +99,10 @@ export function loadSettings(): AppSettings {
       remoteToken: fallbackRemoteToken,
       uiZoom: 1,
       normalizeTargetLufs: DEFAULT_NORMALIZE_TARGET_LUFS,
-      lastSeenChangelogVersion: ''
+      lastSeenChangelogVersion: '',
+      installId: fallbackInstallId,
+      telemetryOptOut: false,
+      lastTelemetryPingAt: null
     }
     return settings
   }
@@ -106,6 +119,10 @@ function validLufs(value: unknown): number {
 function makeToken(): string { return randomBytes(18).toString('base64url') }
 const fallbackRemoteToken = makeToken()
 function validToken(value: unknown): string { return typeof value === 'string' && /^[A-Za-z0-9_-]{20,64}$/.test(value) ? value : fallbackRemoteToken }
+
+function makeInstallId(): string { return randomBytes(16).toString('hex') }
+const fallbackInstallId = makeInstallId()
+function validInstallId(value: unknown): string { return typeof value === 'string' && /^[a-f0-9]{32}$/.test(value) ? value : fallbackInstallId }
 
 function validPort(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1024 && value <= 65535
@@ -169,6 +186,17 @@ export function saveNormalizeTargetLufs(normalizeTargetLufs: number): void {
 export function saveLastSeenChangelogVersion(lastSeenChangelogVersion: string): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, lastSeenChangelogVersion }, null, 2), 'utf-8')
+}
+
+export function saveTelemetryOptOut(telemetryOptOut: boolean): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, telemetryOptOut }, null, 2), 'utf-8')
+}
+
+// Not IPC-exposed — only telemetry.ts calls this, to record when the last ping went out.
+export function saveLastTelemetryPingAt(lastTelemetryPingAt: number): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, lastTelemetryPingAt }, null, 2), 'utf-8')
 }
 
 function saveSettings(s: AppSettings): void {

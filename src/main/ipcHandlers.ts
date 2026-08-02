@@ -3,7 +3,7 @@ import { autoUpdater } from 'electron-updater'
 import { readFile, access } from 'fs/promises'
 import { readFileSync, writeFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
-import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveNormalizeTargetLufs, saveLastSeenChangelogVersion } from './settingsStore'
+import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveNormalizeTargetLufs, saveLastSeenChangelogVersion, saveTelemetryOptOut } from './settingsStore'
 import { getNetworkControlStatus, startNetworkControl, stopNetworkControl, updateRemoteState } from './networkControl'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
@@ -83,18 +83,19 @@ export function registerIpcHandlers(): void {
     const uiZoom = settings.uiZoom
     const normalizeTargetLufs = settings.normalizeTargetLufs
     const lastSeenChangelogVersion = settings.lastSeenChangelogVersion
+    const telemetryOptOut = settings.telemetryOptOut
     if (settings.lastFile && eventSetExists(settings.lastFile)) {
       try {
         const config = loadEventSet(settings.lastFile)
-        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion }
+        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut }
       } catch (err) {
         // File exists but is unreadable — tell the user, remove from recents, start blank
         showOpenError(settings.lastFile, err, 'Your last event set could not be reopened.')
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
-        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion }
+        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut }
       }
     }
-    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion }
+    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut }
   })
 
   // Machine-level audio device preference — saved independently of the event
@@ -116,6 +117,11 @@ export function registerIpcHandlers(): void {
   // Machine-level UI preference — same rationale as audio devices above.
   ipcMain.handle('settings:setShowMeters', (_event, enabled: boolean) => {
     saveShowMeters(enabled)
+  })
+
+  // Machine-level UI preference — same rationale as audio devices above.
+  ipcMain.handle('settings:setTelemetryOptOut', (_event, optOut: boolean) => {
+    saveTelemetryOptOut(optOut)
   })
 
   ipcMain.handle('settings:setNetworkControl', async (_event, prefs: { enabled: boolean; oscPort: number; remotePort: number }) => {

@@ -71,7 +71,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -1519,6 +1519,8 @@ export default function App() {
         onShowPlayedIndicatorChange={setShowPlayedIndicator}
         showMeters={showMeters}
         onShowMetersChange={setShowMeters}
+        telemetryOptOut={telemetryOptOut}
+        onTelemetryOptOutChange={setTelemetryOptOut}
         networkControl={networkControl}
         networkStatus={networkStatus}
         onNetworkControlChange={setNetworkControl}
