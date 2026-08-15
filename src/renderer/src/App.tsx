@@ -21,7 +21,7 @@ import { LibraryManager } from './components/LibraryManager'
 import { AddFromLibraryModal } from './components/AddFromLibraryModal'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import type { AppConfig, Bank, Track, Playlist, PlaylistTrack, LibraryTrack } from './types'
-import { normalizeHotkeyEvent } from './types'
+import { normalizeHotkeyEvent, TRACK_COLORS, getColorLabelName } from './types'
 import type { NetworkCommand } from '../../types/electron'
 
 function makeId() {
@@ -71,7 +71,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -86,6 +86,8 @@ export default function App() {
   const [libraryManagerOpen, setLibraryManagerOpen] = useState(false)
   const [addFromLibraryTarget, setAddFromLibraryTarget] = useState<'bank' | 'playlist' | null>(null)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const [colorFilter, setColorFilter] = useState<string | null>(null)
+  const [colorFilterOpen, setColorFilterOpen] = useState(false)
   const [playedIds, setPlayedIds] = useState<Set<string>>(new Set())
   const [isReordering, setIsReordering] = useState(false)
   const [missingFileIds, setMissingFileIds] = useState<Set<string>>(new Set())
@@ -99,6 +101,16 @@ export default function App() {
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null)
   const suppressPlaylistAdvanceRef = useRef(false)
   const searchRef = useRef<TrackSearchHandle>(null)
+
+  // Turning the feature off mid-session shouldn't leave the grid stuck
+  // showing a cross-bank filtered view with no way to see the button that
+  // controls it.
+  useEffect(() => {
+    if (!enableColorLabels) {
+      setColorFilter(null)
+      setColorFilterOpen(false)
+    }
+  }, [enableColorLabels])
 
   const resetPlayed = () => setPlayedIds(new Set())
 
@@ -272,6 +284,16 @@ export default function App() {
   const selectedBank = config.banks.find((b) => b.id === config.selectedBankId) ?? null
   const selectedPlaylist = (config.playlists ?? []).find((p) => p.id === config.selectedPlaylistId) ?? null
   const hasUnplayedTracks = !!selectedBank?.tracks.some((t) => !playedIds.has(t.id) && !missingFileIds.has(t.id))
+  // A color filter searches every bank, not just the selected one — Reorder
+  // is disabled whenever it's active (see the button below) since dragging
+  // to reorder a cross-bank list has no single array to write back to.
+  const totalTracksAllBanks = config.banks.reduce((sum, b) => sum + b.tracks.length, 0)
+  const displayedTracks = colorFilter
+    ? config.banks.flatMap((b) => b.tracks.filter((t) => t.colorLabel === colorFilter))
+    : (selectedBank?.tracks ?? [])
+  const displayedTrackBankNames = colorFilter
+    ? new Map(config.banks.flatMap((b) => b.tracks.filter((t) => t.colorLabel === colorFilter).map((t) => [t.id, b.name] as const)))
+    : null
 
   // Lets the Sidebar flag which bank owns the track currently cued on the
   // monitor bus, so it stays visible even after switching to a different bank.
@@ -1210,20 +1232,22 @@ export default function App() {
       />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar
-          banks={config.banks}
-          selectedBankId={config.selectedBankId}
-          monitorPlayingBankId={monitorPlayingBankId}
-          mainPlayingBankId={mainPlayingBankId}
-          isReordering={isReordering}
-          missingFileIds={missingFileIds}
-          onSelectBank={selectBank}
-          onAddBank={addBank}
-          onRenameBank={renameBank}
-          onDeleteBank={requestDeleteBank}
-          onReorderBanks={reorderBanks}
-          onDropTrackOnBank={moveTrackToBank}
-        />
+        {!colorFilter && (
+          <Sidebar
+            banks={config.banks}
+            selectedBankId={config.selectedBankId}
+            monitorPlayingBankId={monitorPlayingBankId}
+            mainPlayingBankId={mainPlayingBankId}
+            isReordering={isReordering}
+            missingFileIds={missingFileIds}
+            onSelectBank={selectBank}
+            onAddBank={addBank}
+            onRenameBank={renameBank}
+            onDeleteBank={requestDeleteBank}
+            onReorderBanks={reorderBanks}
+            onDropTrackOnBank={moveTrackToBank}
+          />
+        )}
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Bank header with Add Tracks button */}
@@ -1237,9 +1261,110 @@ export default function App() {
               borderBottom: '1px solid #1e293b',
               flexShrink: 0
             }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>{selectedBank.name}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>{colorFilter ? 'All Banks' : selectedBank.name}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, color: '#64748b' }}>{selectedBank.tracks.length} tracks</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>
+                  {colorFilter
+                    ? `${displayedTracks.length} of ${totalTracksAllBanks} tracks, all banks`
+                    : `${selectedBank.tracks.length} tracks`}
+                </span>
+                {enableColorLabels && (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setColorFilterOpen((v) => !v)}
+                    disabled={isReordering}
+                    title="Filter by color"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '5px 10px',
+                      background: colorFilterOpen ? '#1e3a5f' : '#1e293b',
+                      border: `1px solid ${colorFilterOpen ? '#3b82f6' : '#334155'}`,
+                      borderRadius: 4,
+                      color: isReordering ? '#475569' : (colorFilterOpen ? '#93c5fd' : '#94a3b8'),
+                      fontSize: 12,
+                      cursor: isReordering ? 'default' : 'pointer'
+                    }}
+                  >
+                    <span style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: colorFilter || 'transparent',
+                      border: colorFilter ? 'none' : '1.5px solid currentColor',
+                      flexShrink: 0
+                    }} />
+                    {colorFilter ? getColorLabelName(colorFilter, colorLabelNames) : 'Color'}
+                  </button>
+                  {colorFilterOpen && (
+                    <>
+                      <div
+                        onClick={() => setColorFilterOpen(false)}
+                        style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        marginTop: 4,
+                        zIndex: 11,
+                        background: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: 4,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minWidth: 170,
+                        overflow: 'hidden'
+                      }}>
+                        <button
+                          onClick={() => { setColorFilter(null); setColorFilterOpen(false) }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '7px 12px',
+                            background: !colorFilter ? '#1e3a5f' : 'transparent',
+                            border: 'none',
+                            textAlign: 'left',
+                            color: !colorFilter ? '#93c5fd' : '#e2e8f0',
+                            fontSize: 12,
+                            fontWeight: !colorFilter ? 600 : 400,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <span style={{ width: 12, height: 12, borderRadius: '50%', border: '1px solid #475569', flexShrink: 0 }} />
+                          All Colors
+                        </button>
+                        {TRACK_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => { setColorFilter(color); setColorFilterOpen(false) }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '7px 12px',
+                              background: colorFilter === color ? '#1e3a5f' : 'transparent',
+                              border: 'none',
+                              borderTop: '1px solid #334155',
+                              textAlign: 'left',
+                              color: colorFilter === color ? '#93c5fd' : '#e2e8f0',
+                              fontSize: 12,
+                              fontWeight: colorFilter === color ? 600 : 400,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            {getColorLabelName(color, colorLabelNames)}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                )}
                 <button
                   onClick={playRandomTrack}
                   disabled={!hasUnplayedTracks}
@@ -1262,14 +1387,17 @@ export default function App() {
                     if (next) setIsAddToPlaylistMode(false)
                     return next
                   })}
+                  disabled={!isReordering && !!colorFilter}
+                  title={colorFilter && !isReordering ? 'Clear the color filter to reorder tracks' : undefined}
                   style={{
                     padding: '5px 12px',
                     background: isReordering ? '#1e3a5f' : '#1e293b',
                     border: `1px solid ${isReordering ? '#3b82f6' : '#334155'}`,
                     borderRadius: 4,
-                    color: isReordering ? '#93c5fd' : '#94a3b8',
+                    color: isReordering ? '#93c5fd' : colorFilter ? '#475569' : '#94a3b8',
                     fontSize: 12,
-                    fontWeight: isReordering ? 600 : 400
+                    fontWeight: isReordering ? 600 : 400,
+                    cursor: !isReordering && colorFilter ? 'default' : 'pointer'
                   }}
                 >
                   {isReordering ? '✓ Done Reordering' : '⇅ Reorder'}
@@ -1406,7 +1534,7 @@ export default function App() {
 
           {selectedBank ? (
             <TrackGrid
-              tracks={selectedBank.tracks}
+              tracks={displayedTracks}
               playingTrackId={audio.playingTrackId}
               monitorPlayingTrackId={audio.monitorPlayingTrackId}
               playStartWallTime={audio.playStartWallTime}
@@ -1418,6 +1546,9 @@ export default function App() {
               isAddToPlaylistMode={isAddToPlaylistMode}
               showTrackTooltips={showTrackTooltips}
               highlightedTrackId={highlightedTrackId}
+              trackBankNames={displayedTrackBankNames}
+              isColorFiltered={!!colorFilter}
+              colorLabelNames={colorLabelNames}
               onPlayTrack={playTrack}
               onEditTrack={setEditingTrack}
               onDeleteTrack={(track) => requestRemoveTrack(track.id)}
@@ -1492,6 +1623,7 @@ export default function App() {
         getBuffer={audio.getBuffer}
         hotkeyOwner={hotkeyOwner}
         normalizeTargetLufs={normalizeTargetLufs}
+        colorLabelNames={colorLabelNames}
       />
 
       <Settings
@@ -1528,6 +1660,10 @@ export default function App() {
         onUiZoomChange={setUiZoom}
         normalizeTargetLufs={normalizeTargetLufs}
         onNormalizeTargetLufsChange={setNormalizeTargetLufs}
+        colorLabelNames={colorLabelNames}
+        onColorLabelNamesChange={setColorLabelNames}
+        enableColorLabels={enableColorLabels}
+        onEnableColorLabelsChange={setEnableColorLabels}
         onShowChangelog={() => setChangelogOpen(true)}
         onClose={() => setSettingsOpen(false)}
       />

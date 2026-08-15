@@ -38,6 +38,9 @@ interface AppSettings {
   installId: string
   telemetryOptOut: boolean
   lastTelemetryPingAt: number | null
+  // Gates the "Track Colors" section in Settings and the color filter button
+  // in the bank header — off by default since most shows don't use colors.
+  enableColorLabels: boolean
 }
 
 function settingsPath(): string {
@@ -76,7 +79,8 @@ export function loadSettings(): AppSettings {
         typeof parsed.lastSeenChangelogVersion === 'string' ? parsed.lastSeenChangelogVersion : '',
       installId: validInstallId(parsed.installId),
       telemetryOptOut: typeof parsed.telemetryOptOut === 'boolean' ? parsed.telemetryOptOut : false,
-      lastTelemetryPingAt: typeof parsed.lastTelemetryPingAt === 'number' ? parsed.lastTelemetryPingAt : null
+      lastTelemetryPingAt: typeof parsed.lastTelemetryPingAt === 'number' ? parsed.lastTelemetryPingAt : null,
+      enableColorLabels: typeof parsed.enableColorLabels === 'boolean' ? parsed.enableColorLabels : false
     }
     if (parsed.remoteToken !== settings.remoteToken || parsed.installId !== settings.installId) {
       writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
@@ -102,7 +106,8 @@ export function loadSettings(): AppSettings {
       lastSeenChangelogVersion: '',
       installId: fallbackInstallId,
       telemetryOptOut: false,
-      lastTelemetryPingAt: null
+      lastTelemetryPingAt: null,
+      enableColorLabels: false
     }
     return settings
   }
@@ -191,6 +196,11 @@ export function saveLastSeenChangelogVersion(lastSeenChangelogVersion: string): 
 export function saveTelemetryOptOut(telemetryOptOut: boolean): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, telemetryOptOut }, null, 2), 'utf-8')
+}
+
+export function saveEnableColorLabels(enableColorLabels: boolean): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, enableColorLabels }, null, 2), 'utf-8')
 }
 
 // Not IPC-exposed — only telemetry.ts calls this, to record when the last ping went out.

@@ -36,6 +36,14 @@ export interface ConfigState {
   lastSeenChangelogVersion: string
   telemetryOptOut: boolean
   setTelemetryOptOut: (optOut: boolean) => void
+  // Travels with the event set (AppConfig.colorLabelNames), not a machine
+  // setting — see the field comment in types.ts.
+  colorLabelNames: Record<string, string>
+  setColorLabelNames: (names: Record<string, string>) => void
+  // Gates the Track Colors settings section and the color filter button —
+  // machine-level, off by default (see settingsStore.ts).
+  enableColorLabels: boolean
+  setEnableColorLabels: (enabled: boolean) => void
 }
 
 function fileLabel(filePath: string | null): string {
@@ -62,6 +70,7 @@ export function useConfig(): ConfigState {
   const [normalizeTargetLufs, setNormalizeTargetLufsState] = useState(DEFAULT_NORMALIZE_TARGET_LUFS)
   const [lastSeenChangelogVersion, setLastSeenChangelogVersion] = useState('')
   const [telemetryOptOut, setTelemetryOptOutState] = useState(false)
+  const [enableColorLabels, setEnableColorLabelsState] = useState(false)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -95,6 +104,7 @@ export function useConfig(): ConfigState {
       setNormalizeTargetLufsState(state.normalizeTargetLufs)
       setLastSeenChangelogVersion(state.lastSeenChangelogVersion)
       setTelemetryOptOutState(state.telemetryOptOut)
+      setEnableColorLabelsState(state.enableColorLabels)
       setLoaded(true)
     })
     return removeStatus
@@ -123,6 +133,11 @@ export function useConfig(): ConfigState {
   const setTelemetryOptOut = useCallback((optOut: boolean) => {
     setTelemetryOptOutState(optOut)
     window.electronAPI.settings.setTelemetryOptOut(optOut)
+  }, [])
+
+  const setEnableColorLabels = useCallback((enabled: boolean) => {
+    setEnableColorLabelsState(enabled)
+    window.electronAPI.settings.setEnableColorLabels(enabled)
   }, [])
 
   const setNetworkControl = useCallback(async (prefs: NetworkControlPrefs) => {
@@ -161,6 +176,12 @@ export function useConfig(): ConfigState {
     },
     [scheduleAutoSave]
   )
+
+  const colorLabelNames = config.colorLabelNames ?? {}
+
+  const setColorLabelNames = useCallback((names: Record<string, string>) => {
+    updateConfig((c) => ({ ...c, colorLabelNames: names }))
+  }, [updateConfig])
 
   // Main process asks us to flush any pending debounced autosave before
   // the window actually closes (see main's `close` handler).
@@ -245,5 +266,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import type { Track } from '../types'
-import { formatTime, parseTime, normalizeHotkeyEvent, TRACK_COLORS } from '../types'
+import { formatTime, parseTime, normalizeHotkeyEvent, TRACK_COLORS, getColorLabelName } from '../types'
 import { WaveformCanvas } from './WaveformCanvas'
 import {
   createAnalyserChain,
@@ -29,9 +29,12 @@ interface Props {
   // Target loudness (LUFS) the Normalize button aims for — a user setting,
   // not hardcoded, so it stays in sync with the Loudness Report's target.
   normalizeTargetLufs: number
+  // User-renamed labels for the TRACK_COLORS palette (e.g. '#ef4444' -> 'Timeout'),
+  // set in Settings > Track Colors. Falls back to plain color names when absent.
+  colorLabelNames: Record<string, string>
 }
 
-export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getBuffer, hotkeyOwner, normalizeTargetLufs }: Props) {
+export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getBuffer, hotkeyOwner, normalizeTargetLufs, colorLabelNames }: Props) {
   const [filePath, setFilePath] = useState('')
   const [artist, setArtist] = useState('')
   const [title, setTitle] = useState('')
@@ -296,7 +299,19 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
 
         {/* File */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ flex: 1, fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div
+            onClick={filePath ? () => window.electronAPI.showItemInFolder(filePath) : undefined}
+            title={filePath ? 'Show in folder' : undefined}
+            style={{
+              flex: 1,
+              fontSize: 12,
+              color: '#64748b',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              cursor: filePath ? 'pointer' : 'default'
+            }}
+          >
             {filePath || 'No file selected'}
           </div>
           <button
@@ -429,7 +444,9 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
 
         {/* Color label */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 11, color: '#64748b' }}>Color Label</label>
+          <label style={{ fontSize: 11, color: '#64748b' }}>
+            Color Label{colorLabel ? ` — ${getColorLabelName(colorLabel, colorLabelNames)}` : ''}
+          </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button
               onClick={() => setColorLabel(undefined)}
@@ -453,7 +470,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
               <button
                 key={color}
                 onClick={() => setColorLabel(color)}
-                title={color}
+                title={getColorLabelName(color, colorLabelNames)}
                 style={{
                   width: 22,
                   height: 22,

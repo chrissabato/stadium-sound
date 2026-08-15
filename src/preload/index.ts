@@ -7,6 +7,7 @@ const api: ElectronAPI = {
   readAudioFile: (filePath: string) => ipcRenderer.invoke('fs:readAudioFile', filePath),
   getTrackMetadata: (filePath: string) => ipcRenderer.invoke('meta:getTrackMetadata', filePath),
   checkFiles: (paths: string[]) => ipcRenderer.invoke('fs:checkFiles', paths),
+  showItemInFolder: (filePath: string) => ipcRenderer.invoke('fs:showItemInFolder', filePath),
   // `file` is a real DOM File object handed in from the renderer (e.g. from
   // an OS drag-and-drop event) — typed `unknown` here because this file is
   // also compiled under tsconfig.node.json, which has no DOM lib and can't
@@ -63,7 +64,9 @@ const api: ElectronAPI = {
     setLastSeenChangelogVersion: (version: string) =>
       ipcRenderer.invoke('settings:setLastSeenChangelogVersion', version),
     setTelemetryOptOut: (optOut: boolean) =>
-      ipcRenderer.invoke('settings:setTelemetryOptOut', optOut)
+      ipcRenderer.invoke('settings:setTelemetryOptOut', optOut),
+    setEnableColorLabels: (enabled: boolean) =>
+      ipcRenderer.invoke('settings:setEnableColorLabels', enabled)
   },
   network: {
     getStatus: () => ipcRenderer.invoke('network:getStatus'),

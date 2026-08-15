@@ -1,9 +1,9 @@
-import { ipcMain, dialog, BrowserWindow, app } from 'electron'
+import { ipcMain, dialog, BrowserWindow, app, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { readFile, access } from 'fs/promises'
 import { readFileSync, writeFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
-import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveNormalizeTargetLufs, saveLastSeenChangelogVersion, saveTelemetryOptOut } from './settingsStore'
+import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveNormalizeTargetLufs, saveLastSeenChangelogVersion, saveTelemetryOptOut, saveEnableColorLabels } from './settingsStore'
 import { getNetworkControlStatus, startNetworkControl, stopNetworkControl, updateRemoteState } from './networkControl'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
@@ -84,18 +84,19 @@ export function registerIpcHandlers(): void {
     const normalizeTargetLufs = settings.normalizeTargetLufs
     const lastSeenChangelogVersion = settings.lastSeenChangelogVersion
     const telemetryOptOut = settings.telemetryOptOut
+    const enableColorLabels = settings.enableColorLabels
     if (settings.lastFile && eventSetExists(settings.lastFile)) {
       try {
         const config = loadEventSet(settings.lastFile)
-        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut }
+        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels }
       } catch (err) {
         // File exists but is unreadable — tell the user, remove from recents, start blank
         showOpenError(settings.lastFile, err, 'Your last event set could not be reopened.')
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
-        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut }
+        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels }
       }
     }
-    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut }
+    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels }
   })
 
   // Machine-level audio device preference — saved independently of the event
@@ -152,6 +153,11 @@ export function registerIpcHandlers(): void {
   // Machine-level preference — same rationale as audio devices above.
   ipcMain.handle('settings:setNormalizeTargetLufs', (_event, lufs: number) => {
     saveNormalizeTargetLufs(lufs)
+  })
+
+  // Machine-level UI preference — same rationale as audio devices above.
+  ipcMain.handle('settings:setEnableColorLabels', (_event, enabled: boolean) => {
+    saveEnableColorLabels(enabled)
   })
 
   ipcMain.handle('eventSet:open', async () => {
@@ -227,6 +233,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('fs:checkFiles', async (_event, paths: string[]) => {
     return Promise.all(paths.map((p) => access(p).then(() => true).catch(() => false)))
+  })
+
+  ipcMain.handle('fs:showItemInFolder', (_event, filePath: string) => {
+    shell.showItemInFolder(filePath)
   })
 
   ipcMain.handle('window:toggleFullscreen', () => {

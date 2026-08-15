@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { Track } from '../types'
-import { formatTime } from '../types'
+import { formatTime, getColorLabelName } from '../types'
 import { ContextMenu } from './ContextMenu'
 
 interface Props {
@@ -15,12 +15,14 @@ interface Props {
   isAddToPlaylistMode: boolean
   showTooltip: boolean
   isHighlighted: boolean
+  bankName?: string
+  colorLabelNames?: Record<string, string>
   onClick: () => void
   onEdit: () => void
   onDelete: () => void
 }
 
-export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, onClick, onEdit, onDelete }: Props) {
+export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, bankName, colorLabelNames, onClick, onEdit, onDelete }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   // The editor only persists volume when it's not exactly 1 (full = undefined).
@@ -281,8 +283,16 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
         alignItems: 'center',
         position: 'relative'
       }}>
-        <span style={{ fontSize: 11, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#64748b', fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{
+          fontSize: 11,
+          color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#64748b',
+          fontVariantNumeric: 'tabular-nums',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
           {formatTime(trackDuration > 0 ? trackDuration : track.duration)}
+          {bankName && ` · ${bankName}`}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           {isLoading && !isPlaying && (
@@ -344,6 +354,12 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
           <div style={{ fontSize: 12, fontWeight: hasPlayer ? 400 : 700, color: hasPlayer ? '#94a3b8' : '#f1f5f9' }}>
             {track.artist ? `${track.artist} — ${track.title}` : track.title}
           </div>
+          {track.colorLabel && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: track.colorLabel, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>{getColorLabelName(track.colorLabel, colorLabelNames)}</span>
+            </div>
+          )}
         </div>
       )}
 

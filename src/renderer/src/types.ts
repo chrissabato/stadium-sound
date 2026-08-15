@@ -44,6 +44,27 @@ export const TRACK_COLORS: string[] = [
   '#94a3b8'  // slate
 ]
 
+// Plain-language default for each TRACK_COLORS swatch — shown until the user
+// renames it (Settings > Track Colors) to something show-specific like "Goal".
+export const TRACK_COLOR_DEFAULT_NAMES: Record<string, string> = {
+  '#ef4444': 'Red',
+  '#f97316': 'Orange',
+  '#f59e0b': 'Amber',
+  '#eab308': 'Yellow',
+  '#22c55e': 'Green',
+  '#14b8a6': 'Teal',
+  '#3b82f6': 'Blue',
+  '#8b5cf6': 'Violet',
+  '#ec4899': 'Pink',
+  '#94a3b8': 'Slate'
+}
+
+// AppConfig.colorLabelNames holds only user overrides, keyed by hex — this
+// fills in the default name for anything not renamed.
+export function getColorLabelName(hex: string, colorLabelNames: Record<string, string> | null | undefined): string {
+  return colorLabelNames?.[hex] || TRACK_COLOR_DEFAULT_NAMES[hex] || hex
+}
+
 export interface Bank {
   id: string
   name: string
@@ -69,6 +90,11 @@ export interface AppConfig {
   fadeIn: number      // seconds
   fadeOut: number     // seconds
   crossFade: number   // seconds
+  // User-renamed labels for the TRACK_COLORS palette (e.g. '#ef4444' -> 'Timeout'),
+  // set in Settings > Track Colors. Travels with the show so a handed-off .eset
+  // keeps its naming convention. Optional: absent/older files fall back to
+  // TRACK_COLOR_DEFAULT_NAMES via getColorLabelName.
+  colorLabelNames?: Record<string, string>
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -79,7 +105,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   masterVolume: 1.0,
   fadeIn: 0,
   fadeOut: 0,
-  crossFade: 0
+  crossFade: 0,
+  colorLabelNames: {}
 }
 
 // Which physical audio device to play through. Machine-level preference,

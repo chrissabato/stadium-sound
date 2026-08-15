@@ -13,6 +13,7 @@ export interface EventSetState {
   normalizeTargetLufs: number
   lastSeenChangelogVersion: string
   telemetryOptOut: boolean
+  enableColorLabels: boolean
 }
 
 export interface NetworkControlPrefs {
@@ -63,6 +64,7 @@ export interface ElectronAPI {
   readAudioFile: (filePath: string) => Promise<ArrayBuffer>
   getTrackMetadata: (filePath: string) => Promise<TrackMetadata>
   checkFiles: (paths: string[]) => Promise<boolean[]>
+  showItemInFolder: (filePath: string) => Promise<void>
   getPathForFile: (file: unknown) => string
   eventSet: {
     getInitialState: () => Promise<EventSetState>
@@ -95,6 +97,7 @@ export interface ElectronAPI {
     setNormalizeTargetLufs: (lufs: number) => Promise<void>
     setLastSeenChangelogVersion: (version: string) => Promise<void>
     setTelemetryOptOut: (optOut: boolean) => Promise<void>
+    setEnableColorLabels: (enabled: boolean) => Promise<void>
   }
   network: {
     getStatus: () => Promise<NetworkControlStatus>

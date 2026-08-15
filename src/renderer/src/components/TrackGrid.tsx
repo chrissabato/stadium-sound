@@ -15,6 +15,9 @@ interface Props {
   isAddToPlaylistMode: boolean
   showTrackTooltips: boolean
   highlightedTrackId: string | null
+  trackBankNames?: Map<string, string> | null
+  isColorFiltered?: boolean
+  colorLabelNames?: Record<string, string>
   onPlayTrack: (track: Track) => void
   onEditTrack: (track: Track) => void
   onDeleteTrack: (track: Track) => void
@@ -30,7 +33,7 @@ function isAudioFile(file: File): boolean {
   return !!ext && AUDIO_EXTENSIONS.includes(ext)
 }
 
-export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, showTrackTooltips, highlightedTrackId, onPlayTrack, onEditTrack, onDeleteTrack, onAddTracks, onAddFromLibrary, onDropFiles, onReorder, onAddToPlaylist }: Props) {
+export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, showTrackTooltips, highlightedTrackId, trackBankNames, isColorFiltered, colorLabelNames, onPlayTrack, onEditTrack, onDeleteTrack, onAddTracks, onAddFromLibrary, onDropFiles, onReorder, onAddToPlaylist }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const [isFileDragOver, setIsFileDragOver] = useState(false)
@@ -222,79 +225,85 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
           transition: 'border-color 0.1s'
         }}
       >
-        <div style={{ fontSize: 14 }}>No tracks in this bank</div>
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setAddMenuOpen((v) => !v)}
-            title="Add tracks"
-            style={{
-              padding: '8px 20px',
-              background: addMenuOpen ? '#1e3a5f' : '#1e293b',
-              border: `1px solid ${addMenuOpen ? '#3b82f6' : '#334155'}`,
-              borderRadius: 4,
-              color: addMenuOpen ? '#93c5fd' : '#94a3b8',
-              fontSize: 13,
-              cursor: 'pointer'
-            }}
-          >
-            +
-          </button>
-          {addMenuOpen && (
-            <>
-              <div
-                onClick={() => setAddMenuOpen(false)}
-                style={{ position: 'fixed', inset: 0, zIndex: 10 }}
-              />
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                marginTop: 4,
-                zIndex: 11,
-                background: '#1e293b',
-                border: '1px solid #334155',
-                borderRadius: 4,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-                display: 'flex',
-                flexDirection: 'column',
-                minWidth: 160,
-                overflow: 'hidden'
-              }}>
-                <button
-                  onClick={() => { onAddTracks(); setAddMenuOpen(false) }}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'transparent',
-                    border: 'none',
-                    textAlign: 'left',
-                    color: '#e2e8f0',
-                    fontSize: 12,
-                    cursor: 'pointer'
-                  }}
-                >
-                  🗋 Select File
-                </button>
-                <button
-                  onClick={() => { onAddFromLibrary(); setAddMenuOpen(false) }}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'transparent',
-                    border: 'none',
-                    borderTop: '1px solid #334155',
-                    textAlign: 'left',
-                    color: '#e2e8f0',
-                    fontSize: 12,
-                    cursor: 'pointer'
-                  }}
-                >
-                  🗀 From Library
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-        <div style={{ fontSize: 11, color: '#334155' }}>or drop audio files here</div>
+        <div style={{ fontSize: 14 }}>{isColorFiltered ? 'No tracks have this color' : 'No tracks in this bank'}</div>
+        {isColorFiltered ? (
+          <div style={{ fontSize: 11, color: '#334155' }}>Clear the color filter to see all tracks</div>
+        ) : (
+          <>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setAddMenuOpen((v) => !v)}
+                title="Add tracks"
+                style={{
+                  padding: '8px 20px',
+                  background: addMenuOpen ? '#1e3a5f' : '#1e293b',
+                  border: `1px solid ${addMenuOpen ? '#3b82f6' : '#334155'}`,
+                  borderRadius: 4,
+                  color: addMenuOpen ? '#93c5fd' : '#94a3b8',
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                +
+              </button>
+              {addMenuOpen && (
+                <>
+                  <div
+                    onClick={() => setAddMenuOpen(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    marginTop: 4,
+                    zIndex: 11,
+                    background: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: 4,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minWidth: 160,
+                    overflow: 'hidden'
+                  }}>
+                    <button
+                      onClick={() => { onAddTracks(); setAddMenuOpen(false) }}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        textAlign: 'left',
+                        color: '#e2e8f0',
+                        fontSize: 12,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🗋 Select File
+                    </button>
+                    <button
+                      onClick={() => { onAddFromLibrary(); setAddMenuOpen(false) }}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderTop: '1px solid #334155',
+                        textAlign: 'left',
+                        color: '#e2e8f0',
+                        fontSize: 12,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🗀 From Library
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: '#334155' }}>or drop audio files here</div>
+          </>
+        )}
       </div>
     )
   }
@@ -357,6 +366,8 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
               isAddToPlaylistMode={isAddToPlaylistMode}
               showTooltip={showTrackTooltips}
               isHighlighted={highlightedTrackId === track.id}
+              bankName={trackBankNames?.get(track.id)}
+              colorLabelNames={colorLabelNames}
               onClick={isReordering ? () => {} : isAddToPlaylistMode ? () => onAddToPlaylist(track) : () => onPlayTrack(track)}
               onEdit={(isReordering || isAddToPlaylistMode) ? () => {} : () => onEditTrack(track)}
               onDelete={(isReordering || isAddToPlaylistMode) ? () => {} : () => onDeleteTrack(track)}
