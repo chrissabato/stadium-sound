@@ -11,6 +11,15 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.8.0',
+    date: '2026-08-15',
+    items: [
+      'New color filter: rename the track color labels to whatever fits your show (Settings → Track Colors) and filter the soundboard grid by color across every bank at once. Off by default — turn it on in Settings.',
+      'The Settings dialog now only shows the OSC/web remote port fields once "OSC & Web Remote" is turned on.',
+      'Added optional anonymous usage telemetry (app version, OS, CPU/RAM only — never show content or file paths) to help prioritize what to support; opt out anytime in Settings.'
+    ]
+  },
+  {
     version: '0.7.0',
     date: '2026-07-27',
     items: [
