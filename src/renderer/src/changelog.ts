@@ -11,6 +11,13 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.9.0',
+    date: '2026-08-18',
+    items: [
+      'New "Reset All From File Tags" button (Settings → Track Metadata) re-reads artist and title from every track\'s audio file across all banks in one go, useful after re-tagging files outside the app.'
+    ]
+  },
+  {
     version: '0.8.0',
     date: '2026-08-15',
     items: [

@@ -879,6 +879,48 @@ export default function App() {
     })
   }
 
+  const [resettingMetadata, setResettingMetadata] = useState(false)
+
+  // Re-reads artist/title tags from disk for every track that has a file,
+  // overwriting whatever's currently stored (manual edits included). Scoped
+  // to banks only — playlists just reference the same track ids and pick up
+  // the change on their own read (see setTrackDuration for the same pattern).
+  async function resetAllTrackMetadataFromFiles() {
+    setResettingMetadata(true)
+    try {
+      const tracks = config.banks.flatMap((b) => b.tracks).filter((t) => t.filePath)
+      const results = new Map<string, { artist: string; title: string }>()
+      const tasks = tracks.map((t) => async () => {
+        const meta = await window.electronAPI.getTrackMetadata(t.filePath)
+        results.set(t.id, { artist: meta.artist, title: meta.title })
+      })
+      await runWithConcurrency(tasks, 6)
+      updateConfig((c) => ({
+        ...c,
+        banks: c.banks.map((b) => ({
+          ...b,
+          tracks: b.tracks.map((t) => {
+            const meta = results.get(t.id)
+            return meta ? { ...t, artist: meta.artist, title: meta.title } : t
+          })
+        }))
+      }))
+    } finally {
+      setResettingMetadata(false)
+    }
+  }
+
+  function requestResetAllTrackMetadata() {
+    const count = config.banks.reduce((n, b) => n + b.tracks.filter((t) => t.filePath).length, 0)
+    if (count === 0) return
+    setConfirmRequest({
+      title: 'Reset Artist & Title From Files',
+      message: `Re-read artist and title from each file's metadata for all ${count} track${count === 1 ? '' : 's'} across all banks, overwriting any manual edits? ${AUTOSAVE_WARNING}`,
+      confirmLabel: 'Reset Metadata',
+      action: () => { resetAllTrackMetadataFromFiles() }
+    })
+  }
+
   function toggleAddToPlaylistMode() {
     setIsAddToPlaylistMode((v) => {
       const next = !v
@@ -1664,6 +1706,8 @@ export default function App() {
         onColorLabelNamesChange={setColorLabelNames}
         enableColorLabels={enableColorLabels}
         onEnableColorLabelsChange={setEnableColorLabels}
+        onResetAllTrackMetadata={requestResetAllTrackMetadata}
+        resettingMetadata={resettingMetadata}
         onShowChangelog={() => setChangelogOpen(true)}
         onClose={() => setSettingsOpen(false)}
       />

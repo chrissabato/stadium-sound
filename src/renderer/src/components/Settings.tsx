@@ -34,6 +34,8 @@ interface Props {
   onColorLabelNamesChange: (names: Record<string, string>) => void
   enableColorLabels: boolean
   onEnableColorLabelsChange: (enabled: boolean) => void
+  onResetAllTrackMetadata: () => void
+  resettingMetadata: boolean
   onShowChangelog: () => void
   onClose: () => void
 }
@@ -97,7 +99,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, telemetryOptOut, onTelemetryOptOutChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, normalizeTargetLufs, onNormalizeTargetLufsChange, colorLabelNames, onColorLabelNamesChange, enableColorLabels, onEnableColorLabelsChange, onShowChangelog, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, telemetryOptOut, onTelemetryOptOutChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, normalizeTargetLufs, onNormalizeTargetLufsChange, colorLabelNames, onColorLabelNamesChange, enableColorLabels, onEnableColorLabelsChange, onResetAllTrackMetadata, resettingMetadata, onShowChangelog, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
@@ -483,6 +485,39 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
               ))}
             </div>
           )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Track Metadata
+            </span>
+            <div style={{ height: 1, background: '#334155' }} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Reset Artist &amp; Title</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Re-read artist and title from file tags for every track in every bank, overwriting any manual edits
+              </div>
+            </div>
+            <button
+              onClick={onResetAllTrackMetadata}
+              disabled={resettingMetadata}
+              style={{
+                flexShrink: 0,
+                padding: '6px 14px',
+                background: '#1e293b',
+                border: '1px solid #334155',
+                borderRadius: 4,
+                color: resettingMetadata ? '#64748b' : '#93c5fd',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: resettingMetadata ? 'default' : 'pointer'
+              }}
+            >
+              {resettingMetadata ? 'Resetting…' : 'Reset All From File Tags'}
+            </button>
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
