@@ -24,6 +24,10 @@ mac:
     - target: dmg
       arch: [x64, arm64]
   category: public.app-category.music
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

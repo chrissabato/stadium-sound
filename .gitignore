@@ -24,6 +24,7 @@ Thumbs.db
 # Env / secrets
 .env
 .env.*
+apple-signing/
 
 # Wrangler local state
 .wrangler/
