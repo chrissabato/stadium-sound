@@ -14,6 +14,7 @@ interface Props {
   isReordering: boolean
   isAddToPlaylistMode: boolean
   showTooltip: boolean
+  showPlayCount: boolean
   isHighlighted: boolean
   bankName?: string
   colorLabelNames?: Record<string, string>
@@ -22,7 +23,7 @@ interface Props {
   onDelete: () => void
 }
 
-export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, isHighlighted, bankName, colorLabelNames, onClick, onEdit, onDelete }: Props) {
+export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, showPlayCount, isHighlighted, bankName, colorLabelNames, onClick, onEdit, onDelete }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   // The editor only persists volume when it's not exactly 1 (full = undefined).
@@ -316,7 +317,7 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
               {Math.round(track.volume! * 100)}%
             </span>
           )}
-          {!!track.playCount && (
+          {showPlayCount && !!track.playCount && (
             <span
               title={`Played ${track.playCount} time${track.playCount === 1 ? '' : 's'} this event set`}
               style={{ fontSize: 11, fontWeight: 600, color: isPlaying ? '#86efac' : isMonitorPlaying ? '#d9f99d' : isPlayed ? '#fca5a5' : '#94a3b8', fontVariantNumeric: 'tabular-nums' }}

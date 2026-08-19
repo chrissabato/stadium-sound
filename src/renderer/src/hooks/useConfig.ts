@@ -44,6 +44,10 @@ export interface ConfigState {
   // machine-level, off by default (see settingsStore.ts).
   enableColorLabels: boolean
   setEnableColorLabels: (enabled: boolean) => void
+  // Gates the play-count badge on soundboard buttons and the Play Count
+  // Report menu item — machine-level, off by default (see settingsStore.ts).
+  enablePlayCounts: boolean
+  setEnablePlayCounts: (enabled: boolean) => void
 }
 
 function fileLabel(filePath: string | null): string {
@@ -71,6 +75,7 @@ export function useConfig(): ConfigState {
   const [lastSeenChangelogVersion, setLastSeenChangelogVersion] = useState('')
   const [telemetryOptOut, setTelemetryOptOutState] = useState(false)
   const [enableColorLabels, setEnableColorLabelsState] = useState(false)
+  const [enablePlayCounts, setEnablePlayCountsState] = useState(false)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -105,6 +110,7 @@ export function useConfig(): ConfigState {
       setLastSeenChangelogVersion(state.lastSeenChangelogVersion)
       setTelemetryOptOutState(state.telemetryOptOut)
       setEnableColorLabelsState(state.enableColorLabels)
+      setEnablePlayCountsState(state.enablePlayCounts)
       setLoaded(true)
     })
     return removeStatus
@@ -138,6 +144,11 @@ export function useConfig(): ConfigState {
   const setEnableColorLabels = useCallback((enabled: boolean) => {
     setEnableColorLabelsState(enabled)
     window.electronAPI.settings.setEnableColorLabels(enabled)
+  }, [])
+
+  const setEnablePlayCounts = useCallback((enabled: boolean) => {
+    setEnablePlayCountsState(enabled)
+    window.electronAPI.settings.setEnablePlayCounts(enabled)
   }, [])
 
   const setNetworkControl = useCallback(async (prefs: NetworkControlPrefs) => {
@@ -261,10 +272,32 @@ export function useConfig(): ConfigState {
         }
         applyState(updated, null)
         scheduleAutoSave(updated)
+      } else if (action === 'importBank') {
+        const result = await window.electronAPI.bank.import()
+        if (!result) return
+        const existingHotkeys = new Set(
+          configRef.current.banks.flatMap((b) => b.tracks).map((t) => t.hotkey).filter((h): h is string => !!h)
+        )
+        const bank: Bank = {
+          id: makeId(),
+          name: result.bank.name,
+          tracks: result.bank.tracks.map((t) => {
+            const id = makeId()
+            const hotkey = t.hotkey && !existingHotkeys.has(t.hotkey) ? t.hotkey : undefined
+            if (hotkey) existingHotkeys.add(hotkey)
+            return { ...t, id, hotkey }
+          })
+        }
+        updateConfig((c) => ({
+          ...c,
+          banks: [...c.banks, bank],
+          selectedBankId: bank.id,
+          colorLabelNames: { ...result.colorLabelNames, ...c.colorLabelNames }
+        }))
       }
     })
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts }
 }

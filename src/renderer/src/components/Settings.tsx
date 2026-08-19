@@ -19,6 +19,8 @@ interface Props {
   onShowTrackTooltipsChange: (enabled: boolean) => void
   showPlayedIndicator: boolean
   onShowPlayedIndicatorChange: (enabled: boolean) => void
+  enablePlayCounts: boolean
+  onEnablePlayCountsChange: (enabled: boolean) => void
   showMeters: boolean
   onShowMetersChange: (enabled: boolean) => void
   telemetryOptOut: boolean
@@ -99,7 +101,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, showMeters, onShowMetersChange, telemetryOptOut, onTelemetryOptOutChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, normalizeTargetLufs, onNormalizeTargetLufsChange, colorLabelNames, onColorLabelNamesChange, enableColorLabels, onEnableColorLabelsChange, onResetAllTrackMetadata, resettingMetadata, onShowChangelog, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, enablePlayCounts, onEnablePlayCountsChange, showMeters, onShowMetersChange, telemetryOptOut, onTelemetryOptOutChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, normalizeTargetLufs, onNormalizeTargetLufsChange, colorLabelNames, onColorLabelNamesChange, enableColorLabels, onEnableColorLabelsChange, onResetAllTrackMetadata, resettingMetadata, onShowChangelog, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
@@ -391,6 +393,23 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
                 type="checkbox"
                 checked={showPlayedIndicator}
                 onChange={(e) => onShowPlayedIndicatorChange(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Play Counts</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Show a play count badge on soundboard buttons and enable the Play Count Report
+              </div>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', flexShrink: 0, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={enablePlayCounts}
+                onChange={(e) => onEnablePlayCountsChange(e.target.checked)}
                 style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
               />
             </label>

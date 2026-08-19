@@ -15,9 +15,10 @@ interface Props {
   onDeleteBank: (id: string) => void
   onReorderBanks: (newBanks: Bank[]) => void
   onDropTrackOnBank: (trackId: string, bankId: string) => void
+  onExportBank: (bank: Bank) => void
 }
 
-export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, mainPlayingBankId, isReordering, missingFileIds, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks, onDropTrackOnBank }: Props) {
+export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, mainPlayingBankId, isReordering, missingFileIds, onSelectBank, onAddBank, onRenameBank, onDeleteBank, onReorderBanks, onDropTrackOnBank, onExportBank }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [newBankName, setNewBankName] = useState('')
@@ -231,6 +232,7 @@ export function Sidebar({ banks, selectedBankId, monitorPlayingBankId, mainPlayi
           y={contextMenu.y}
           items={[
             { label: '✎ Rename Bank', onClick: () => startEdit(contextMenu.bank) },
+            { label: '⭳ Export Bank…', onClick: () => onExportBank(contextMenu.bank) },
             { label: '× Delete Bank', danger: true, onClick: () => onDeleteBank(contextMenu.bank.id) }
           ]}
           onClose={() => setContextMenu(null)}

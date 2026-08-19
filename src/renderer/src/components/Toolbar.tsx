@@ -19,9 +19,11 @@ interface Props {
   onTogglePlaylistPanel: () => void
   onToggleFullscreen: () => void
   onOpenSettings: () => void
+  showPlayedIndicator: boolean
   onResetPlayed: () => void
   onVerifyTracks: () => void
   onOpenLoudnessReport: () => void
+  enablePlayCounts: boolean
   onOpenPlayCountReport: () => void
   onOpenShortcuts: () => void
   onOpenFeedback: () => void
@@ -30,7 +32,7 @@ interface Props {
   onAddLibraryTrack: (track: LibraryTrack) => void
 }
 
-export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorDisabled, showPlaylistPanel, isFullscreen, banks, libraries, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, onResetPlayed, onVerifyTracks, onOpenLoudnessReport, onOpenPlayCountReport, onOpenShortcuts, onOpenFeedback, onOpenLibraries, onSelectSearchResult, onAddLibraryTrack }: Props) {
+export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorDisabled, showPlaylistPanel, isFullscreen, banks, libraries, searchRef, onVolumeChange, onStopAll, onToggleMonitor, onTogglePlaylistPanel, onToggleFullscreen, onOpenSettings, showPlayedIndicator, onResetPlayed, onVerifyTracks, onOpenLoudnessReport, enablePlayCounts, onOpenPlayCountReport, onOpenShortcuts, onOpenFeedback, onOpenLibraries, onSelectSearchResult, onAddLibraryTrack }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const fileName = currentFilePath
     ? currentFilePath.split(/[\\/]/).pop() ?? 'Event Set'
@@ -210,6 +212,7 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorD
               >
                 ⛶ {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
               </button>
+              {showPlayedIndicator && (
               <button
                 onClick={() => { onResetPlayed(); setMenuOpen(false) }}
                 style={{
@@ -225,6 +228,7 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorD
               >
                 ↺ Reset Played Indicators
               </button>
+              )}
               <button
                 onClick={() => { onVerifyTracks(); setMenuOpen(false) }}
                 style={{
@@ -255,6 +259,7 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorD
               >
                 ▤ Loudness Report
               </button>
+              {enablePlayCounts && (
               <button
                 onClick={() => { onOpenPlayCountReport(); setMenuOpen(false) }}
                 style={{
@@ -270,6 +275,7 @@ export function Toolbar({ currentFilePath, masterVolume, isMonitorMode, monitorD
               >
                 ▤ Play Count Report
               </button>
+              )}
               <button
                 onClick={() => { onOpenShortcuts(); setMenuOpen(false) }}
                 style={{

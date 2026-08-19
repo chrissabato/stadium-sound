@@ -41,6 +41,9 @@ interface AppSettings {
   // Gates the "Track Colors" section in Settings and the color filter button
   // in the bank header — off by default since most shows don't use colors.
   enableColorLabels: boolean
+  // Gates the play-count badge on soundboard buttons and the Play Count
+  // Report menu item — off by default, most shows don't track this.
+  enablePlayCounts: boolean
 }
 
 function settingsPath(): string {
@@ -80,7 +83,8 @@ export function loadSettings(): AppSettings {
       installId: validInstallId(parsed.installId),
       telemetryOptOut: typeof parsed.telemetryOptOut === 'boolean' ? parsed.telemetryOptOut : false,
       lastTelemetryPingAt: typeof parsed.lastTelemetryPingAt === 'number' ? parsed.lastTelemetryPingAt : null,
-      enableColorLabels: typeof parsed.enableColorLabels === 'boolean' ? parsed.enableColorLabels : false
+      enableColorLabels: typeof parsed.enableColorLabels === 'boolean' ? parsed.enableColorLabels : false,
+      enablePlayCounts: typeof parsed.enablePlayCounts === 'boolean' ? parsed.enablePlayCounts : false
     }
     if (parsed.remoteToken !== settings.remoteToken || parsed.installId !== settings.installId) {
       writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
@@ -107,7 +111,8 @@ export function loadSettings(): AppSettings {
       installId: fallbackInstallId,
       telemetryOptOut: false,
       lastTelemetryPingAt: null,
-      enableColorLabels: false
+      enableColorLabels: false,
+      enablePlayCounts: false
     }
     return settings
   }
@@ -201,6 +206,11 @@ export function saveTelemetryOptOut(telemetryOptOut: boolean): void {
 export function saveEnableColorLabels(enableColorLabels: boolean): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, enableColorLabels }, null, 2), 'utf-8')
+}
+
+export function saveEnablePlayCounts(enablePlayCounts: boolean): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, enablePlayCounts }, null, 2), 'utf-8')
 }
 
 // Not IPC-exposed — only telemetry.ts calls this, to record when the last ping went out.

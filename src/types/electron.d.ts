@@ -1,4 +1,4 @@
-import type { AppConfig, AudioDevicePrefs, TrackMetadata, MediaLibrary } from '../renderer/src/types'
+import type { AppConfig, AudioDevicePrefs, TrackMetadata, MediaLibrary, Bank } from '../renderer/src/types'
 
 export interface EventSetState {
   config: AppConfig | null
@@ -14,6 +14,7 @@ export interface EventSetState {
   lastSeenChangelogVersion: string
   telemetryOptOut: boolean
   enableColorLabels: boolean
+  enablePlayCounts: boolean
 }
 
 export interface NetworkControlPrefs {
@@ -50,6 +51,11 @@ export interface EventSetSaveAsResult {
   recentFiles: string[]
 }
 
+export interface BankImportResult {
+  bank: Bank
+  colorLabelNames: Record<string, string>
+}
+
 // Update lifecycle as shown in Settings. 'available' means found on the feed
 // (download starts immediately); only 'downloaded' means a restart installs
 // it. 'dev' = running unpackaged, where the updater can't operate.
@@ -78,6 +84,10 @@ export interface ElectronAPI {
   ssp: {
     import: () => Promise<Array<{ name: string; tracks: Array<{ label: string; filePath: string; duration: string; name: string }> }> | null>
   }
+  bank: {
+    export: (bank: Bank, colorLabelNames: Record<string, string>) => Promise<boolean>
+    import: () => Promise<BankImportResult | null>
+  }
   library: {
     list: () => Promise<MediaLibrary[]>
     addFolder: () => Promise<MediaLibrary[] | null>
@@ -98,6 +108,7 @@ export interface ElectronAPI {
     setLastSeenChangelogVersion: (version: string) => Promise<void>
     setTelemetryOptOut: (optOut: boolean) => Promise<void>
     setEnableColorLabels: (enabled: boolean) => Promise<void>
+    setEnablePlayCounts: (enabled: boolean) => Promise<void>
   }
   network: {
     getStatus: () => Promise<NetworkControlStatus>

@@ -14,6 +14,7 @@ interface Props {
   isReordering: boolean
   isAddToPlaylistMode: boolean
   showTrackTooltips: boolean
+  showPlayCounts: boolean
   highlightedTrackId: string | null
   trackBankNames?: Map<string, string> | null
   isColorFiltered?: boolean
@@ -33,7 +34,7 @@ function isAudioFile(file: File): boolean {
   return !!ext && AUDIO_EXTENSIONS.includes(ext)
 }
 
-export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, showTrackTooltips, highlightedTrackId, trackBankNames, isColorFiltered, colorLabelNames, onPlayTrack, onEditTrack, onDeleteTrack, onAddTracks, onAddFromLibrary, onDropFiles, onReorder, onAddToPlaylist }: Props) {
+export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playStartWallTime, playedIds, missingFileIds, loadingIds, isMonitorMode, isReordering, isAddToPlaylistMode, showTrackTooltips, showPlayCounts, highlightedTrackId, trackBankNames, isColorFiltered, colorLabelNames, onPlayTrack, onEditTrack, onDeleteTrack, onAddTracks, onAddFromLibrary, onDropFiles, onReorder, onAddToPlaylist }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const [isFileDragOver, setIsFileDragOver] = useState(false)
@@ -365,6 +366,7 @@ export function TrackGrid({ tracks, playingTrackId, monitorPlayingTrackId, playS
               isReordering={isReordering}
               isAddToPlaylistMode={isAddToPlaylistMode}
               showTooltip={showTrackTooltips}
+              showPlayCount={showPlayCounts}
               isHighlighted={highlightedTrackId === track.id}
               bankName={trackBankNames?.get(track.id)}
               colorLabelNames={colorLabelNames}

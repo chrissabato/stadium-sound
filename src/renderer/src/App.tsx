@@ -71,7 +71,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -331,6 +331,14 @@ export default function App() {
       banks: [...c.banks, bank],
       selectedBankId: bank.id
     }))
+  }
+
+  function exportBank(bank: Bank) {
+    const usedColors = new Set(bank.tracks.map((t) => t.colorLabel).filter((c): c is string => !!c))
+    const colorLabelNames = Object.fromEntries(
+      Object.entries(config.colorLabelNames ?? {}).filter(([hex]) => usedColors.has(hex))
+    )
+    window.electronAPI.bank.export(bank, colorLabelNames)
   }
 
   function renameBank(id: string, name: string) {
@@ -1262,9 +1270,11 @@ export default function App() {
           return next
         })}
         onOpenSettings={() => setSettingsOpen(true)}
+        showPlayedIndicator={showPlayedIndicator}
         onResetPlayed={resetPlayed}
         onVerifyTracks={verifyTracks}
         onOpenLoudnessReport={() => setLoudnessReportOpen(true)}
+        enablePlayCounts={enablePlayCounts}
         onOpenPlayCountReport={() => setPlayCountReportOpen(true)}
         onOpenShortcuts={() => setShortcutsOpen(true)}
         onOpenFeedback={() => setFeedbackOpen(true)}
@@ -1288,6 +1298,7 @@ export default function App() {
             onDeleteBank={requestDeleteBank}
             onReorderBanks={reorderBanks}
             onDropTrackOnBank={moveTrackToBank}
+            onExportBank={exportBank}
           />
         )}
 
@@ -1587,6 +1598,7 @@ export default function App() {
               isReordering={isReordering}
               isAddToPlaylistMode={isAddToPlaylistMode}
               showTrackTooltips={showTrackTooltips}
+              showPlayCounts={enablePlayCounts}
               highlightedTrackId={highlightedTrackId}
               trackBankNames={displayedTrackBankNames}
               isColorFiltered={!!colorFilter}
@@ -1691,6 +1703,8 @@ export default function App() {
         onShowTrackTooltipsChange={setShowTrackTooltips}
         showPlayedIndicator={showPlayedIndicator}
         onShowPlayedIndicatorChange={setShowPlayedIndicator}
+        enablePlayCounts={enablePlayCounts}
+        onEnablePlayCountsChange={setEnablePlayCounts}
         showMeters={showMeters}
         onShowMetersChange={setShowMeters}
         telemetryOptOut={telemetryOptOut}

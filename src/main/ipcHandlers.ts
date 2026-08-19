@@ -3,7 +3,8 @@ import { autoUpdater } from 'electron-updater'
 import { readFile, access } from 'fs/promises'
 import { readFileSync, writeFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
-import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveNormalizeTargetLufs, saveLastSeenChangelogVersion, saveTelemetryOptOut, saveEnableColorLabels } from './settingsStore'
+import { loadBankFile, saveBankFile } from './bankStore'
+import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveNormalizeTargetLufs, saveLastSeenChangelogVersion, saveTelemetryOptOut, saveEnableColorLabels, saveEnablePlayCounts } from './settingsStore'
 import { getNetworkControlStatus, startNetworkControl, stopNetworkControl, updateRemoteState } from './networkControl'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
@@ -85,18 +86,19 @@ export function registerIpcHandlers(): void {
     const lastSeenChangelogVersion = settings.lastSeenChangelogVersion
     const telemetryOptOut = settings.telemetryOptOut
     const enableColorLabels = settings.enableColorLabels
+    const enablePlayCounts = settings.enablePlayCounts
     if (settings.lastFile && eventSetExists(settings.lastFile)) {
       try {
         const config = loadEventSet(settings.lastFile)
-        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels }
+        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels, enablePlayCounts }
       } catch (err) {
         // File exists but is unreadable — tell the user, remove from recents, start blank
         showOpenError(settings.lastFile, err, 'Your last event set could not be reopened.')
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
-        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels }
+        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels, enablePlayCounts }
       }
     }
-    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels }
+    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels, enablePlayCounts }
   })
 
   // Machine-level audio device preference — saved independently of the event
@@ -160,6 +162,11 @@ export function registerIpcHandlers(): void {
     saveEnableColorLabels(enabled)
   })
 
+  // Machine-level UI preference — same rationale as audio devices above.
+  ipcMain.handle('settings:setEnablePlayCounts', (_event, enabled: boolean) => {
+    saveEnablePlayCounts(enabled)
+  })
+
   ipcMain.handle('eventSet:open', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
       title: 'Open Event Set',
@@ -207,6 +214,35 @@ export function registerIpcHandlers(): void {
     if (canceled || !filePath) return false
     writeFileSync(filePath, csv)
     return true
+  })
+
+  ipcMain.handle('bank:export', async (_event, bank: { name: string }, colorLabelNames: Record<string, string>) => {
+    const safeName = bank.name.replace(/[\\/:*?"<>|]/g, '_')
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: 'Export Bank',
+      filters: [{ name: 'Stadium Sound Bank', extensions: ['sbank'] }],
+      defaultPath: `${safeName || 'Bank'}.sbank`
+    })
+    if (canceled || !filePath) return false
+    saveBankFile({ stadiumSoundBank: 1, bank, colorLabelNames }, filePath)
+    return true
+  })
+
+  ipcMain.handle('bank:import', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Import Bank',
+      filters: [{ name: 'Stadium Sound Bank', extensions: ['sbank'] }],
+      properties: ['openFile']
+    })
+    if (canceled || !filePaths[0]) return null
+    try {
+      const data = loadBankFile(filePaths[0]) as { bank: unknown; colorLabelNames?: Record<string, string> }
+      return { bank: data.bank, colorLabelNames: data.colorLabelNames ?? {} }
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err)
+      dialog.showErrorBox('Could Not Import Bank', [filePaths[0], detail].join('\n\n'))
+      return null
+    }
   })
 
   ipcMain.handle('eventSet:openFile', (_event, filePath: string) => {

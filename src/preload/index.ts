@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ElectronAPI, UpdateStatus } from '../types/electron'
-import type { AppConfig, MediaLibrary } from '../renderer/src/types'
+import type { AppConfig, Bank, MediaLibrary } from '../renderer/src/types'
 
 const api: ElectronAPI = {
   openAudioFiles: (defaultPath?: string) => ipcRenderer.invoke('dialog:openAudioFiles', defaultPath),
@@ -27,6 +27,11 @@ const api: ElectronAPI = {
   },
   ssp: {
     import: () => ipcRenderer.invoke('ssp:import')
+  },
+  bank: {
+    export: (bank: Bank, colorLabelNames: Record<string, string>) =>
+      ipcRenderer.invoke('bank:export', bank, colorLabelNames),
+    import: () => ipcRenderer.invoke('bank:import')
   },
   library: {
     list: () => ipcRenderer.invoke('library:list'),
@@ -66,7 +71,9 @@ const api: ElectronAPI = {
     setTelemetryOptOut: (optOut: boolean) =>
       ipcRenderer.invoke('settings:setTelemetryOptOut', optOut),
     setEnableColorLabels: (enabled: boolean) =>
-      ipcRenderer.invoke('settings:setEnableColorLabels', enabled)
+      ipcRenderer.invoke('settings:setEnableColorLabels', enabled),
+    setEnablePlayCounts: (enabled: boolean) =>
+      ipcRenderer.invoke('settings:setEnablePlayCounts', enabled)
   },
   network: {
     getStatus: () => ipcRenderer.invoke('network:getStatus'),

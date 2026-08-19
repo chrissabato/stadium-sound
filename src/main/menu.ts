@@ -49,6 +49,10 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[]): void {
           label: 'Import Sports Sounds Pro Set…',
           click: () => win.webContents.send('menu:action', 'importSsp')
         },
+        {
+          label: 'Import Bank…',
+          click: () => win.webContents.send('menu:action', 'importBank')
+        },
         { type: 'separator' as const },
         {
           label: 'Exit',
