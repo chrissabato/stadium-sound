@@ -11,6 +11,15 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.10.0',
+    date: '2026-08-19',
+    items: [
+      'Banks can now be exported and imported as standalone .sbank files (bank context menu → Export Bank…, and File menu → Import Bank…), making it easy to share a bank between event sets or with another venue.',
+      'The Play Count Report and its ▶N badges are now off by default and can be turned on in Settings for shows that want to track them.',
+      'macOS builds are now signed and notarized by Apple, so Gatekeeper no longer blocks or warns when opening Stadium Sound on a Mac.'
+    ]
+  },
+  {
     version: '0.9.0',
     date: '2026-08-18',
     items: [
