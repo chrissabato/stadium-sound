@@ -11,6 +11,13 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.10.2',
+    date: '2026-09-16',
+    items: [
+      'No user-facing changes — this release only fixes the macOS build pipeline so the app is available for download again.'
+    ]
+  },
+  {
     version: '0.10.1',
     date: '2026-09-16',
     items: [
