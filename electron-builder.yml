@@ -17,6 +17,10 @@ win:
   target:
     - target: nsis
       arch: [x64, arm64]
+  azureSignOptions:
+    endpoint: https://wus2.codesigning.azure.net
+    codeSigningAccountName: stadiumsound
+    certificateProfileName: stadium-sound-signing
 mac:
   icon: resources/icon.png
   artifactName: Stadium-Sound-${arch}.dmg
