@@ -17,8 +17,7 @@ win:
   target:
     - target: nsis
       arch: [x64, arm64]
-  sign:
-    type: azure
+  azureSignOptions:
     publisherName: "CN=Christopher Sabato, O=Christopher Sabato, L=Albany, S=or, C=US"
     endpoint: https://wus2.codesigning.azure.net
     codeSigningAccountName: stadiumsound
