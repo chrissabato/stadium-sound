@@ -11,6 +11,13 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.10.1',
+    date: '2026-09-16',
+    items: [
+      'Windows installers are now digitally signed with a trusted certificate, so SmartScreen no longer shows a "Windows protected your PC" warning during install.'
+    ]
+  },
+  {
     version: '0.10.0',
     date: '2026-08-19',
     items: [
