@@ -1,6 +1,8 @@
 import { Menu, BrowserWindow, app } from 'electron'
 import { basename } from 'path'
 
+const isMac = process.platform === 'darwin'
+
 export function buildMenu(win: BrowserWindow, recentFiles: string[]): void {
   const recentSubmenu =
     recentFiles.length > 0
@@ -18,6 +20,22 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[]): void {
       : [{ label: 'No Recent Event Sets', enabled: false }]
 
   const template = [
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const }
+            ]
+          }
+        ]
+      : []),
     {
       label: 'File',
       submenu: [
@@ -53,12 +71,16 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[]): void {
           label: 'Import Bank…',
           click: () => win.webContents.send('menu:action', 'importBank')
         },
-        { type: 'separator' as const },
-        {
-          label: 'Exit',
-          accelerator: 'Alt+F4',
-          click: () => app.quit()
-        }
+        ...(isMac
+          ? []
+          : [
+              { type: 'separator' as const },
+              {
+                label: 'Exit',
+                accelerator: 'Alt+F4',
+                click: () => app.quit()
+              }
+            ])
       ]
     }
   ]
