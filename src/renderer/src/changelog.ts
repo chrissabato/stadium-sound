@@ -11,6 +11,15 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.11.0',
+    date: '2026-09-28',
+    items: [
+      'New File menu → Import Folder… bulk-creates banks from a folder of media: every subfolder becomes a bank, and every audio file inside it (including in further-nested subfolders) becomes a track.',
+      'Library search results and the Add from Library modal no longer hide tracks already used in a bank — they now show "Already in <bank name>" and can still be added again.',
+      'On macOS, Cmd+Q now quits the app.'
+    ]
+  },
+  {
     version: '0.10.2',
     date: '2026-09-16',
     items: [
