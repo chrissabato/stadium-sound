@@ -1775,6 +1775,7 @@ export default function App() {
       <AddFromLibraryModal
         open={addFromLibraryTarget !== null}
         libraries={libraries.libraries}
+        banks={config.banks}
         targetLabel={addFromLibraryTarget === 'playlist' ? (selectedPlaylist?.name ?? 'Playlist') : (selectedBank?.name ?? 'Bank')}
         onAdd={(tracks) => {
           if (addFromLibraryTarget === 'playlist') addLibraryTracksToPlaylist(tracks)

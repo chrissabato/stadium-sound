@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react'
-import type { LibraryTrack, MediaLibrary } from '../types'
+import type { Bank, LibraryTrack, MediaLibrary } from '../types'
 
 interface Props {
   open: boolean
   libraries: MediaLibrary[]
+  banks: Bank[]
   targetLabel: string
   onAdd: (tracks: LibraryTrack[]) => void
   onClose: () => void
@@ -13,11 +14,20 @@ function trackKey(libraryId: string, track: LibraryTrack): string {
   return `${libraryId}::${track.filePath}`
 }
 
-export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClose }: Props) {
+export function AddFromLibraryModal({ open, libraries, banks, targetLabel, onAdd, onClose }: Props) {
   const [query, setQuery] = useState('')
-  // Rows added this session — marked so the user can see what they've already
-  // grabbed while the modal stays open for more searches.
-  const [added, setAdded] = useState<Set<string>>(new Set())
+
+  const bankNamesByFilePath = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const b of banks) {
+      for (const t of b.tracks) {
+        const names = map.get(t.filePath) ?? []
+        if (!names.includes(b.name)) names.push(b.name)
+        map.set(t.filePath, names)
+      }
+    }
+    return map
+  }, [banks])
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -38,13 +48,11 @@ export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClo
 
   function handleClose() {
     setQuery('')
-    setAdded(new Set())
     onClose()
   }
 
-  function addTrack(key: string, track: LibraryTrack) {
+  function addTrack(track: LibraryTrack) {
     onAdd([track])
-    setAdded((prev) => new Set(prev).add(key))
   }
 
   return (
@@ -114,11 +122,11 @@ export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClo
                 </div>
                 {tracks.map((t) => {
                   const key = trackKey(library.id, t)
-                  const isAdded = added.has(key)
+                  const existingBankNames = bankNamesByFilePath.get(t.filePath)
                   return (
                     <div
                       key={key}
-                      onClick={() => addTrack(key, t)}
+                      onClick={() => addTrack(t)}
                       title={`Add to ${targetLabel}`}
                       style={{
                         display: 'flex',
@@ -126,7 +134,7 @@ export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClo
                         gap: 8,
                         padding: '6px 8px',
                         borderRadius: 4,
-                        background: isAdded ? '#14332a' : 'transparent',
+                        background: 'transparent',
                         cursor: 'pointer'
                       }}
                     >
@@ -140,8 +148,10 @@ export function AddFromLibraryModal({ open, libraries, targetLabel, onAdd, onClo
                           </div>
                         )}
                       </div>
-                      {isAdded && (
-                        <span style={{ fontSize: 11, color: '#4ade80', flexShrink: 0 }}>✓ Added</span>
+                      {existingBankNames && existingBankNames.length > 0 && (
+                        <span style={{ fontSize: 10, color: '#facc15', flexShrink: 0, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          Already in {existingBankNames.join(', ')}
+                        </span>
                       )}
                     </div>
                   )

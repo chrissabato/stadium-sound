@@ -14,7 +14,7 @@ export interface TrackSearchHandle {
 
 type Match =
   | { kind: 'bank'; key: string; track: Track; bankId: string; bankName: string }
-  | { kind: 'library'; key: string; track: LibraryTrack; libraryName: string }
+  | { kind: 'library'; key: string; track: LibraryTrack; libraryName: string; existingBankNames: string[] }
 
 const MAX_RESULTS = 8
 
@@ -35,8 +35,22 @@ export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSe
     const bankMatches: Match[] = banks.flatMap((b) =>
       b.tracks.map((track): Match => ({ kind: 'bank', key: `bank:${track.id}`, track, bankId: b.id, bankName: b.name }))
     )
+    const bankNamesByFilePath = new Map<string, string[]>()
+    for (const b of banks) {
+      for (const t of b.tracks) {
+        const names = bankNamesByFilePath.get(t.filePath) ?? []
+        if (!names.includes(b.name)) names.push(b.name)
+        bankNamesByFilePath.set(t.filePath, names)
+      }
+    }
     const libraryMatches: Match[] = libraries.flatMap((lib) =>
-      lib.tracks.map((track): Match => ({ kind: 'library', key: `library:${lib.id}:${track.filePath}`, track, libraryName: lib.name }))
+      lib.tracks.map((track): Match => ({
+        kind: 'library',
+        key: `library:${lib.id}:${track.filePath}`,
+        track,
+        libraryName: lib.name,
+        existingBankNames: bankNamesByFilePath.get(track.filePath) ?? []
+      }))
     )
 
     const all = [...bankMatches, ...libraryMatches]
@@ -175,6 +189,17 @@ export const TrackSearch = forwardRef<TrackSearchHandle, Props>(function TrackSe
                         whiteSpace: 'nowrap'
                       }}>
                         {m.track.artist}
+                      </div>
+                    )}
+                    {m.kind === 'library' && m.existingBankNames.length > 0 && (
+                      <div style={{
+                        fontSize: 10,
+                        color: '#facc15',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Already in {m.existingBankNames.join(', ')}
                       </div>
                     )}
                   </div>
