@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import type { ElectronAPI, UpdateStatus } from '../types/electron'
+import type { ElectronAPI, FolderImportBank, UpdateStatus } from '../types/electron'
 import type { AppConfig, Bank, MediaLibrary } from '../renderer/src/types'
 
 const api: ElectronAPI = {
@@ -32,6 +32,20 @@ const api: ElectronAPI = {
     export: (bank: Bank, colorLabelNames: Record<string, string>) =>
       ipcRenderer.invoke('bank:export', bank, colorLabelNames),
     import: () => ipcRenderer.invoke('bank:import')
+  },
+  folder: {
+    import: () => ipcRenderer.invoke('folder:import'),
+    onImportProgress: (callback) => {
+      const handler = (_: Electron.IpcRendererEvent, progress: { scanned: number; total: number }) =>
+        callback(progress)
+      ipcRenderer.on('folder:importProgress', handler)
+      return () => ipcRenderer.removeListener('folder:importProgress', handler)
+    },
+    onImportComplete: (callback) => {
+      const handler = (_: Electron.IpcRendererEvent, result: { banks: FolderImportBank[] }) => callback(result)
+      ipcRenderer.on('folder:importComplete', handler)
+      return () => ipcRenderer.removeListener('folder:importComplete', handler)
+    }
   },
   library: {
     list: () => ipcRenderer.invoke('library:list'),

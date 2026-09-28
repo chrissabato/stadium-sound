@@ -71,6 +71,10 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[]): void {
           label: 'Import Bank…',
           click: () => win.webContents.send('menu:action', 'importBank')
         },
+        {
+          label: 'Import Folder…',
+          click: () => win.webContents.send('menu:action', 'importFolder')
+        },
         ...(isMac
           ? []
           : [

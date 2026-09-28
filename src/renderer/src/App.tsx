@@ -14,6 +14,7 @@ import { FeedbackModal } from './components/FeedbackModal'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { ChangelogModal } from './components/ChangelogModal'
+import { FolderImportProgress } from './components/FolderImportProgress'
 import { LoudnessReportModal } from './components/LoudnessReportModal'
 import { PlayCountReportModal } from './components/PlayCountReportModal'
 import { CHANGELOG } from './changelog'
@@ -71,7 +72,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts, folderImportProgress } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -1742,6 +1743,10 @@ export default function App() {
         currentVersion={appVersion}
         onClose={() => setChangelogOpen(false)}
       />
+
+      {folderImportProgress && (
+        <FolderImportProgress scanned={folderImportProgress.scanned} total={folderImportProgress.total} />
+      )}
 
       <LoudnessReportModal
         open={loudnessReportOpen}

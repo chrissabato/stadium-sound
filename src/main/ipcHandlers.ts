@@ -10,6 +10,7 @@ import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
 import { AUDIO_EXTENSIONS, getAudioMetadata, scanFolder } from './libraryScanner'
 import { loadLibraries, createLibrary, replaceLibraryTracks, renameLibrary, removeLibrary } from './libraryStore'
+import { scanFolderAsBanks } from './folderImporter'
 
 function getWin(): BrowserWindow | null {
   return BrowserWindow.getAllWindows()[0] ?? null
@@ -33,6 +34,30 @@ function runLibraryScan(id: string, folderPath: string): void {
     })
     .catch(() => {
       send('library:scanComplete', { id, libraries: loadLibraries() })
+    })
+}
+
+// Same fire-and-forget shape as runLibraryScan: the dialog pick returns
+// immediately so the renderer can show a progress overlay while the scan
+// (which reads tags file-by-file and can take a while for a whole show's
+// worth of folders) runs in the background.
+function runFolderImport(folderPath: string): void {
+  const send = (channel: string, payload: unknown): void => {
+    const win = getWin()
+    if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
+  }
+  scanFolderAsBanks(folderPath, (scanned, total) => {
+    send('folder:importProgress', { scanned, total })
+  })
+    .then((banks) => {
+      send('folder:importComplete', { banks })
+    })
+    .catch((err) => {
+      dialog.showErrorBox(
+        'Could Not Import Folder',
+        [folderPath, err instanceof Error ? err.message : String(err)].join('\n\n')
+      )
+      send('folder:importComplete', { banks: [] })
     })
 }
 
@@ -343,6 +368,16 @@ export function registerIpcHandlers(): void {
     // SSP files use Windows-1252 encoding; latin1 covers all byte values safely
     const content = readFileSync(filePaths[0], 'latin1')
     return parseSspSet(content)
+  })
+
+  ipcMain.handle('folder:import', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Import Folder',
+      properties: ['openDirectory']
+    })
+    if (canceled || !filePaths[0]) return null
+    runFolderImport(filePaths[0])
+    return true
   })
 
   ipcMain.handle('library:list', () => loadLibraries())

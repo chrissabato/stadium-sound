@@ -48,6 +48,9 @@ export interface ConfigState {
   // Report menu item — machine-level, off by default (see settingsStore.ts).
   enablePlayCounts: boolean
   setEnablePlayCounts: (enabled: boolean) => void
+  // Non-null while a File > Import Folder… scan is running in the main
+  // process — drives the progress overlay in App.tsx.
+  folderImportProgress: { scanned: number; total: number } | null
 }
 
 function fileLabel(filePath: string | null): string {
@@ -76,6 +79,7 @@ export function useConfig(): ConfigState {
   const [telemetryOptOut, setTelemetryOptOutState] = useState(false)
   const [enableColorLabels, setEnableColorLabelsState] = useState(false)
   const [enablePlayCounts, setEnablePlayCountsState] = useState(false)
+  const [folderImportProgress, setFolderImportProgress] = useState<{ scanned: number; total: number } | null>(null)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   const filePathRef = useRef<string | null>(null)
@@ -214,6 +218,36 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
+  // Folder import (File > Import Folder…) runs in the main process and
+  // reports back over these two channels rather than a single IPC response,
+  // since scanning a whole show's worth of folders can take a while.
+  useEffect(() => {
+    const offProgress = window.electronAPI.folder.onImportProgress(setFolderImportProgress)
+    const offComplete = window.electronAPI.folder.onImportComplete(({ banks }) => {
+      setFolderImportProgress(null)
+      if (!banks || banks.length === 0) return
+      const newBanks: Bank[] = banks.map((b) => ({
+        id: makeId(),
+        name: b.name,
+        tracks: b.tracks.map((t): Track => ({
+          id: makeId(),
+          filePath: t.filePath,
+          title: t.title,
+          artist: t.artist,
+          duration: t.duration,
+          inPoint: 0,
+          outPoint: t.duration
+        }))
+      }))
+      updateConfig((c) => ({
+        ...c,
+        banks: [...c.banks, ...newBanks],
+        selectedBankId: newBanks[0]?.id ?? c.selectedBankId
+      }))
+    })
+    return () => { offProgress(); offComplete() }
+  }, [updateConfig])
+
   // Native menu actions from main process
   useEffect(() => {
     const remove = window.electronAPI.onMenuAction(async (action, data) => {
@@ -294,10 +328,13 @@ export function useConfig(): ConfigState {
           selectedBankId: bank.id,
           colorLabelNames: { ...result.colorLabelNames, ...c.colorLabelNames }
         }))
+      } else if (action === 'importFolder') {
+        const started = await window.electronAPI.folder.import()
+        if (started) setFolderImportProgress({ scanned: 0, total: 0 })
       }
     })
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts, folderImportProgress }
 }

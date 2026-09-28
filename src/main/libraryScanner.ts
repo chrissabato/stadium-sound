@@ -31,7 +31,7 @@ export async function getAudioMetadata(
   }
 }
 
-async function runWithConcurrency(tasks: Array<() => Promise<void>>, limit: number): Promise<void> {
+export async function runWithConcurrency(tasks: Array<() => Promise<void>>, limit: number): Promise<void> {
   let index = 0
   async function worker(): Promise<void> {
     while (index < tasks.length) {
@@ -42,7 +42,7 @@ async function runWithConcurrency(tasks: Array<() => Promise<void>>, limit: numb
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker))
 }
 
-async function walkAudioFiles(folderPath: string): Promise<string[]> {
+export async function walkAudioFiles(folderPath: string): Promise<string[]> {
   const entries = await readdir(folderPath, { recursive: true, withFileTypes: true })
   const files: string[] = []
   for (const entry of entries) {

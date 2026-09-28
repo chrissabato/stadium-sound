@@ -56,6 +56,18 @@ export interface BankImportResult {
   colorLabelNames: Record<string, string>
 }
 
+export interface FolderImportTrack {
+  filePath: string
+  artist: string
+  title: string
+  duration: number
+}
+
+export interface FolderImportBank {
+  name: string
+  tracks: FolderImportTrack[]
+}
+
 // Update lifecycle as shown in Settings. 'available' means found on the feed
 // (download starts immediately); only 'downloaded' means a restart installs
 // it. 'dev' = running unpackaged, where the updater can't operate.
@@ -87,6 +99,11 @@ export interface ElectronAPI {
   bank: {
     export: (bank: Bank, colorLabelNames: Record<string, string>) => Promise<boolean>
     import: () => Promise<BankImportResult | null>
+  }
+  folder: {
+    import: () => Promise<boolean | null>
+    onImportProgress: (callback: (progress: { scanned: number; total: number }) => void) => () => void
+    onImportComplete: (callback: (result: { banks: FolderImportBank[] }) => void) => () => void
   }
   library: {
     list: () => Promise<MediaLibrary[]>
