@@ -19,6 +19,9 @@ export interface Track {
   colorLabel?: string
   volume?: number   // per-track level 0–2 (0–200%), multiplied with master volume; undefined = 1 (full)
   playCount?: number   // main-bus plays this event set has recorded; undefined = never played
+  playedThisEvent?: boolean   // already played main-bus this event; undefined = not played.
+                               // Persisted so a restart mid-event doesn't forget. Reset via
+                               // "Reset Played Indicators" (independent of playCount).
 }
 
 export const AUDIO_EXTENSIONS = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac']

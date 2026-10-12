@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAudioEngine, CLIP_DECODE_MAX_SECONDS, type AudioBus } from './hooks/useAudioEngine'
 import { useConfig } from './hooks/useConfig'
 import { useLibraries } from './hooks/useLibraries'
@@ -89,7 +89,6 @@ export default function App() {
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [colorFilter, setColorFilter] = useState<string | null>(null)
   const [colorFilterOpen, setColorFilterOpen] = useState(false)
-  const [playedIds, setPlayedIds] = useState<Set<string>>(new Set())
   const [isReordering, setIsReordering] = useState(false)
   const [missingFileIds, setMissingFileIds] = useState<Set<string>>(new Set())
   const [showPlaylistPanel, setShowPlaylistPanel] = useState(false)
@@ -113,7 +112,21 @@ export default function App() {
     }
   }, [enableColorLabels])
 
-  const resetPlayed = () => setPlayedIds(new Set())
+  // Mirrors resetAllPlayCounts above, but for the played flag — independent
+  // of playCount, which this never touches.
+  const resetPlayed = () => {
+    updateConfig((c) => ({
+      ...c,
+      banks: c.banks.map((bank) => ({
+        ...bank,
+        tracks: bank.tracks.map((t) => t.playedThisEvent ? { ...t, playedThisEvent: undefined } : t)
+      })),
+      playlists: (c.playlists ?? []).map((p) => ({
+        ...p,
+        tracks: p.tracks.map((t) => t.playedThisEvent ? { ...t, playedThisEvent: undefined } : t)
+      }))
+    }))
+  }
 
   const verifyTracks = async () => {
     const allTracks = config.banks.flatMap((b) => b.tracks)
@@ -202,6 +215,37 @@ export default function App() {
     }))
   }
 
+  // Mirrors findPlayCount/applyPlayCount above — same reason a track's
+  // played flag has to be kept in sync across every bank/playlist copy
+  // sharing its id.
+  function findPlayed(c: AppConfig, trackId: string): boolean {
+    return c.banks.flatMap((b) => b.tracks).find((t) => t.id === trackId)?.playedThisEvent
+      ?? (c.playlists ?? []).flatMap((p) => p.tracks).find((t) => t.id === trackId)?.playedThisEvent
+      ?? false
+  }
+
+  function applyPlayed(c: AppConfig, trackId: string, value: boolean | undefined): AppConfig {
+    return {
+      ...c,
+      banks: c.banks.map((bank) => ({
+        ...bank,
+        tracks: bank.tracks.map((t) => t.id === trackId ? { ...t, playedThisEvent: value } : t)
+      })),
+      playlists: (c.playlists ?? []).map((p) => ({
+        ...p,
+        tracks: p.tracks.map((t) => t.id === trackId ? { ...t, playedThisEvent: value } : t)
+      }))
+    }
+  }
+
+  function markPlayed(trackId: string) {
+    updateConfig((c) => findPlayed(c, trackId) ? c : applyPlayed(c, trackId, true))
+  }
+
+  function unmarkPlayed(trackId: string) {
+    updateConfig((c) => findPlayed(c, trackId) ? applyPlayed(c, trackId, undefined) : c)
+  }
+
   useEffect(() => {
     return window.electronAPI.window.onFullscreenChange(setIsFullscreen)
   }, [])
@@ -284,6 +328,12 @@ export default function App() {
 
   const selectedBank = config.banks.find((b) => b.id === config.selectedBankId) ?? null
   const selectedPlaylist = (config.playlists ?? []).find((p) => p.id === config.selectedPlaylistId) ?? null
+  // Derived from the persisted playedThisEvent flag (not local state) so the
+  // "already played" tint survives an app restart — see types.ts:Track.
+  const playedIds = useMemo(
+    () => new Set((selectedBank?.tracks ?? []).filter((t) => t.playedThisEvent).map((t) => t.id)),
+    [selectedBank]
+  )
   const hasUnplayedTracks = !!selectedBank?.tracks.some((t) => !playedIds.has(t.id) && !missingFileIds.has(t.id))
   // A color filter searches every bank, not just the selected one — Reorder
   // is disabled whenever it's active (see the button below) since dragging
@@ -462,12 +512,7 @@ export default function App() {
         // A track whose file is gone never actually played, and the played
         // tint wins over the missing styling in TrackCell — undo the
         // optimistic played mark below so the missing state is visible.
-        setPlayedIds((prev) => {
-          if (!prev.has(track.id)) return prev
-          const next = new Set(prev)
-          next.delete(track.id)
-          return next
-        })
+        unmarkPlayed(track.id)
         decrementPlayCount(track.id)
       } else {
         setMissingFileIds((prev) => {
@@ -500,7 +545,7 @@ export default function App() {
     // a monitor audition is a private cue and must never affect either.
     if (bus === 'main') {
       setNowPlayingTrack(track)
-      setPlayedIds((prev) => new Set([...prev, track.id]))
+      markPlayed(track.id)
       incrementPlayCount(track.id)
     }
   }
