@@ -107,8 +107,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   selectedPlaylistId: '',
   masterVolume: 1.0,
   fadeIn: 0,
-  fadeOut: 0,
-  crossFade: 0,
+  fadeOut: 1,
+  crossFade: 1,
   colorLabelNames: {}
 }
 
