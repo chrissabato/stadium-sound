@@ -44,6 +44,20 @@ interface AppSettings {
   // Gates the play-count badge on soundboard buttons and the Play Count
   // Report menu item — off by default, most shows don't track this.
   enablePlayCounts: boolean
+  // What Space/Escape do to the main bus — 'stop' preserves each key's
+  // original behavior (fade-out for Space, immediate for Escape); 'pause'
+  // makes it toggle Pause/Resume instead. Defaults to 'stop' so upgrading
+  // users see no behavior change until they opt in.
+  spacebarAction: 'stop' | 'pause'
+  escapeAction: 'stop' | 'pause'
+  // How far the Talk button ducks the main bus (0-1, fraction of normal
+  // level) — an operator calibration like normalizeTargetLufs, not show
+  // content.
+  talkDuckLevel: number
+}
+
+function validKeyAction(value: unknown): 'stop' | 'pause' {
+  return value === 'pause' ? 'pause' : 'stop'
 }
 
 function settingsPath(): string {
@@ -84,7 +98,10 @@ export function loadSettings(): AppSettings {
       telemetryOptOut: typeof parsed.telemetryOptOut === 'boolean' ? parsed.telemetryOptOut : false,
       lastTelemetryPingAt: typeof parsed.lastTelemetryPingAt === 'number' ? parsed.lastTelemetryPingAt : null,
       enableColorLabels: typeof parsed.enableColorLabels === 'boolean' ? parsed.enableColorLabels : false,
-      enablePlayCounts: typeof parsed.enablePlayCounts === 'boolean' ? parsed.enablePlayCounts : false
+      enablePlayCounts: typeof parsed.enablePlayCounts === 'boolean' ? parsed.enablePlayCounts : false,
+      spacebarAction: validKeyAction(parsed.spacebarAction),
+      escapeAction: validKeyAction(parsed.escapeAction),
+      talkDuckLevel: validTalkDuckLevel(parsed.talkDuckLevel)
     }
     if (parsed.remoteToken !== settings.remoteToken || parsed.installId !== settings.installId) {
       writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
@@ -112,7 +129,10 @@ export function loadSettings(): AppSettings {
       telemetryOptOut: false,
       lastTelemetryPingAt: null,
       enableColorLabels: false,
-      enablePlayCounts: false
+      enablePlayCounts: false,
+      spacebarAction: 'stop',
+      escapeAction: 'stop',
+      talkDuckLevel: DEFAULT_TALK_DUCK_LEVEL
     }
     return settings
   }
@@ -124,6 +144,14 @@ function validLufs(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value <= 0 && value >= -40
     ? value
     : DEFAULT_NORMALIZE_TARGET_LUFS
+}
+
+const DEFAULT_TALK_DUCK_LEVEL = 0.2
+
+function validTalkDuckLevel(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
+    ? value
+    : DEFAULT_TALK_DUCK_LEVEL
 }
 
 function makeToken(): string { return randomBytes(18).toString('base64url') }
@@ -211,6 +239,21 @@ export function saveEnableColorLabels(enableColorLabels: boolean): void {
 export function saveEnablePlayCounts(enablePlayCounts: boolean): void {
   const s = loadSettings()
   writeFileSync(settingsPath(), JSON.stringify({ ...s, enablePlayCounts }, null, 2), 'utf-8')
+}
+
+export function saveSpacebarAction(spacebarAction: 'stop' | 'pause'): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, spacebarAction }, null, 2), 'utf-8')
+}
+
+export function saveEscapeAction(escapeAction: 'stop' | 'pause'): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, escapeAction }, null, 2), 'utf-8')
+}
+
+export function saveTalkDuckLevel(talkDuckLevel: number): void {
+  const s = loadSettings()
+  writeFileSync(settingsPath(), JSON.stringify({ ...s, talkDuckLevel: validTalkDuckLevel(talkDuckLevel) }, null, 2), 'utf-8')
 }
 
 // Not IPC-exposed — only telemetry.ts calls this, to record when the last ping went out.

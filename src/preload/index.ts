@@ -87,7 +87,13 @@ const api: ElectronAPI = {
     setEnableColorLabels: (enabled: boolean) =>
       ipcRenderer.invoke('settings:setEnableColorLabels', enabled),
     setEnablePlayCounts: (enabled: boolean) =>
-      ipcRenderer.invoke('settings:setEnablePlayCounts', enabled)
+      ipcRenderer.invoke('settings:setEnablePlayCounts', enabled),
+    setSpacebarAction: (action: 'stop' | 'pause') =>
+      ipcRenderer.invoke('settings:setSpacebarAction', action),
+    setEscapeAction: (action: 'stop' | 'pause') =>
+      ipcRenderer.invoke('settings:setEscapeAction', action),
+    setTalkDuckLevel: (level: number) =>
+      ipcRenderer.invoke('settings:setTalkDuckLevel', level)
   },
   network: {
     getStatus: () => ipcRenderer.invoke('network:getStatus'),

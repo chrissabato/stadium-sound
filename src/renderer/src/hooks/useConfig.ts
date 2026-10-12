@@ -48,6 +48,16 @@ export interface ConfigState {
   // Report menu item — machine-level, off by default (see settingsStore.ts).
   enablePlayCounts: boolean
   setEnablePlayCounts: (enabled: boolean) => void
+  // What Space/Escape do to the main bus — machine-level, default 'stop'
+  // (see settingsStore.ts).
+  spacebarAction: 'stop' | 'pause'
+  setSpacebarAction: (action: 'stop' | 'pause') => void
+  escapeAction: 'stop' | 'pause'
+  setEscapeAction: (action: 'stop' | 'pause') => void
+  // How far the Talk button ducks the main bus (0-1) — machine-level, see
+  // settingsStore.ts.
+  talkDuckLevel: number
+  setTalkDuckLevel: (level: number) => void
   // Non-null while a File > Import Folder… scan is running in the main
   // process — drives the progress overlay in App.tsx.
   folderImportProgress: { scanned: number; total: number } | null
@@ -79,6 +89,9 @@ export function useConfig(): ConfigState {
   const [telemetryOptOut, setTelemetryOptOutState] = useState(false)
   const [enableColorLabels, setEnableColorLabelsState] = useState(false)
   const [enablePlayCounts, setEnablePlayCountsState] = useState(false)
+  const [spacebarAction, setSpacebarActionState] = useState<'stop' | 'pause'>('stop')
+  const [escapeAction, setEscapeActionState] = useState<'stop' | 'pause'>('stop')
+  const [talkDuckLevel, setTalkDuckLevelState] = useState(0.2)
   const [folderImportProgress, setFolderImportProgress] = useState<{ scanned: number; total: number } | null>(null)
 
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
@@ -115,6 +128,9 @@ export function useConfig(): ConfigState {
       setTelemetryOptOutState(state.telemetryOptOut)
       setEnableColorLabelsState(state.enableColorLabels)
       setEnablePlayCountsState(state.enablePlayCounts)
+      setSpacebarActionState(state.spacebarAction)
+      setEscapeActionState(state.escapeAction)
+      setTalkDuckLevelState(state.talkDuckLevel)
       setLoaded(true)
     })
     return removeStatus
@@ -153,6 +169,21 @@ export function useConfig(): ConfigState {
   const setEnablePlayCounts = useCallback((enabled: boolean) => {
     setEnablePlayCountsState(enabled)
     window.electronAPI.settings.setEnablePlayCounts(enabled)
+  }, [])
+
+  const setSpacebarAction = useCallback((action: 'stop' | 'pause') => {
+    setSpacebarActionState(action)
+    window.electronAPI.settings.setSpacebarAction(action)
+  }, [])
+
+  const setEscapeAction = useCallback((action: 'stop' | 'pause') => {
+    setEscapeActionState(action)
+    window.electronAPI.settings.setEscapeAction(action)
+  }, [])
+
+  const setTalkDuckLevel = useCallback((level: number) => {
+    setTalkDuckLevelState(level)
+    window.electronAPI.settings.setTalkDuckLevel(level)
   }, [])
 
   const setNetworkControl = useCallback(async (prefs: NetworkControlPrefs) => {
@@ -336,5 +367,5 @@ export function useConfig(): ConfigState {
     return remove
   }, [])
 
-  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts, folderImportProgress }
+  return { config, currentFilePath, loaded, updateConfig, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts, spacebarAction, setSpacebarAction, escapeAction, setEscapeAction, talkDuckLevel, setTalkDuckLevel, folderImportProgress }
 }

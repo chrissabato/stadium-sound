@@ -21,6 +21,10 @@ interface Props {
   onShowPlayedIndicatorChange: (enabled: boolean) => void
   enablePlayCounts: boolean
   onEnablePlayCountsChange: (enabled: boolean) => void
+  spacebarAction: 'stop' | 'pause'
+  onSpacebarActionChange: (action: 'stop' | 'pause') => void
+  escapeAction: 'stop' | 'pause'
+  onEscapeActionChange: (action: 'stop' | 'pause') => void
   showMeters: boolean
   onShowMetersChange: (enabled: boolean) => void
   telemetryOptOut: boolean
@@ -32,6 +36,8 @@ interface Props {
   onUiZoomChange: (zoom: number) => void
   normalizeTargetLufs: number
   onNormalizeTargetLufsChange: (lufs: number) => void
+  talkDuckLevel: number
+  onTalkDuckLevelChange: (level: number) => void
   colorLabelNames: Record<string, string>
   onColorLabelNamesChange: (names: Record<string, string>) => void
   enableColorLabels: boolean
@@ -101,7 +107,7 @@ function FadeRow({
   )
 }
 
-export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, enablePlayCounts, onEnablePlayCountsChange, showMeters, onShowMetersChange, telemetryOptOut, onTelemetryOptOutChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, normalizeTargetLufs, onNormalizeTargetLufsChange, colorLabelNames, onColorLabelNamesChange, enableColorLabels, onEnableColorLabelsChange, onResetAllTrackMetadata, resettingMetadata, onShowChangelog, onClose }: Props) {
+export function Settings({ open, config, onChange, showTrackTooltips, onShowTrackTooltipsChange, showPlayedIndicator, onShowPlayedIndicatorChange, enablePlayCounts, onEnablePlayCountsChange, spacebarAction, onSpacebarActionChange, escapeAction, onEscapeActionChange, showMeters, onShowMetersChange, telemetryOptOut, onTelemetryOptOutChange, networkControl, networkStatus, onNetworkControlChange, uiZoom, onUiZoomChange, normalizeTargetLufs, onNormalizeTargetLufsChange, talkDuckLevel, onTalkDuckLevelChange, colorLabelNames, onColorLabelNamesChange, enableColorLabels, onEnableColorLabelsChange, onResetAllTrackMetadata, resettingMetadata, onShowChangelog, onClose }: Props) {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [version, setVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
@@ -325,6 +331,29 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
             </div>
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Talk Duck Level</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                How much to lower the main output while Talk is active
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={talkDuckLevel}
+                onChange={(e) => onTalkDuckLevelChange(parseFloat(e.target.value))}
+                style={{ width: 100, accentColor: '#d97706' }}
+              />
+              <span style={{ fontSize: 12, color: '#64748b', minWidth: 32 }}>
+                {Math.round(talkDuckLevel * 100)}%
+              </span>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: -8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Interface
@@ -413,6 +442,58 @@ export function Settings({ open, config, onChange, showTrackTooltips, onShowTrac
                 style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
               />
             </label>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Spacebar</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                What Space does to the currently playing track
+              </div>
+            </div>
+            <select
+              value={spacebarAction}
+              onChange={(e) => onSpacebarActionChange(e.target.value as 'stop' | 'pause')}
+              style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: 4,
+                color: '#f1f5f9',
+                padding: '6px 10px',
+                fontSize: 13,
+                minWidth: 90,
+                flexShrink: 0
+              }}
+            >
+              <option value="stop">Fade Out</option>
+              <option value="pause">Play/Pause</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Escape</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                What Escape does to the currently playing track
+              </div>
+            </div>
+            <select
+              value={escapeAction}
+              onChange={(e) => onEscapeActionChange(e.target.value as 'stop' | 'pause')}
+              style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: 4,
+                color: '#f1f5f9',
+                padding: '6px 10px',
+                fontSize: 13,
+                minWidth: 90,
+                flexShrink: 0
+              }}
+            >
+              <option value="stop">Stop</option>
+              <option value="pause">Pause / Resume</option>
+            </select>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>

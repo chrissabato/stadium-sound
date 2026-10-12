@@ -5,11 +5,16 @@ import { formatTime } from '../types'
 interface Props {
   track: Track | null
   isPlaying: boolean
+  isPaused: boolean
   audioCtx: AudioContext | null
   startTime: number | null
   inPoint: number
   outPoint: number
   onStop: () => void
+  onPause: () => void
+  onResume: () => void
+  isTalking: boolean
+  onToggleTalk: (enabled: boolean) => void
 }
 
 // Progress and the time readouts are written directly to the DOM from the
@@ -17,7 +22,7 @@ interface Props {
 // state + a CSS width transition: the loop already updates every frame, and
 // per-frame-restarted transitions are exactly what froze on some machines
 // (#14) while plain style writes kept working.
-export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, outPoint, onStop }: Props) {
+export function NowPlayingBar({ track, isPlaying, isPaused, audioCtx, startTime, inPoint, outPoint, onStop, onPause, onResume, isTalking, onToggleTalk }: Props) {
   const rafRef = useRef<number | null>(null)
   const fillRef = useRef<HTMLDivElement>(null)
   const elapsedRef = useRef<HTMLSpanElement>(null)
@@ -39,6 +44,14 @@ export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, 
       return
     }
 
+    // Freeze (don't repaint) while paused — unlike the !isPlaying case
+    // above, this must leave the last-painted position alone rather than
+    // resetting to 0.
+    if (isPaused) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      return
+    }
+
     function tick() {
       try {
         if (audioCtx && startTime !== null) {
@@ -52,7 +65,7 @@ export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, 
 
     rafRef.current = requestAnimationFrame(tick)
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [isPlaying, audioCtx, startTime, inPoint, outPoint])
+  }, [isPlaying, isPaused, audioCtx, startTime, inPoint, outPoint])
 
   return (
     <div style={{
@@ -124,6 +137,41 @@ export function NowPlayingBar({ track, isPlaying, audioCtx, startTime, inPoint, 
           </span>
         </div>
       )}
+
+      <button
+        onClick={() => onToggleTalk(!isTalking)}
+        title={isTalking ? 'Restore the main output' : 'Duck the main output so the PA can talk over it'}
+        style={{
+          padding: '6px 16px',
+          background: isTalking ? '#d97706' : '#1e293b',
+          color: isTalking ? '#fff' : '#f1f5f9',
+          border: `1px solid ${isTalking ? '#d97706' : '#475569'}`,
+          borderRadius: 4,
+          fontWeight: 600,
+          fontSize: 13,
+          flexShrink: 0
+        }}
+      >
+        ● Talk
+      </button>
+
+      <button
+        onClick={isPaused ? onResume : onPause}
+        disabled={!isPlaying}
+        title={isPaused ? 'Resume from where it was paused' : 'Pause and hold position'}
+        style={{
+          padding: '6px 16px',
+          background: isPlaying ? '#1e293b' : '#1e293b',
+          color: isPlaying ? '#f1f5f9' : '#475569',
+          border: `1px solid ${isPlaying ? '#475569' : '#334155'}`,
+          borderRadius: 4,
+          fontWeight: 600,
+          fontSize: 13,
+          flexShrink: 0
+        }}
+      >
+        {isPaused ? '▶ Resume' : '❚❚ Pause'}
+      </button>
 
       <button
         onClick={onStop}

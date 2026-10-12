@@ -4,7 +4,7 @@ import { readFile, access } from 'fs/promises'
 import { readFileSync, writeFileSync } from 'fs'
 import { loadEventSet, saveEventSet, eventSetExists } from './eventSetStore'
 import { loadBankFile, saveBankFile } from './bankStore'
-import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveNormalizeTargetLufs, saveLastSeenChangelogVersion, saveTelemetryOptOut, saveEnableColorLabels, saveEnablePlayCounts } from './settingsStore'
+import { loadSettings, addRecentFile, clearRecentFiles, saveAudioDevices, saveShowTrackTooltips, saveShowPlayedIndicator, saveShowMeters, saveNetworkControl, saveUiZoom, saveNormalizeTargetLufs, saveLastSeenChangelogVersion, saveTelemetryOptOut, saveEnableColorLabels, saveEnablePlayCounts, saveSpacebarAction, saveEscapeAction, saveTalkDuckLevel } from './settingsStore'
 import { getNetworkControlStatus, startNetworkControl, stopNetworkControl, updateRemoteState } from './networkControl'
 import { buildMenu } from './menu'
 import { parseSspSet } from './sspImporter'
@@ -112,18 +112,21 @@ export function registerIpcHandlers(): void {
     const telemetryOptOut = settings.telemetryOptOut
     const enableColorLabels = settings.enableColorLabels
     const enablePlayCounts = settings.enablePlayCounts
+    const spacebarAction = settings.spacebarAction
+    const escapeAction = settings.escapeAction
+    const talkDuckLevel = settings.talkDuckLevel
     if (settings.lastFile && eventSetExists(settings.lastFile)) {
       try {
         const config = loadEventSet(settings.lastFile)
-        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels, enablePlayCounts }
+        return { config, filePath: settings.lastFile, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels, enablePlayCounts, spacebarAction, escapeAction, talkDuckLevel }
       } catch (err) {
         // File exists but is unreadable — tell the user, remove from recents, start blank
         showOpenError(settings.lastFile, err, 'Your last event set could not be reopened.')
         const recentFiles = settings.recentFiles.filter((f) => f !== settings.lastFile)
-        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels, enablePlayCounts }
+        return { config: null, filePath: null, recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels, enablePlayCounts, spacebarAction, escapeAction, talkDuckLevel }
       }
     }
-    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels, enablePlayCounts }
+    return { config: null, filePath: null, recentFiles: settings.recentFiles, audioDevices, showTrackTooltips, showPlayedIndicator, showMeters, networkControl, uiZoom, normalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, enableColorLabels, enablePlayCounts, spacebarAction, escapeAction, talkDuckLevel }
   })
 
   // Machine-level audio device preference — saved independently of the event
@@ -145,6 +148,21 @@ export function registerIpcHandlers(): void {
   // Machine-level UI preference — same rationale as audio devices above.
   ipcMain.handle('settings:setShowMeters', (_event, enabled: boolean) => {
     saveShowMeters(enabled)
+  })
+
+  // Machine-level UI preference — same rationale as audio devices above.
+  ipcMain.handle('settings:setSpacebarAction', (_event, action: 'stop' | 'pause') => {
+    saveSpacebarAction(action)
+  })
+
+  // Machine-level UI preference — same rationale as audio devices above.
+  ipcMain.handle('settings:setEscapeAction', (_event, action: 'stop' | 'pause') => {
+    saveEscapeAction(action)
+  })
+
+  // Machine-level UI preference — same rationale as audio devices above.
+  ipcMain.handle('settings:setTalkDuckLevel', (_event, level: number) => {
+    saveTalkDuckLevel(level)
   })
 
   // Machine-level UI preference — same rationale as audio devices above.

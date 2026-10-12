@@ -11,6 +11,7 @@ interface Props {
   isMissing: boolean
   isLoading: boolean
   playStartWallTime: number | null
+  isPaused: boolean
   isReordering: boolean
   isAddToPlaylistMode: boolean
   showTooltip: boolean
@@ -23,7 +24,7 @@ interface Props {
   onDelete: () => void
 }
 
-export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isReordering, isAddToPlaylistMode, showTooltip, showPlayCount, isHighlighted, bankName, colorLabelNames, onClick, onEdit, onDelete }: Props) {
+export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMissing, isLoading, playStartWallTime, isPaused, isReordering, isAddToPlaylistMode, showTooltip, showPlayCount, isHighlighted, bankName, colorLabelNames, onClick, onEdit, onDelete }: Props) {
   const trackDuration = track.outPoint - track.inPoint
   const hasCustomPoints = track.inPoint > 0 || track.outPoint < track.duration
   // The editor only persists volume when it's not exactly 1 (full = undefined).
@@ -48,6 +49,10 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
       return
     }
 
+    // Freeze (don't repaint) while paused — unlike the !isPlaying case
+    // above, this must leave the last-painted overlay alone.
+    if (isPaused) return
+
     const durationMs = trackDuration * 1000
 
     function tick() {
@@ -65,7 +70,7 @@ export function TrackCell({ track, isPlaying, isMonitorPlaying, isPlayed, isMiss
 
     rafRef.current = requestAnimationFrame(tick)
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [isPlaying, playStartWallTime, trackDuration])
+  }, [isPlaying, isPaused, playStartWallTime, trackDuration])
 
   return (
     <div

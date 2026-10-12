@@ -35,8 +35,14 @@ const MAX_CACHE_BYTES = 512 * 1024 * 1024 // 512 MiB ≈ 23 min of stereo 48kHz 
 // A playing "thing" — either an AudioBufferSourceNode or a streaming <audio>
 // element. Everything downstream (fades, cross-fades, stop) only needs to be
 // able to stop it; the gain envelope lives on a per-track GainNode either way.
+// pause()/resume() exist because an AudioBufferSourceNode can't natively
+// pause (start-once/terminal) — the buffer path's implementation stops the
+// node and remembers an elapsed offset, replaying a fresh node on resume;
+// the <audio>-element path just forwards to its native pause()/play().
 interface PlaybackHandle {
   stop(): void
+  pause(): void
+  resume(): void
 }
 
 // Per-bus playback state. Each bus gets its own AudioContext/destination
@@ -47,6 +53,11 @@ interface PlaybackHandle {
 interface BusState {
   ctx: AudioContext | null
   masterGain: GainNode | null
+  // Separate from masterGain (the user's master-volume slider) so Talk can
+  // duck the output without ever touching that value — releasing Talk just
+  // ramps this back to 1, restoring exactly whatever masterGain is set to
+  // at that moment, even if the slider moved while ducked.
+  duckGain: GainNode | null
   analyserL: AnalyserNode | null
   analyserR: AnalyserNode | null
   loudnessL: AnalyserNode | null
@@ -64,6 +75,7 @@ function newBusState(): BusState {
   return {
     ctx: null,
     masterGain: null,
+    duckGain: null,
     analyserL: null,
     analyserR: null,
     loudnessL: null,
@@ -200,9 +212,18 @@ interface PlaybackSnapshot {
   id: string | null
   ctxTime: number | null
   wallTime: number | null
+  paused: boolean
+  // Anchors for shifting ctxTime/wallTime forward by the paused duration on
+  // resume, so `now - ctxTime`/`now - wallTime` (what the progress bars
+  // already compute) stays correct across the gap instead of needing its
+  // own separate "time spent paused" bookkeeping downstream.
+  pauseWallTime: number | null
+  pauseCtxTime: number | null
 }
 
-const EMPTY_PLAYBACK: PlaybackSnapshot = { id: null, ctxTime: null, wallTime: null }
+const EMPTY_PLAYBACK: PlaybackSnapshot = {
+  id: null, ctxTime: null, wallTime: null, paused: false, pauseWallTime: null, pauseCtxTime: null
+}
 
 interface AudioEngine {
   loadBuffer: (id: string, filePath: string) => Promise<AudioBuffer>
@@ -214,6 +235,15 @@ interface AudioEngine {
   stopImmediate: () => void
   stopMonitor: () => void
   stopMonitorImmediate: () => void
+  pause: () => void
+  resume: () => void
+  isPaused: boolean
+  pauseMonitor: () => void
+  resumeMonitor: () => void
+  isMonitorPaused: boolean
+  setTalk: (enabled: boolean) => void
+  isTalking: boolean
+  setTalkDuckLevel: (level: number) => void
   setMasterVolume: (vol: number) => void
   setFadeSettings: (s: FadeSettings) => void
   setOutputDevices: (outputDeviceId: string, monitorDeviceId: string) => void
@@ -263,6 +293,11 @@ export function useAudioEngine(): AudioEngine {
   // if created lazily well after the user has already moved the volume
   // slider, starts at the current volume instead of defaulting to 1.
   const masterVolumeRef = useRef<number>(1)
+  // Configured Talk duck level (0-1), kept in a ref so setTalk can read the
+  // latest Settings value without re-creating its callback.
+  const talkDuckLevelRef = useRef<number>(0.2)
+  const isTalkingRef = useRef(false)
+  const [isTalking, setIsTalking] = useState(false)
 
   const [mainPlayback, setMainPlayback] = useState<PlaybackSnapshot>(EMPTY_PLAYBACK)
   const [monitorPlayback, setMonitorPlayback] = useState<PlaybackSnapshot>(EMPTY_PLAYBACK)
@@ -272,8 +307,16 @@ export function useAudioEngine(): AudioEngine {
     state.playingId = id
     state.playingFilePath = filePath
     const setter = bus === 'main' ? setMainPlayback : setMonitorPlayback
-    setter(id === null ? EMPTY_PLAYBACK : { id, ctxTime: ctx!.currentTime, wallTime: Date.now() })
+    setter(id === null ? EMPTY_PLAYBACK : {
+      id, ctxTime: ctx!.currentTime, wallTime: Date.now(),
+      paused: false, pauseWallTime: null, pauseCtxTime: null
+    })
   }
+
+  // pauseBus/resumeBus below shift ctxTime/wallTime forward by the paused
+  // gap on resume (see PlaybackSnapshot's comment) rather than going
+  // through this function, which always treats a non-null id as a fresh
+  // start.
 
   function markLoading(id: string) {
     setLoadingIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
@@ -311,11 +354,20 @@ export function useAudioEngine(): AudioEngine {
       state.ctx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 })
       state.masterGain = state.ctx.createGain()
       state.masterGain.gain.value = masterVolumeRef.current
-      state.masterGain.connect(state.ctx.destination)
+      // Talk's duck sits after masterGain, not folded into it — see the
+      // BusState.duckGain comment. Starts at 1 (not ducked); only the
+      // main bus's is ever driven away from that (see setTalk).
+      state.duckGain = state.ctx.createGain()
+      state.duckGain.gain.value = 1
+      state.masterGain.connect(state.duckGain)
+      state.duckGain.connect(state.ctx.destination)
 
-      // Meter/LUFS tap off the master gain — valid because the bus context
-      // above is created at 48kHz.
-      const analysers = createAnalyserChain(state.ctx, state.masterGain)
+      // Meter/LUFS tap off the post-duck signal — valid because the bus
+      // context above is created at 48kHz. Taps are a parallel analysis
+      // chain that never feeds back into the audible path either way, but
+      // reading post-duck means the meters show what's actually reaching
+      // the PA while Talk is engaged.
+      const analysers = createAnalyserChain(state.ctx, state.duckGain)
       state.analyserL = analysers.left
       state.analyserR = analysers.right
       state.loudnessL = analysers.loudnessLeft
@@ -488,6 +540,37 @@ export function useAudioEngine(): AudioEngine {
   const stopMonitor = useCallback(() => stopBus('monitor', false), [])
   const stopMonitorImmediate = useCallback(() => stopBus('monitor', true), [])
 
+  function pauseBus(bus: AudioBus) {
+    const state = busState(bus)
+    if (!state.activeHandle || !state.playingId) return
+    state.activeHandle.pause()
+    const setter = bus === 'main' ? setMainPlayback : setMonitorPlayback
+    setter((prev) => prev.paused ? prev : {
+      ...prev, paused: true, pauseWallTime: Date.now(), pauseCtxTime: state.ctx?.currentTime ?? null
+    })
+  }
+
+  function resumeBus(bus: AudioBus) {
+    const state = busState(bus)
+    if (!state.activeHandle || !state.playingId) return
+    state.activeHandle.resume()
+    const setter = bus === 'main' ? setMainPlayback : setMonitorPlayback
+    setter((prev) => {
+      if (!prev.paused || prev.ctxTime === null || prev.wallTime === null) return prev
+      const wallGap = prev.pauseWallTime === null ? 0 : Date.now() - prev.pauseWallTime
+      const ctxGap = prev.pauseCtxTime === null || !state.ctx ? 0 : state.ctx.currentTime - prev.pauseCtxTime
+      return {
+        id: prev.id, ctxTime: prev.ctxTime + ctxGap, wallTime: prev.wallTime + wallGap,
+        paused: false, pauseWallTime: null, pauseCtxTime: null
+      }
+    })
+  }
+
+  const pause = useCallback(() => pauseBus('main'), [])
+  const resume = useCallback(() => resumeBus('main'), [])
+  const pauseMonitor = useCallback(() => pauseBus('monitor'), [])
+  const resumeMonitor = useCallback(() => resumeBus('monitor'), [])
+
   const playTrack = useCallback((
     id: string,
     { inPoint, outPoint, filePath, volume }: PlayOptions,
@@ -576,16 +659,39 @@ export function useAudioEngine(): AudioEngine {
     if (buffer) {
       touchBuffer(filePath, buffer)
 
-      const source = ctx.createBufferSource()
-      source.buffer = buffer
-      source.connect(trackGain)
+      // An AudioBufferSourceNode can only be started once — stop() is
+      // terminal. "Pause" stops it and remembers how much of the clip has
+      // played (elapsed); "resume" starts a brand-new node at that offset.
+      const clipStart = Math.max(0, Math.min(inPoint, buffer.duration))
+      const clipDur = Math.max(0, Math.min(outPoint, buffer.duration) - clipStart)
 
-      const offset = Math.max(0, Math.min(inPoint, buffer.duration))
-      const dur = Math.max(0, Math.min(outPoint, buffer.duration) - offset)
-      source.start(0, offset, dur > 0 ? dur : undefined)
+      let source: AudioBufferSourceNode
+      let elapsed = 0
+      let segmentStartCtxTime = ctx.currentTime
 
-      handle = { stop: () => { try { source.stop() } catch { /* already stopped */ } } }
-      source.onended = finish
+      const startSegment = (fromOffset: number) => {
+        source = ctx.createBufferSource()
+        source.buffer = buffer
+        source.connect(trackGain)
+        const remaining = clipDur > 0 ? Math.max(0, clipDur - fromOffset) : undefined
+        source.start(0, clipStart + fromOffset, remaining)
+        segmentStartCtxTime = ctx.currentTime
+        source.onended = finish
+      }
+
+      startSegment(0)
+
+      handle = {
+        stop: () => { try { source.stop() } catch { /* already stopped */ } },
+        pause: () => {
+          elapsed += ctx.currentTime - segmentStartCtxTime
+          // Clear onended first — stop() fires it too, and finish() would
+          // otherwise wipe the "now playing" state this is meant to hold.
+          source.onended = null
+          try { source.stop() } catch { /* already stopped */ }
+        },
+        resume: () => startSegment(elapsed)
+      }
     } else {
       // No decoded buffer — stream the file through a media element. This is
       // the normal path for full songs (which are never pre-decoded); for
@@ -616,6 +722,12 @@ export function useAudioEngine(): AudioEngine {
           el.removeAttribute('src')
           el.load()
           try { srcNode.disconnect() } catch { /* already disconnected */ }
+        },
+        // Unlike the buffer path, <audio> supports native pause/resume —
+        // position is kept by the element itself, nothing to track here.
+        pause: () => { el.pause() },
+        resume: () => {
+          el.play().catch((err) => console.error('[audio] el.play() rejected on resume', { filePath, bus, err }))
         }
       }
       el.onended = () => { handle.stop(); finish() }
@@ -642,6 +754,34 @@ export function useAudioEngine(): AudioEngine {
     masterVolumeRef.current = vol
     if (mainRef.current.masterGain) mainRef.current.masterGain.gain.value = vol
     if (monitorRef.current.masterGain) monitorRef.current.masterGain.gain.value = vol
+  }, [])
+
+  // Short enough to feel immediate, long enough to avoid an audible click.
+  const TALK_RAMP_SECONDS = 0.15
+
+  const setTalk = useCallback((enabled: boolean) => {
+    const ctx = getCtx('main')
+    const state = mainRef.current
+    const gain = state.duckGain!.gain
+    const target = enabled ? talkDuckLevelRef.current : 1
+    gain.cancelScheduledValues(ctx.currentTime)
+    gain.setValueAtTime(gain.value, ctx.currentTime)
+    gain.linearRampToValueAtTime(target, ctx.currentTime + TALK_RAMP_SECONDS)
+    isTalkingRef.current = enabled
+    setIsTalking(enabled)
+  }, [])
+
+  // Lets the Settings value take effect immediately while Talk is already
+  // engaged, instead of only on the next toggle.
+  const setTalkDuckLevel = useCallback((level: number) => {
+    talkDuckLevelRef.current = level
+    const state = mainRef.current
+    if (isTalkingRef.current && state.ctx && state.duckGain) {
+      const gain = state.duckGain.gain
+      gain.cancelScheduledValues(state.ctx.currentTime)
+      gain.setValueAtTime(gain.value, state.ctx.currentTime)
+      gain.linearRampToValueAtTime(level, state.ctx.currentTime + TALK_RAMP_SECONDS)
+    }
   }, [])
 
   const setFadeSettings = useCallback((s: FadeSettings) => {
@@ -693,6 +833,10 @@ export function useAudioEngine(): AudioEngine {
   return {
     loadBuffer, decodeTransient, getBuffer, loadingIds, playTrack,
     stopAll, stopImmediate, stopMonitor, stopMonitorImmediate,
+    pause, resume, pauseMonitor, resumeMonitor,
+    isPaused: mainPlayback.paused,
+    isMonitorPaused: monitorPlayback.paused,
+    setTalk, isTalking, setTalkDuckLevel,
     setMasterVolume, setFadeSettings, setOutputDevices, setMonitorMode,
     isMonitorMode,
     getBusAnalysers,

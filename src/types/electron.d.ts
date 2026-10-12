@@ -15,6 +15,9 @@ export interface EventSetState {
   telemetryOptOut: boolean
   enableColorLabels: boolean
   enablePlayCounts: boolean
+  spacebarAction: 'stop' | 'pause'
+  escapeAction: 'stop' | 'pause'
+  talkDuckLevel: number
 }
 
 export interface NetworkControlPrefs {
@@ -126,6 +129,9 @@ export interface ElectronAPI {
     setTelemetryOptOut: (optOut: boolean) => Promise<void>
     setEnableColorLabels: (enabled: boolean) => Promise<void>
     setEnablePlayCounts: (enabled: boolean) => Promise<void>
+    setSpacebarAction: (action: 'stop' | 'pause') => Promise<void>
+    setEscapeAction: (action: 'stop' | 'pause') => Promise<void>
+    setTalkDuckLevel: (level: number) => Promise<void>
   }
   network: {
     getStatus: () => Promise<NetworkControlStatus>

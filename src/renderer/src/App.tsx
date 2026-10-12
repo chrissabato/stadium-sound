@@ -72,7 +72,7 @@ async function runWithConcurrency(tasks: (() => Promise<unknown>)[], limit: numb
 }
 
 export default function App() {
-  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts, folderImportProgress } = useConfig()
+  const { config, currentFilePath, updateConfig, loaded, audioDevices, setAudioDevices, showTrackTooltips, setShowTrackTooltips, showPlayedIndicator, setShowPlayedIndicator, showMeters, setShowMeters, networkControl, networkStatus, setNetworkControl, uiZoom, setUiZoom, normalizeTargetLufs, setNormalizeTargetLufs, lastSeenChangelogVersion, telemetryOptOut, setTelemetryOptOut, colorLabelNames, setColorLabelNames, enableColorLabels, setEnableColorLabels, enablePlayCounts, setEnablePlayCounts, spacebarAction, setSpacebarAction, escapeAction, setEscapeAction, talkDuckLevel, setTalkDuckLevel, folderImportProgress } = useConfig()
   const audio = useAudioEngine()
   const libraries = useLibraries()
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
@@ -276,6 +276,11 @@ export default function App() {
   useEffect(() => {
     audio.setOutputDevices(audioDevices.outputDeviceId, audioDevices.monitorDeviceId)
   }, [audioDevices.outputDeviceId, audioDevices.monitorDeviceId])
+
+  // Keep audio engine in sync with the configured Talk duck level
+  useEffect(() => {
+    audio.setTalkDuckLevel(talkDuckLevel)
+  }, [talkDuckLevel])
 
   // Settings stores '' for "System Default" (legacy configs may hold Chromium's
   // synthetic 'default'/'communications' ids). To tell whether the monitor and
@@ -661,6 +666,15 @@ export default function App() {
     advancePastStoppedTrack()
     breakPlaylistChain()
     audio.stopAll()
+  }
+
+  // No advancePastStoppedTrack/breakPlaylistChain here, unlike the stop
+  // functions above — pausing leaves audio.playingTrackId set, so the
+  // playlist auto-advance effect (which only reacts to it going null)
+  // correctly leaves the playlist alone.
+  function togglePause() {
+    if (audio.isPaused) audio.resume()
+    else audio.pause()
   }
 
   function saveEditedTrack(updated: Track) {
@@ -1146,12 +1160,14 @@ export default function App() {
     }
     if (e.key === 'Escape') {
       e.preventDefault()
-      stopAll()
+      if (escapeAction === 'pause') togglePause()
+      else stopAll()
       return
     }
     if (e.code === 'Space') {
       e.preventDefault()
-      stopWithFade()
+      if (spacebarAction === 'pause') togglePause()
+      else stopWithFade()
       return
     }
     if (e.key === 'ArrowRight') {
@@ -1637,6 +1653,7 @@ export default function App() {
               playingTrackId={audio.playingTrackId}
               monitorPlayingTrackId={audio.monitorPlayingTrackId}
               playStartWallTime={audio.playStartWallTime}
+              isPaused={audio.isPaused}
               playedIds={showPlayedIndicator ? playedIds : EMPTY_PLAYED_IDS}
               missingFileIds={missingFileIds}
               loadingIds={audio.loadingIds}
@@ -1707,11 +1724,16 @@ export default function App() {
       <NowPlayingBar
         track={nowPlayingTrack}
         isPlaying={!!audio.playingTrackId}
+        isPaused={audio.isPaused}
         audioCtx={audio.audioCtx}
         startTime={audio.playStartCtxTime}
         inPoint={nowPlayingTrack?.inPoint ?? 0}
         outPoint={nowPlayingTrack?.outPoint ?? nowPlayingTrack?.duration ?? 0}
         onStop={stopWithFade}
+        onPause={audio.pause}
+        onResume={audio.resume}
+        isTalking={audio.isTalking}
+        onToggleTalk={audio.setTalk}
       />
 
       <TrackEditor
@@ -1751,6 +1773,10 @@ export default function App() {
         onShowPlayedIndicatorChange={setShowPlayedIndicator}
         enablePlayCounts={enablePlayCounts}
         onEnablePlayCountsChange={setEnablePlayCounts}
+        spacebarAction={spacebarAction}
+        onSpacebarActionChange={setSpacebarAction}
+        escapeAction={escapeAction}
+        onEscapeActionChange={setEscapeAction}
         showMeters={showMeters}
         onShowMetersChange={setShowMeters}
         telemetryOptOut={telemetryOptOut}
@@ -1762,6 +1788,8 @@ export default function App() {
         onUiZoomChange={setUiZoom}
         normalizeTargetLufs={normalizeTargetLufs}
         onNormalizeTargetLufsChange={setNormalizeTargetLufs}
+        talkDuckLevel={talkDuckLevel}
+        onTalkDuckLevelChange={setTalkDuckLevel}
         colorLabelNames={colorLabelNames}
         onColorLabelNamesChange={setColorLabelNames}
         enableColorLabels={enableColorLabels}
