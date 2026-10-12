@@ -8,6 +8,21 @@ description: Investigate and fix a GitHub issue in the current repo end-to-end â
 Process to follow, not a fix to apply blindly â€” the actual change still requires
 real investigation each time.
 
+## 0. No issue number given
+
+If invoked without a specific issue number, do not guess or ask the user to
+type one from memory. List open issues and let them pick:
+
+```
+gh issue list --limit 30
+```
+
+Present the list (number + title, and state/labels if useful) via
+`AskUserQuestion` so the user can choose which one to work on, then proceed
+from step 1 with that number. If the list is empty or the user wants
+something not shown (e.g. a closed issue, or more than the default limit),
+ask them for the number directly instead of guessing.
+
 ## 1. Fetch the issue
 
 ```
