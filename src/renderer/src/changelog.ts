@@ -11,6 +11,17 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.12.0',
+    date: '2026-10-12',
+    items: [
+      'Added a Pause/Resume button to the Now Playing bar — interrupt a track for an announcement and pick up right where it left off, instead of starting over.',
+      'Added a Talk button that ducks (lowers) the main output so you can talk over the music instead of stopping it — how far it ducks is configurable in Settings.',
+      'Space and Escape can each be set in Settings to either stop the track as before, or toggle Play/Pause instead.',
+      'The "already played" track indicator now survives a restart — tracks you\'ve already played won\'t reset to unplayed if the app (or your computer) restarts mid-event.',
+      'New event sets now default to a 1-second fade-out and cross-fade between tracks instead of none.'
+    ]
+  },
+  {
     version: '0.11.0',
     date: '2026-09-28',
     items: [
