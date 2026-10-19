@@ -230,7 +230,9 @@ export function useConfig(): ConfigState {
   }, [updateConfig])
 
   // Main process asks us to flush any pending debounced autosave before
-  // the window actually closes (see main's `close` handler).
+  // the window actually closes (see main's `close` handler). A new event
+  // set with no file yet has nowhere to autosave to, so instead we report
+  // back whether it has unsaved content — main then prompts the user.
   useEffect(() => {
     const remove = window.electronAPI.app.onFlushBeforeQuit(async () => {
       if (saveTimer.current) {
@@ -241,10 +243,30 @@ export function useConfig(): ConfigState {
         const fp = filePathRef.current
         if (fp) {
           await window.electronAPI.eventSet.save(configRef.current, fp)
+          window.electronAPI.app.flushBeforeQuitDone({ needsSavePrompt: false })
+          return
         }
-      } finally {
-        window.electronAPI.app.flushBeforeQuitDone()
+        const cfg = configRef.current
+        const hasContent = cfg.banks.length > 0 || cfg.playlists.length > 0
+        window.electronAPI.app.flushBeforeQuitDone({ needsSavePrompt: hasContent })
+      } catch {
+        window.electronAPI.app.flushBeforeQuitDone({ needsSavePrompt: false })
       }
+    })
+    return remove
+  }, [])
+
+  // Main process asks us to run the Save As flow (same as the File > Save As
+  // menu action) when the user picks "Save…" from the unsaved-changes prompt
+  // shown on close.
+  useEffect(() => {
+    const remove = window.electronAPI.app.onSaveAsBeforeQuit(async () => {
+      const result = await window.electronAPI.eventSet.saveAs(configRef.current)
+      if (result) {
+        setCurrentFilePath(result.filePath)
+        updateWindowTitle(result.filePath)
+      }
+      window.electronAPI.app.saveAsBeforeQuitDone(!!result)
     })
     return remove
   }, [])

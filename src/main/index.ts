@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { extname, join } from 'path'
 import { copyFileSync, createReadStream, existsSync, renameSync } from 'fs'
 import { stat } from 'fs/promises'
@@ -111,6 +111,9 @@ function createWindow(): void {
   // Intercept close (fires on every quit path — close button, Cmd+Q, File
   // > Quit — while webContents is still alive) so the renderer gets a
   // chance to flush its debounced autosave before the window disappears.
+  // A brand-new event set with no file yet has nowhere for that autosave to
+  // go, so the renderer instead reports back whether there's unsaved content
+  // (`needsSavePrompt`) and we ask the user Save/Don't Save/Cancel here.
   let closing = false
   win.on('close', (e) => {
     if (closing) return
@@ -126,9 +129,42 @@ function createWindow(): void {
       closing = true
       win.close()
     }
-    ipcMain.once('app:flushBeforeQuitDone', finish)
+
+    // Only guards the fast flush/check round trip below — cleared as soon as
+    // that responds, before any user-facing dialog can appear, so it never
+    // force-closes the window out from under an open confirm/save dialog.
+    const fallback = setTimeout(finish, 1000)
+
+    ipcMain.once('app:flushBeforeQuitDone', async (_event, result: { needsSavePrompt: boolean }) => {
+      clearTimeout(fallback)
+      if (settled) return
+      if (!result?.needsSavePrompt) {
+        finish()
+        return
+      }
+
+      const { response } = await dialog.showMessageBox(win, {
+        type: 'warning',
+        buttons: ['Save…', "Don't Save", 'Cancel'],
+        defaultId: 0,
+        cancelId: 2,
+        message: 'Save changes to this event set before closing?',
+        detail: "This event set hasn't been saved to a file yet. If you don't save, your changes will be lost."
+      })
+      if (settled) return
+      if (response === 2) return // Cancel — leave the window open
+      if (response === 1) {
+        finish()
+        return
+      }
+      // Save…
+      ipcMain.once('app:saveAsBeforeQuitDone', (_e2, saved: boolean) => {
+        if (saved) finish()
+        // else: user canceled the save-file dialog too — leave window open
+      })
+      win.webContents.send('app:saveAsBeforeQuit')
+    })
     win.webContents.send('app:flushBeforeQuit')
-    setTimeout(finish, 1000)
   })
 
   // Keeps the renderer's fullscreen button in sync when fullscreen is

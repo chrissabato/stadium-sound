@@ -125,7 +125,14 @@ const api: ElectronAPI = {
       ipcRenderer.on('app:flushBeforeQuit', handler)
       return () => ipcRenderer.removeListener('app:flushBeforeQuit', handler)
     },
-    flushBeforeQuitDone: () => ipcRenderer.send('app:flushBeforeQuitDone')
+    flushBeforeQuitDone: (result: { needsSavePrompt: boolean }) =>
+      ipcRenderer.send('app:flushBeforeQuitDone', result),
+    onSaveAsBeforeQuit: (callback) => {
+      const handler = (): void => callback()
+      ipcRenderer.on('app:saveAsBeforeQuit', handler)
+      return () => ipcRenderer.removeListener('app:saveAsBeforeQuit', handler)
+    },
+    saveAsBeforeQuitDone: (saved: boolean) => ipcRenderer.send('app:saveAsBeforeQuitDone', saved)
   },
   window: {
     toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),

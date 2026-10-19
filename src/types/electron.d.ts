@@ -147,7 +147,9 @@ export interface ElectronAPI {
     getUpdateStatus: () => Promise<UpdateStatus>
     onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void
     onFlushBeforeQuit: (callback: () => void) => () => void
-    flushBeforeQuitDone: () => void
+    flushBeforeQuitDone: (result: { needsSavePrompt: boolean }) => void
+    onSaveAsBeforeQuit: (callback: () => void) => () => void
+    saveAsBeforeQuitDone: (saved: boolean) => void
   }
   window: {
     toggleFullscreen: () => Promise<boolean>
