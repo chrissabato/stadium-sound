@@ -11,6 +11,13 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.12.1',
+    date: '2026-10-19',
+    items: [
+      'Closing the app with a new event set that hasn\'t been saved to a file yet now prompts you to save first, instead of silently losing your banks and tracks.'
+    ]
+  },
+  {
     version: '0.12.0',
     date: '2026-10-12',
     items: [
