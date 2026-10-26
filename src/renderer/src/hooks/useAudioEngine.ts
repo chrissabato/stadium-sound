@@ -268,6 +268,21 @@ function bufferBytes(buffer: AudioBuffer): number {
   return buffer.length * buffer.numberOfChannels * 4
 }
 
+// Exported so other contexts created outside this hook (e.g. the Track
+// Editor's standalone preview AudioContext) can target the same device a
+// bus would, instead of silently falling back to the system default.
+export function applySinkId(ctx: AudioContext, deviceId: string) {
+  // Chromium enumerates synthetic 'default'/'communications' devices that alias a real
+  // sink, but setSinkId() rejects those ids as "not found". Configs saved before the
+  // picker filtered them out may still have one persisted — fall back to the empty
+  // string (the id setSinkId actually accepts for the system default) in that case.
+  const target = deviceId === 'default' || deviceId === 'communications' ? '' : deviceId
+  // setSinkId is not yet in TypeScript's lib types
+  ;(ctx as unknown as { setSinkId(id: string): Promise<void> })
+    .setSinkId(target)
+    .catch(() => {})
+}
+
 export function useAudioEngine(): AudioEngine {
   const mainRef = useRef<BusState>(newBusState())
   const monitorRef = useRef<BusState>(newBusState())
@@ -329,18 +344,6 @@ export function useAudioEngine(): AudioEngine {
       next.delete(id)
       return next
     })
-  }
-
-  function applySinkId(ctx: AudioContext, deviceId: string) {
-    // Chromium enumerates synthetic 'default'/'communications' devices that alias a real
-    // sink, but setSinkId() rejects those ids as "not found". Configs saved before the
-    // picker filtered them out may still have one persisted — fall back to the empty
-    // string (the id setSinkId actually accepts for the system default) in that case.
-    const target = deviceId === 'default' || deviceId === 'communications' ? '' : deviceId
-    // setSinkId is not yet in TypeScript's lib types
-    ;(ctx as unknown as { setSinkId(id: string): Promise<void> })
-      .setSinkId(target)
-      .catch(() => {})
   }
 
   // Lazily creates the given bus's AudioContext, pinned permanently to that

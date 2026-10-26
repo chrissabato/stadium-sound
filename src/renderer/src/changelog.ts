@@ -11,6 +11,15 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '0.12.2',
+    date: '2026-10-26',
+    items: [
+      'Added a Ctrl/Cmd+T keyboard shortcut to toggle Talk.',
+      'Fixed: previewing a track from the track editor now plays on the selected Monitor device instead of always using the system default output.',
+      'The Send Feedback form now asks for a short summary line in addition to the details, and reports delivery problems more precisely.'
+    ]
+  },
+  {
     version: '0.12.1',
     date: '2026-10-19',
     items: [

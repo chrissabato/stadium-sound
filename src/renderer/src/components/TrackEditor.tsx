@@ -3,6 +3,7 @@ import type { Track } from '../types'
 import { formatTime, parseTime, normalizeHotkeyEvent, TRACK_COLORS, getColorLabelName } from '../types'
 import { WaveformCanvas } from './WaveformCanvas'
 import {
+  applySinkId,
   createAnalyserChain,
   measureIntegratedLufs,
   normalizeTrackGain,
@@ -32,9 +33,12 @@ interface Props {
   // User-renamed labels for the TRACK_COLORS palette (e.g. '#ef4444' -> 'Timeout'),
   // set in Settings > Track Colors. Falls back to plain color names when absent.
   colorLabelNames: Record<string, string>
+  // Preview plays on the monitor bus's device, same as auditioning a track live —
+  // it should never surprise the room by coming out of the main/system-default output.
+  monitorDeviceId: string
 }
 
-export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getBuffer, hotkeyOwner, normalizeTargetLufs, colorLabelNames }: Props) {
+export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getBuffer, hotkeyOwner, normalizeTargetLufs, colorLabelNames, monitorDeviceId }: Props) {
   const [filePath, setFilePath] = useState('')
   const [artist, setArtist] = useState('')
   const [title, setTitle] = useState('')
@@ -146,6 +150,7 @@ export function TrackEditor({ track, onSave, onRemove, onClose, loadBuffer, getB
     stopPreview()
     // 48kHz keeps the K-weighting coefficients in createAnalyserChain valid.
     const ctx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 })
+    if (monitorDeviceId) applySinkId(ctx, monitorDeviceId)
     const source = ctx.createBufferSource()
     source.buffer = audioBuffer
     // Preview through the track's level so the slider can be auditioned;

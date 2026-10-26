@@ -14,6 +14,7 @@ const GLOBAL_SHORTCUTS: { keys: string; description: string }[] = [
   { keys: 'Ctrl/Cmd + M', description: 'Toggle Monitor mode' },
   { keys: 'Ctrl/Cmd + F', description: 'Jump to the track search box' },
   { keys: 'Ctrl/Cmd + R', description: 'Play a random unplayed track from the current bank' },
+  { keys: 'Ctrl/Cmd + T', description: 'Toggle Talk (duck the main output)' },
   { keys: 'F11', description: 'Toggle fullscreen' },
   { keys: '?', description: 'Open this shortcuts reference' }
 ]

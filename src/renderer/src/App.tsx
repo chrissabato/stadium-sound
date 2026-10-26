@@ -1191,6 +1191,11 @@ export default function App() {
       playRandomTrack()
       return
     }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 't') {
+      e.preventDefault()
+      audio.setTalk(!audio.isTalking)
+      return
+    }
     if (e.key === 'F11') {
       e.preventDefault()
       window.electronAPI.window.toggleFullscreen()
@@ -1746,6 +1751,7 @@ export default function App() {
         hotkeyOwner={hotkeyOwner}
         normalizeTargetLufs={normalizeTargetLufs}
         colorLabelNames={colorLabelNames}
+        monitorDeviceId={audioDevices.monitorDeviceId}
       />
 
       <Settings
