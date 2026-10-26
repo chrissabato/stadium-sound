@@ -4,7 +4,7 @@ import { loadSettings, saveLastTelemetryPingAt } from './settingsStore'
 
 // Not a real secret — the app ships as a binary that can be inspected regardless.
 // This just filters drive-by scanners hitting a guessed workers.dev URL; real
-// abuse mitigation lives server-side. Same worker/secret as FeedbackModal.tsx.
+// abuse mitigation lives server-side.
 const TELEMETRY_URL = 'https://stadium-sound-feedback.chris-sabato.workers.dev/telemetry'
 const APP_SHARED_SECRET = '0f4ae4ff315032fb6821e213fe46a7abbdb54c419b885b372166b480a03b1e49'
 

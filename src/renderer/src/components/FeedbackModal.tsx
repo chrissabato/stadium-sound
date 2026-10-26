@@ -1,34 +1,54 @@
 import React, { useEffect, useState } from 'react'
 
-// Not a real secret — the app ships as a binary that can be inspected regardless.
-// This just filters drive-by scanners hitting a guessed workers.dev URL; real
-// abuse mitigation lives server-side (honeypot field + Cloudflare rate limiting).
-const FEEDBACK_WORKER_URL = 'https://stadium-sound-feedback.chris-sabato.workers.dev'
-const APP_SHARED_SECRET = '0f4ae4ff315032fb6821e213fe46a7abbdb54c419b885b372166b480a03b1e49'
+const FEEDBACK_API = 'https://feedback.chrissabato.com/api.php'
+const APP_SLUG = 'stadium-sound'
 
-const MESSAGE_MIN = 10
-const MESSAGE_MAX = 4000
+const TITLE_MAX = 200
+const BODY_MIN = 10
+const BODY_MAX = 10000
 
-type Category = 'bug' | 'feature' | 'general'
-type Status = 'idle' | 'submitting' | 'success' | 'error'
+type FeedbackType = 'bug' | 'feature' | 'question' | 'other'
+type Status = 'loading-token' | 'idle' | 'submitting' | 'success' | 'error'
 
 interface Props {
   open: boolean
   onClose: () => void
 }
 
+const TYPE_LABELS: Record<FeedbackType, string> = {
+  bug: 'Bug report',
+  feature: 'Feature request',
+  question: 'Question',
+  other: 'Other'
+}
+
 export function FeedbackModal({ open, onClose }: Props) {
-  const [category, setCategory] = useState<Category>('general')
-  const [message, setMessage] = useState('')
+  const [type, setType] = useState<FeedbackType>('bug')
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
   const [email, setEmail] = useState('')
   const [website, setWebsite] = useState('') // honeypot, kept empty by real users
+  const [token, setToken] = useState('')
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!open) return
-    setStatus('idle')
+    setStatus('loading-token')
     setError('')
+    setFieldErrors({})
+    fetch(`${FEEDBACK_API}?action=config&app=${APP_SLUG}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.ok) throw new Error(data.error || 'Could not reach the feedback service')
+        setToken(data.token)
+        setStatus('idle')
+      })
+      .catch((err) => {
+        setStatus('error')
+        setError(err instanceof Error ? err.message : 'Could not reach the feedback service')
+      })
   }, [open])
 
   useEffect(() => {
@@ -39,46 +59,73 @@ export function FeedbackModal({ open, onClose }: Props) {
 
   if (!open) return null
 
-  const trimmed = message.trim()
-  const tooShort = trimmed.length > 0 && trimmed.length < MESSAGE_MIN
+  const trimmedTitle = title.trim()
+  const trimmedBody = body.trim()
+  const bodyTooShort = trimmedBody.length > 0 && trimmedBody.length < BODY_MIN
+  const canSubmit =
+    !!token && trimmedTitle.length > 0 && trimmedTitle.length <= TITLE_MAX && trimmedBody.length <= BODY_MAX
+
+  async function submit(currentToken: string): Promise<void> {
+    const [appVersion, platform] = await Promise.all([
+      window.electronAPI.app.getVersion(),
+      window.electronAPI.app.getPlatform()
+    ])
+
+    const res = await fetch(FEEDBACK_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app: APP_SLUG,
+        token: currentToken,
+        type,
+        title: trimmedTitle,
+        body: trimmedBody || undefined,
+        email: email.trim() || undefined,
+        app_version: appVersion,
+        meta: { platform },
+        website
+      })
+    })
+
+    const data = await res.json().catch(() => ({ ok: false }))
+
+    if (data.ok) {
+      setStatus('success')
+      return
+    }
+
+    if (res.status === 422 && data.errors) {
+      setFieldErrors(data.errors)
+      setStatus('error')
+      setError('Please fix the highlighted fields')
+      return
+    }
+
+    if (res.status === 400 && data.token) {
+      // Token expired or submitted too fast — retry once with the fresh token.
+      setToken(data.token)
+      return submit(data.token)
+    }
+
+    throw new Error(data.error || `Request failed (${res.status})`)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (trimmed.length < MESSAGE_MIN || trimmed.length > MESSAGE_MAX) return
+    if (!canSubmit) return
 
     setStatus('submitting')
     setError('')
+    setFieldErrors({})
     try {
-      const [appVersion, platform] = await Promise.all([
-        window.electronAPI.app.getVersion(),
-        window.electronAPI.app.getPlatform()
-      ])
-
-      const res = await fetch(`${FEEDBACK_WORKER_URL}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-App-Secret': APP_SHARED_SECRET },
-        body: JSON.stringify({
-          message: trimmed,
-          category,
-          email: email.trim() || undefined,
-          website,
-          appVersion,
-          platform
-        })
-      })
-
-      const data = await res.json().catch(() => ({ ok: false }))
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || `Request failed (${res.status})`)
-      }
-      setStatus('success')
+      await submit(token)
     } catch (err) {
       setStatus('error')
       setError(err instanceof Error ? err.message : 'Something went wrong')
     }
   }
 
-  const submitting = status === 'submitting'
+  const submitting = status === 'submitting' || status === 'loading-token'
 
   return (
     <div
@@ -138,10 +185,10 @@ export function FeedbackModal({ open, onClose }: Props) {
               minHeight: 0
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Category</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Type</span>
                 <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as Category)}
+                  value={type}
+                  onChange={(e) => setType(e.target.value as FeedbackType)}
                   disabled={submitting}
                   style={{
                     background: '#0f172a',
@@ -152,26 +199,51 @@ export function FeedbackModal({ open, onClose }: Props) {
                     fontSize: 13
                   }}
                 >
-                  <option value="general">General feedback</option>
-                  <option value="bug">Bug report</option>
-                  <option value="feature">Feature request</option>
+                  {(Object.keys(TYPE_LABELS) as FeedbackType[]).map((t) => (
+                    <option key={t} value={t}>{TYPE_LABELS[t]}</option>
+                  ))}
                 </select>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Message</span>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>{trimmed.length}/{MESSAGE_MAX}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Summary</span>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>{trimmedTitle.length}/{TITLE_MAX}</span>
+                </div>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
+                  disabled={submitting}
+                  placeholder="One line summary"
+                  style={{
+                    background: '#0f172a',
+                    border: `1px solid ${fieldErrors.title ? '#f87171' : '#334155'}`,
+                    borderRadius: 4,
+                    color: '#f1f5f9',
+                    padding: '6px 10px',
+                    fontSize: 13
+                  }}
+                />
+                {fieldErrors.title && (
+                  <span style={{ fontSize: 11, color: '#f87171' }}>{fieldErrors.title}</span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>Details</span>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>{trimmedBody.length}/{BODY_MAX}</span>
                 </div>
                 <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value.slice(0, MESSAGE_MAX))}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value.slice(0, BODY_MAX))}
                   disabled={submitting}
                   placeholder="What's on your mind?"
                   rows={6}
                   style={{
                     background: '#0f172a',
-                    border: `1px solid ${tooShort ? '#f87171' : '#334155'}`,
+                    border: `1px solid ${bodyTooShort || fieldErrors.body ? '#f87171' : '#334155'}`,
                     borderRadius: 4,
                     color: '#f1f5f9',
                     padding: '8px 10px',
@@ -180,10 +252,8 @@ export function FeedbackModal({ open, onClose }: Props) {
                     fontFamily: 'inherit'
                   }}
                 />
-                {tooShort && (
-                  <span style={{ fontSize: 11, color: '#f87171' }}>
-                    A few more details would help ({MESSAGE_MIN} characters minimum)
-                  </span>
+                {fieldErrors.body && (
+                  <span style={{ fontSize: 11, color: '#f87171' }}>{fieldErrors.body}</span>
                 )}
               </div>
 
@@ -197,13 +267,16 @@ export function FeedbackModal({ open, onClose }: Props) {
                   placeholder="you@example.com — if you'd like a reply"
                   style={{
                     background: '#0f172a',
-                    border: '1px solid #334155',
+                    border: `1px solid ${fieldErrors.email ? '#f87171' : '#334155'}`,
                     borderRadius: 4,
                     color: '#f1f5f9',
                     padding: '6px 10px',
                     fontSize: 13
                   }}
                 />
+                {fieldErrors.email && (
+                  <span style={{ fontSize: 11, color: '#f87171' }}>{fieldErrors.email}</span>
+                )}
               </div>
 
               {/* Honeypot — hidden from real users, bots that fill it get silently dropped */}
@@ -226,7 +299,9 @@ export function FeedbackModal({ open, onClose }: Props) {
                   fontSize: 12,
                   color: '#f87171'
                 }}>
-                  Couldn't send feedback: {error}. Your message is still here — try again.
+                  {Object.keys(fieldErrors).length > 0
+                    ? error
+                    : <>Couldn't send feedback: {error}. Your message is still here — try again.</>}
                 </div>
               )}
             </div>
@@ -242,7 +317,7 @@ export function FeedbackModal({ open, onClose }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                disabled={submitting}
+                disabled={status === 'submitting'}
                 style={{
                   padding: '7px 20px',
                   background: 'none',
@@ -251,14 +326,14 @@ export function FeedbackModal({ open, onClose }: Props) {
                   color: '#94a3b8',
                   fontWeight: 600,
                   fontSize: 13,
-                  cursor: submitting ? 'default' : 'pointer'
+                  cursor: status === 'submitting' ? 'default' : 'pointer'
                 }}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={submitting || trimmed.length < MESSAGE_MIN || trimmed.length > MESSAGE_MAX}
+                disabled={submitting || !canSubmit}
                 style={{
                   padding: '7px 20px',
                   background: '#3b82f6',
@@ -268,10 +343,10 @@ export function FeedbackModal({ open, onClose }: Props) {
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: submitting ? 'default' : 'pointer',
-                  opacity: trimmed.length < MESSAGE_MIN ? 0.6 : 1
+                  opacity: canSubmit ? 1 : 0.6
                 }}
               >
-                {submitting ? 'Sending…' : 'Send'}
+                {status === 'submitting' ? 'Sending…' : 'Send'}
               </button>
             </div>
           </form>

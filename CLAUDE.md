@@ -28,7 +28,7 @@ Never run `electron-builder --publish` locally — releases are cut by tagging (
 
 Two other npm projects live in this repo, each with their own `package.json`/CI job and are not part of the root `npm install`:
 - `companion-module/` — the Bitfocus Companion integration (`npm install && npm run check` inside that dir).
-- `worker/` — a Cloudflare Worker (`wrangler`) that relays the in-app feedback form to a GitHub issue.
+- `worker/` — a Cloudflare Worker (`wrangler`) that receives the anonymous usage-telemetry ping (`src/main/telemetry.ts`) and writes it to D1. In-app feedback (`FeedbackModal.tsx`) goes straight to the external feedback.chrissabato.com API instead.
 
 ## Architecture
 
